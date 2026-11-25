@@ -17,7 +17,7 @@ Schritte (Repo-Ordner, im conda-Env mit python):
 Ergebnis: data/sar100/…, results/sar_spots.csv (je Überflug Wind an den Spots und an allen Stationen),
           results/station_ranking.csv, results/sar_mean.png
 """
-import argparse, glob, json, os, sys, time, urllib.parse, urllib.request
+import argparse, glob, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 import numpy as np
 import pandas as pd
 
@@ -134,18 +134,31 @@ def icon_direction(times):
         f = f"{OUT}/icon/{y}.csv"
         if not os.path.exists(f) or y == today.year:
             end = min(pd.Timestamp(f"{y}-12-31"), today - pd.Timedelta(days=1))
-            q = dict(latitude=LAKE_CENTER[0], longitude=LAKE_CENTER[1], models="icon_seamless",
-                     hourly="wind_speed_10m,wind_direction_10m", wind_speed_unit="kn", timezone="UTC",
-                     start_date=f"{y}-01-01", end_date=end.strftime("%Y-%m-%d"))
-            url = "https://historical-forecast-api.open-meteo.com/v1/forecast?" + urllib.parse.urlencode(q)
-            for i in range(5):
-                try:
-                    with urllib.request.urlopen(url, timeout=120, context=ctx) as r:
-                        h = json.loads(r.read())["hourly"]; break
-                except Exception as e:
-                    print("   ICON", y, e); time.sleep(20 * (i + 1))
-            else:
-                continue
+            h = None
+            for model, base in (("icon_seamless", "https://historical-forecast-api.open-meteo.com/v1/forecast"),
+                                ("era5", "https://archive-api.open-meteo.com/v1/archive")):
+                q = dict(latitude=LAKE_CENTER[0], longitude=LAKE_CENTER[1], models=model,
+                         hourly="wind_speed_10m,wind_direction_10m", wind_speed_unit="kn", timezone="UTC",
+                         start_date=f"{y}-01-01", end_date=end.strftime("%Y-%m-%d"))
+                url = base + "?" + urllib.parse.urlencode(q)
+                for i in range(5):
+                    try:
+                        with urllib.request.urlopen(url, timeout=120, context=ctx) as r:
+                            h = json.loads(r.read())["hourly"]
+                        break
+                    except urllib.error.HTTPError as e:
+                        if e.code == 400:
+                            break
+                        print("  ", model, y, e); time.sleep(20 * (i + 1))
+                    except Exception as e:
+                        print("  ", model, y, e); time.sleep(20 * (i + 1))
+                # ICON-Archiv beginnt erst ~2022: Jahr ohne Werte -> ERA5
+                if h and sum(v is not None for v in h["wind_direction_10m"]) > 0.5 * len(h["time"]):
+                    print(f"   Modellwind {y}: {model}", flush=True)
+                    break
+                h = None
+            if h is None:
+                print("   kein Modellwind für", y); continue
             pd.DataFrame({"time": h["time"], "ws": h["wind_speed_10m"], "wd": h["wind_direction_10m"]}).to_csv(f, index=False)
         parts.append(pd.read_csv(f))
     d = pd.concat(parts); d["time"] = pd.to_datetime(d.time, utc=True)
@@ -265,7 +278,7 @@ def stations():
     for name, m in (("alle", S.index == S.index), ("Sommerabend (Breva)", S.abends & S.sommer)):
         x = S[m & S.see.notna()]
         if len(x) >= 20:
-            out.append(dict(station="ICON (Modell)", fall=name, n=len(x), r=round(x.icon_kn.corr(x.see), 2),
+            out.append(dict(station="Modell (ICON ab 2022, sonst ERA5)", fall=name, n=len(x), r=round(x.icon_kn.corr(x.see), 2),
                             verhaeltnis_see_zu_station=round(float((x.see / x.icon_kn).where(x.icon_kn >= 3).median()), 2),
                             auc_see_ab_12kn=round(auc(x.icon_kn.values, (x.see >= 12).values), 2), see_ab_12kn=int((x.see >= 12).sum())))
     R = pd.DataFrame(out).sort_values(["fall", "auc_see_ab_12kn"], ascending=[True, False])
