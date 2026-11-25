@@ -38,6 +38,7 @@ TZ = "Europe/Rome"
 MONTHS = list(range(1, 13))
 ERA = os.path.join(DATA, "era5v2")
 PREV = os.path.join(DATA, "prevv2")
+IFS9 = os.path.join(DATA, "ifs9")        # ECMWF IFS 9 km (Open-Meteo-Archiv, ab 2017): Alternative zu ERA5 als Trainingsbasis
 LEADS = range(1, 8)
 
 BASIC = ["temperature_2m", "dew_point_2m", "pressure_msl", "shortwave_radiation", "cloud_cover",
@@ -100,22 +101,25 @@ def supported(kind, model, cand, suffix=""):
     return [v for v in cand if have.get(v)]
 
 
-def wetter(start=2014):
+def wetter(start=2014, model="era5"):
+    """Stundenwerte der Vergangenheit: ERA5 (25 km, ab 1940) oder ECMWF IFS 9 km (model="ecmwf_ifs", ab 2017)."""
+    out = ERA if model == "era5" else IFS9
+    os.makedirs(out, exist_ok=True)
     allv = sorted({v for *_, vs in POINTS.values() for v in vs})
-    ok = set(supported("era5", "era5", allv))
-    print("ERA5 liefert nicht:", sorted(set(allv) - ok) or "–")
+    ok = set(supported("era5", model, allv))
+    print(f"{model} liefert nicht:", sorted(set(allv) - ok) or "–")
     yesterday = pd.Timestamp.today().normalize() - pd.Timedelta(days=1)
     for p, (la, lo, vs) in POINTS.items():
         vs = [v for v in vs if v in ok]
         for y in range(start, yesterday.year + 1):
-            f = f"{ERA}/{p}_{y}.csv"
+            f = f"{out}/{p}_{y}.csv"
             if os.path.exists(f) and y < yesterday.year:
                 continue
             end = min(pd.Timestamp(f"{y}-12-31"), yesterday)
-            j = get_json(ERA_URL, dict(latitude=la, longitude=lo, models="era5", hourly=",".join(vs), timezone=TZ,
+            j = get_json(ERA_URL, dict(latitude=la, longitude=lo, models=model, hourly=",".join(vs), timezone=TZ,
                                        wind_speed_unit="kn", start_date=f"{y}-01-01", end_date=end.strftime("%Y-%m-%d")))
             pd.DataFrame(j["hourly"]).to_csv(f, index=False)
-            print(f"  ERA5 {p} {y}", flush=True); time.sleep(0.5)
+            print(f"  {model} {p} {y}", flush=True); time.sleep(0.5)
 
 
 def archiv(model="icon_seamless", start=2022):
@@ -191,7 +195,8 @@ def load(kind="era5", lead=0, model="ecmwf_ifs025"):
     import glob
     H = {}
     for p in POINTS:
-        pat = {"era5": f"{ERA}/{p}_*.csv", "prev": f"{PREV}/{model}_{p}_*.csv", "archiv": f"{ARCH}/{model}_{p}_*.csv"}[kind]
+        pat = {"era5": f"{ERA}/{p}_*.csv", "ifs9": f"{IFS9}/{p}_*.csv", "prev": f"{PREV}/{model}_{p}_*.csv",
+               "archiv": f"{ARCH}/{model}_{p}_*.csv"}[kind]
         fs = sorted(glob.glob(pat))
         if not fs:
             continue
@@ -630,13 +635,13 @@ def vorlauf(thr=(14, 18), model="ecmwf_ifs025", train_until=2023):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["wetter", "archiv", "laeufe", "tage", "pruefen", "faktoren", "vorlauf"])
+    ap.add_argument("step", choices=["wetter", "wetter_ifs", "archiv", "laeufe", "tage", "pruefen", "faktoren", "vorlauf"])
     ap.add_argument("--quelle", default="era5", choices=["era5", "archiv"])
     ap.add_argument("--schwelle", type=int, default=14)
     ap.add_argument("--modell", default="ecmwf_ifs025")
     a = ap.parse_args()
     arch_model = a.modell if a.modell != "ecmwf_ifs025" or a.step != "archiv" else "icon_seamless"
-    {"wetter": wetter, "laeufe": lambda: laeufe(a.modell), "tage": tage,
+    {"wetter": wetter, "wetter_ifs": lambda: wetter(2017, "ecmwf_ifs"), "laeufe": lambda: laeufe(a.modell), "tage": tage,
      "archiv": lambda: archiv(arch_model),
      "pruefen": lambda: pruefen(a.quelle, a.modell if a.quelle == "era5" else
                                 (a.modell if a.modell != "ecmwf_ifs025" else "icon_seamless"), a.schwelle),

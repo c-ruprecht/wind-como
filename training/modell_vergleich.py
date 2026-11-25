@@ -360,7 +360,7 @@ def vergleich(thr_list=(14, 18), train_until=2023):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("step", choices=["pruefen", "laden", "vergleich"])
-    ap.add_argument("--modelle", default="icon_seamless,meteoswiss_icon_ch2,ecmwf_aifs025_single,ukmo_seamless,gfs_seamless")
+    ap.add_argument("--modelle", default="ecmwf_ifs,meteoswiss_icon_ch2,icon_seamless,ecmwf_aifs025_single")
     ap.add_argument("--leads", default="1,2,3,5,7")
     ap.add_argument("--start", default="2024-01-01")
     a = ap.parse_args()

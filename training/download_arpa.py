@@ -32,7 +32,12 @@ MAIN = "647i-nhxk"            # „Dati sensori meteo“: nur die letzten ~7 Mon
 # Historie je Messgröße und Zeitraum (wie im R-Paket ARPALData, url_W_year_par):
 HIST = {"speed": [(2021, "hu5q-68e3"), (2011, "x9gp-z9xx"), (0, "ed5f-uim8")],
         "dir":   [(2021, "purm-rsjf"), (2011, "ypty-e75m"), (0, "cptm-adt5")],
-        "gust":  [(2021, "gi9u-2aez"), (0, "ppwf-2tzh")]}          # Böen: gleiche Sensor-ID wie die Geschwindigkeit
+        "gust":  [(2021, "gi9u-2aez"), (0, "ppwf-2tzh")],          # Böen: gleiche Sensor-ID wie die Geschwindigkeit
+        # weitere Größen (arpa_extra.py), Kennungen wie in ARPALData url_W_year_par
+        "temp":  [(2021, "w9wd-u6jh"), (2011, "d4kj-kbpj"), (0, "6eu4-4tja")],
+        "rh":    [(2021, "823w-fh4c"), (2011, "xpun-8722"), (0, "nure-mhrg")],
+        "rain":  [(2021, "pstb-pga6"), (2011, "2kar-pnuk"), (0, "e7r2-7m84")],
+        "rad":   [(2021, "cxym-eps2"), (0, "63ns-e4tv")]}
 
 
 def hist_dataset(kind, year):
