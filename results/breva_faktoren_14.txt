@@ -1,0 +1,92 @@
+
+=== Schönwettertage (Breva / schwach / ruhig, ohne Widerspruch): Breva ≥ 14 kn, 471 von 1009 Tagen ===
+               merkmal  breva   kein  auc  trennkraft
+           wind_see_15   3.30   2.60 0.72        0.45
+      wind_see_15_sued   3.11   2.40 0.72        0.44
+   taupunktdiff_milano  13.10  10.75 0.68        0.36
+               see_t30  18.39  22.91 0.33        0.34
+         rad_chiavenna   5.28   4.70 0.66        0.31
+   rad_spaet_chiavenna   1.63   1.40 0.66        0.31
+    luft_minus_see_t30   6.58   4.52 0.65        0.31
+ dp_bergamo_sondrio_15  -0.80  -1.50 0.64        0.29
+        wind_milano_12   3.50   2.80 0.64        0.28
+          dp_po_tal_15  -1.60  -2.30 0.63        0.25
+            rad_milano   5.56   4.97 0.62        0.25
+          dp_po_tal_18  -2.20  -3.00 0.62        0.24
+         dt_engadin_po -12.50 -11.60 0.39        0.23
+               rad_see   5.17   4.61 0.61        0.21
+        tmin_chiavenna  15.20  16.95 0.40        0.20
+    dp_tag_minus_nacht   0.60   0.40 0.60        0.20
+          tmax_sondrio  25.00  27.10 0.40        0.19
+          tmax_engadin  14.90  17.10 0.41        0.19
+          dp_po_tal_06  -2.20  -2.80 0.59        0.18
+        tmax_chiavenna  24.90  26.90 0.42        0.17
+           tmin_milano  16.30  18.10 0.42        0.16
+          tmax_bergamo  24.60  26.50 0.42        0.16
+   bodenfeuchte_milano   0.30   0.32 0.42        0.16
+              tmax_see  25.30  27.15 0.42        0.15
+             dt_tal_po  -2.00  -1.60 0.43        0.14
+    dp_lyon_venezia_12  -0.90  -0.20 0.43        0.13
+          geo_aus_sued   0.20   0.07 0.57        0.13
+     wolken_morgen_see  39.67  49.50 0.44        0.12
+           tmax_milano  26.90  28.10 0.44        0.11
+           geo_staerke   0.76   0.66 0.55        0.10
+       wolken_tief_see  18.00  12.11 0.55        0.10
+bodenfeuchte_chiavenna   0.28   0.29 0.46        0.08
+      amp_tal_minus_po  -0.80  -0.50 0.46        0.07
+           sonne_see_h   9.00   9.00 0.53        0.06
+      wolken_chiavenna  50.22  54.61 0.47        0.06
+   dp_zurich_milano_12   0.30   0.65 0.47        0.06
+          geo_aus_west   0.01  -0.01 0.51        0.03
+ dp_muenchen_genova_12   0.00  -0.20 0.51        0.03
+            wolken_see  51.44  51.39 0.51        0.02
+      drucktendenz_24h   0.30   0.10 0.51        0.01
+          regen_vortag   0.30   0.30 0.49        0.01
+       regen_chiavenna   0.10   0.10 0.50        0.01
+             regen_see   0.00   0.00 0.50        0.00
+Modell (XGBoost, je Jahr ausgelassen): AUC 0.847
+wichtigste Größen im Modell (mittlerer |SHAP|-Beitrag):
+doy_sin                  13.2
+wolken_tief_see           7.1
+wind_see_15_sued          6.6
+wind_milano_12            6.0
+taupunktdiff_milano       5.0
+dp_bergamo_sondrio_15     4.6
+tmax_sondrio              3.9
+dp_muenchen_genova_12     3.7
+rad_chiavenna             3.0
+see_t30                   2.9
+wind_see_15               2.8
+dt_tal_po                 2.7
+rad_spaet_chiavenna       2.7
+luft_minus_see_t30        2.4
+regen_see                 2.4
+
+=== alle Tage (Störungen zählen als kein Breva): Breva ≥ 14 kn, 473 von 2348 Tagen ===
+Modell (XGBoost, je Jahr ausgelassen): AUC 0.933
+wichtigste Größen im Modell (mittlerer |SHAP|-Beitrag):
+dp_zurich_milano_12      15.6
+regen_see                10.0
+regen_chiavenna           9.0
+wind_see_15_sued          7.0
+doy_sin                   5.5
+taupunktdiff_milano       5.1
+wolken_tief_see           4.8
+wind_milano_12            3.4
+rad_chiavenna             3.0
+tmax_sondrio              2.7
+dp_bergamo_sondrio_15     2.4
+luft_minus_see_t30        1.9
+rad_spaet_chiavenna       1.8
+wolken_morgen_see         1.8
+wolken_chiavenna          1.8
+
+Klassen je Monat (Tage je Saison):
+klasse  Breva  Breva schwach  Nordföhn  Regen/Gewitter  ruhig  synoptisch
+row_0                                                                    
+4         9.6            3.1       6.5             7.4    1.2         0.2
+5         8.2            1.8       5.8            13.4    1.5         0.0
+6         7.6            2.3       5.4            12.3    2.2         0.2
+7         6.2            2.8       7.6            11.1    3.2         0.2
+8         3.1            4.3       5.9            11.8    5.8         0.0
+9         1.6            2.8       5.5             9.2   10.8         0.0
