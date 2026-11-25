@@ -180,6 +180,16 @@ def snap_axis(wd):
     return AXIS[0] if diff(wd, AXIS[0]) <= diff(wd, AXIS[1]) else AXIS[1]
 
 
+def clean_mask(water, min_px=150):
+    """Kleine Einzelflecken entfernen (Land, das wie Wasser aussieht: glatte Flächen, Hangschatten).
+    Der See, die Bucht von Piona und der Lago di Mezzola sind groß genug und bleiben."""
+    from scipy.ndimage import label
+    lab, n = label(water)
+    sizes = np.bincount(lab.ravel())
+    keep = np.zeros_like(sizes, bool); keep[1:] = sizes[1:] >= min_px
+    return keep[lab]
+
+
 def wind(force=False):
     import rasterio
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -202,7 +212,7 @@ def wind(force=False):
     w0 = np.cumsum(hist); w1 = w0[-1] - w0
     m0 = np.cumsum(hist * mids) / np.maximum(w0, 1); m1 = (np.sum(hist * mids) - np.cumsum(hist * mids)) / np.maximum(w1, 1)
     thr = mids[np.argmax(w0 * w1 * (m0 - m1) ** 2)]
-    water = binary_erosion(med < thr, iterations=2)          # 200 m Abstand zum Ufer: Mischpixel und Hangschatten
+    water = clean_mask(binary_erosion(med < thr, iterations=2))   # 200 m Abstand zum Ufer, ohne Einzelflecken
     np.save(f"{OUT}/water_mask.npy", water)
     print(f"Wasser/Land-Schwelle {thr:.1f} dB, Wassermaske {water.sum()} Pixel à {RES} m")
     icon = icon_direction(sorted(sc.t.unique()))
@@ -217,8 +227,13 @@ def wind(force=False):
         if row.t not in icon.index or pd.isna(icon.wd.get(row.t)):
             skip["keine Modellrichtung"].append(row.t.year); continue
         wd = snap_axis(float(icon.wd[row.t]))
-        with rasterio.open(p) as r:
-            vv, inc, m = r.read(1), r.read(2), r.read(3)
+        try:
+            with rasterio.open(p) as r:
+                vv, inc, m = r.read(1), r.read(2), r.read(3)
+        except Exception as e:
+            skip["Fehler"].append(row.t.year); print("  Fehler", row.file, e); continue
+        if vv.shape != water.shape:
+            skip["Fehler"].append(row.t.year); print("  andere Bildgröße", row.file, vv.shape); continue
         heading = 348.0 if str(row.orbit).lower().startswith("asc") else 192.0
         phi = (wd - (heading + 90.0) % 360) % 360
         ok = water & (m > 0) & np.isfinite(vv) & (vv > 0)
@@ -243,8 +258,8 @@ def spot_pixels(water):
     sel = {}
     for k, (la, lo) in SPOTS.items():
         d = np.hypot((lat - la) * 111.2, (lon - lo) * 111.2 * np.cos(np.radians(la)))
-        idx = np.argsort(d)[:15]
-        sel[k] = idx[d[idx] <= 1.2]                             # bis 1,2 km vom Spot aufs Wasser
+        idx = np.argsort(d)[:25]
+        sel[k] = idx[d[idx] <= 2.0]                             # 25 nächste Wasserpixel bis 2 km (Spots am Ufer)
     return ys, xs, sel
 
 
@@ -254,7 +269,7 @@ def auc(score, label):
 
 
 def stations():
-    water = np.load(f"{OUT}/water_mask.npy")
+    water = clean_mask(np.load(f"{OUT}/water_mask.npy"))
     ys, xs, sel = spot_pixels(water)
     obs = {}
     for f in glob.glob(os.path.join(ROOT, "data", "arpa", "*_wind.csv")):

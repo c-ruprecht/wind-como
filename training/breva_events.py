@@ -198,8 +198,10 @@ def load_sat():
     S["see"] = S[up].mean(axis=1)
     lt = S.t_exakt.dt.tz_convert(TZ)
     S["datum"] = lt.dt.tz_localize(None).dt.normalize()
-    S["breva"] = (lt.dt.hour >= 12) & lt.dt.month.isin(MONTHS) & (S.dir == 200)
     S["abend"] = (lt.dt.hour >= 12) & lt.dt.month.isin(MONTHS)
+    rg = regen_abend()
+    S["regen"] = S.datum.map(rg).fillna(0) if rg is not None else 0.0
+    S["breva"] = S.abend & (S.dir == 200) & (S.regen < 0.5)          # ohne Regen/Gewitter am Abend
     return S
 
 
@@ -220,6 +222,20 @@ def samolaco_days(factor, thresholds=(10, 12, 14, 18)):
     return D[D.n_std >= 8]                       # genug Stunden am Tag
 
 
+def regen_abend():
+    """ERA5-Regen 17–19 Uhr (See + Chiavenna) je Tag: Regen und Gewitter hellen das Radarbild auf (falscher Starkwind)."""
+    try:
+        H = load_hourly("era5")
+    except Exception:
+        return None
+    r = 0
+    for p in ("see", "chiavenna"):
+        x = H[p]["precipitation"]; x = x[(x.index.hour >= 17) & (x.index.hour <= 19)]
+        r = r + x.groupby(x.index.normalize()).sum()
+    r.index = pd.DatetimeIndex(r.index).tz_localize(None)
+    return r
+
+
 def ereignisse(thr=12):
     S = load_sat()
     if S is None:
@@ -229,7 +245,8 @@ def ereignisse(thr=12):
     A = S[S.abend].copy()
     A["sat_breva"] = (A.breva & (A.see >= thr)).astype(int)
     A["sat_ruhig"] = ((A.see < 6) | (A.dir == 20)).astype(int)
-    print(f"Abendüberflüge Apr–Sep: {len(A)}, Breva ≥ {thr} kn: {A.sat_breva.sum()}, ruhig/Nord: {A.sat_ruhig.sum()}")
+    print(f"Abendüberflüge Apr–Sep: {len(A)}, Breva ≥ {thr} kn: {A.sat_breva.sum()}, ruhig/Nord: {A.sat_ruhig.sum()}, "
+          f"mit Regen am Abend (ausgeschlossen): {int((A.regen >= 0.5).sum())}")
     for t in (10, 12, 14, 18):
         print(f"   See ≥ {t:2d} kn aus Süd: {int((A.breva & (A.see >= t)).sum())} Abende")
     D = samolaco_days(f)
@@ -310,7 +327,7 @@ def lang(thr=14, calm=10, day_thr=10):
     S = load_sat()
     if S is None:
         sys.exit("results/sar_spots.csv fehlt")
-    A = S[S.abend & (S.dir == 200)].drop_duplicates("datum").set_index("datum")
+    A = S[S.breva].drop_duplicates("datum").set_index("datum")
     A = A[A.max_samolaco >= day_thr]
     A = A[(A.see >= thr) | (A.see < calm)]
     y = (A.see >= thr).astype(int)
@@ -336,7 +353,7 @@ def lang(thr=14, calm=10, day_thr=10):
     p(T.to_string(index=False))
     mon = pd.crosstab(X.index.month, y).rename(columns={0: "kurz", 1: "lang"})
     # stetig: Rangkorrelation jeder Größe mit dem Seewind um 19:15 an allen Breva-Tagen (braucht keine Klassen)
-    Aall = S[S.abend & (S.dir == 200)].drop_duplicates("datum").set_index("datum")
+    Aall = S[S.breva].drop_duplicates("datum").set_index("datum")
     Aall = Aall[Aall.max_samolaco >= day_thr]
     Xa = F.reindex(Aall.index).dropna(thresh=len(F.columns) - 3)
     sp = Xa.drop(columns=["doy_sin", "doy_cos"]).corrwith(Aall.see.reindex(Xa.index), method="spearman")
