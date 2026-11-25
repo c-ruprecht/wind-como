@@ -61,7 +61,7 @@ function kpis(A) {
   const k = A.klassen_saison || {}, v = A.vortag || {};
   const best = A.vorlauf?.["14"]?.find(r => r.vorlauf.startsWith("1 ")), d4 = A.vorlauf?.["14"]?.find(r => r.vorlauf.startsWith("4 "));
   const items = [
-    [de(k["Breva"], 0), "Breva-Tage ≥ 14 kn je Saison (Mär–Okt)"],
+    [de(k["Breva"], 0), "Breva-Tage ≥ 14 kn je Jahr (ganzes Jahr)"],
     [de(A.klima?.["18"] ? Object.values(A.klima["18"]).reduce((a, m) => a + m.tage, 0) : null, 0), "davon ≥ 18 kn (Klima)"],
     [pct(v.nach_breva), `Breva nach einem Breva-Tag (sonst ${pct(v.sonst)})`],
     [best ? de(best.auc, 2) : "–", `Trefferquote morgen${d4 ? `, Tag 4: ${de(d4.auc, 2)}` : ""}`]

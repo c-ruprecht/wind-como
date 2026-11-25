@@ -13,7 +13,7 @@ RES = os.path.join(ROOT, "results")
 APP = os.path.join(ROOT, "app")
 ARPA = os.path.join(ROOT, "data", "arpa")
 TZ = "Europe/Rome"
-SEASON = [3, 4, 5, 6, 7, 8, 9, 10]
+SEASON = list(range(1, 13))
 STATIONS = {"samolaco": ("Samolaco", (112, 202)), "vercana": ("Vercana", (180, 270)), "colico": ("Colico", (200, 315)),
             "morbegno": ("Morbegno", (200, 290)), "sansiro": ("San Siro", (180, 270)), "como": ("Como", (0, 90))}
 LABEL = {
@@ -58,7 +58,7 @@ def main():
     D = pd.read_csv(f"{RES}/breva_tage.csv", index_col=0, parse_dates=True)
     y = (D.klasse == "Breva").astype(int)
     out["jahre"] = f"{D.index.year.min()}–{D.index.year.max()}"
-    # Tagesgang je Station (Mär–Okt): mittlere Stärke und Anteil Breva-Richtung, an Breva-Tagen und sonst
+    # Tagesgang je Station (ganzes Jahr): mittlere Stärke und Anteil Breva-Richtung, an Breva-Tagen und sonst
     prof = {}
     for st, (name, (lo, hi)) in STATIONS.items():
         f = os.path.join(ARPA, f"{st}_wind.csv")

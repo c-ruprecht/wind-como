@@ -3,7 +3,7 @@
   python training/breva_daten.py wetter      # ERA5 an 11 Punkten (See, Täler, Po-Ebene, Alpen, Großwetterlage), 2014 – gestern
   python training/breva_daten.py laeufe      # ECMWF-Läufe 1–7 Tage vorher an denselben Punkten, 2024 – gestern
   python training/breva_daten.py archiv      # Vorhersagearchiv ICON (Tag 0) mit Höhenwerten 850/700/500 hPa, ab 2022
-  python training/breva_daten.py tage        # Tagesklassen Mär–Okt: Breva / schwach / ruhig / Regen-Gewitter / Nordföhn / synoptisch
+  python training/breva_daten.py tage        # Tagesklassen ganzes Jahr: Breva / schwach / ruhig / Regen-Gewitter / Nordföhn / synoptisch
   python training/breva_daten.py pruefen     # jede Größe einzeln: je Monat, über die Jahre, gegen den Satelliten
   python training/breva_daten.py pruefen --quelle archiv
   python training/breva_daten.py faktoren    # was macht einen Breva-Tag (nur Schönwettertage) + Modell auf allen Tagen
@@ -35,7 +35,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "data")
 RES = os.path.join(ROOT, "results")
 TZ = "Europe/Rome"
-MONTHS = [3, 4, 5, 6, 7, 8, 9, 10]
+MONTHS = list(range(1, 13))
 ERA = os.path.join(DATA, "era5v2")
 PREV = os.path.join(DATA, "prevv2")
 LEADS = range(1, 8)
@@ -435,9 +435,9 @@ def tage():
     os.makedirs(RES, exist_ok=True)
     D.round(2).to_csv(f"{RES}/breva_tage.csv")
     yrs = D.index.year.nunique()
-    print(f"\n{len(D)} Tage Mär–Okt {D.index.year.min()}–{D.index.year.max()}, je Saison:")
+    print(f"\n{len(D)} Tage ganzes Jahr {D.index.year.min()}–{D.index.year.max()}, je Jahr:")
     print((D.klasse.value_counts() / yrs).round(1).to_string())
-    print(f"\nBreva ≥ 18 kn (sauber) je Saison: {((D.breva18 == 1) & D.sauber).sum() / yrs:.1f}")
+    print(f"\nBreva ≥ 18 kn (sauber) je Jahr: {((D.breva18 == 1) & D.sauber).sum() / yrs:.1f}")
     print(f"Widerspruch zum Satellitenbild: {(D.sat_widerspruch != '').sum()} von {has.sum()} Tagen mit Abendüberflug")
     print(D[D.sat_widerspruch != ""][["klasse", "sam_morgen", "sam_max", "see_max_est", "sat_see", "regen", "sat_widerspruch"]]
           .round(1).to_string())
@@ -487,7 +487,7 @@ def faktoren(thr=14):
         p("wichtigste Größen im Modell (mittlerer |SHAP|-Beitrag):")
         p((imp / imp.sum() * 100).round(1).head(15).to_string())
     # Klassen nach Monat
-    p("\nKlassen je Monat (Tage je Saison):")
+    p("\nKlassen je Monat (Tage je Jahr):")
     p((pd.crosstab(D.index.month, D.klasse) / D.index.year.nunique()).round(1).to_string())
     open(f"{RES}/breva_faktoren_{thr}.txt", "w").write("\n".join(lines) + "\n")
 
@@ -579,7 +579,7 @@ def pruefen(quelle="era5", model="icon_seamless", thr=14):
         [(T.kraft >= 0.2) & (T.stabil >= 0.8), (T.kraft >= 0.1) & (T.stabil >= 0.7)], ["stark", "mittel"], "schwach")
     pd.set_option("display.width", 250); pd.set_option("display.max_rows", 200)
     out = T.round(2)
-    print(f"Quelle {quelle}{'/' + model if quelle != 'era5' else ''}, {yrs}, {len(days)} Tage Mär–Okt; "
+    print(f"Quelle {quelle}{'/' + model if quelle != 'era5' else ''}, {yrs}, {len(days)} Tage ganzes Jahr; "
           f"Schönwetter: {int(y_bs.notna().sum())} Tage, davon Breva ≥ {thr} kn: {int((y_bs == 1).sum())}; "
           f"Satellitenabende ohne Regen: {int(sat.notna().sum())}")
     print(out.to_string(index=False))

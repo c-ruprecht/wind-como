@@ -10,7 +10,7 @@
 Voraussetzung: results/sar_spots.csv (sar_lake.py stations) und data/arpa/samolaco_wind.csv.
 
 Idee
-  1. Satellit allein: Abendüberflug (Mär–Okt) mit Wind auf dem oberen See ≥ X kn aus Süd = Breva-Abend.
+  1. Satellit allein: Abendüberflug (ganzes Jahr) mit Wind auf dem oberen See ≥ X kn aus Süd = Breva-Abend.
      Für mehr Tage zusätzlich Samolaco, mit dem Satellitenfaktor auf den See umgerechnet
      (≥ 2 h am Stück ≥ X kn aus Süd, 11–20 Uhr).
   2. Wetter, wie es war (ERA5): Einstrahlung, Wolken, Temperaturgefälle Po-Ebene – Alpentäler,
@@ -37,7 +37,7 @@ POINTS = {                      # lat, lon
 VARS = ["temperature_2m", "dew_point_2m", "pressure_msl", "shortwave_radiation", "cloud_cover",
         "precipitation", "wind_speed_10m", "wind_direction_10m"]
 LEADS = range(1, 8)
-MONTHS = [3, 4, 5, 6, 7, 8, 9, 10]
+MONTHS = list(range(1, 13))
 SUED = (112, 202)               # Samolaco: Breva aus SSO–S
 
 
@@ -245,7 +245,7 @@ def ereignisse(thr=12):
     A = S[S.abend].copy()
     A["sat_breva"] = (A.breva & (A.see >= thr)).astype(int)
     A["sat_ruhig"] = ((A.see < 6) | (A.dir == 20)).astype(int)
-    print(f"Abendüberflüge Mär–Okt: {len(A)}, Breva ≥ {thr} kn: {A.sat_breva.sum()}, ruhig/Nord: {A.sat_ruhig.sum()}, "
+    print(f"Abendüberflüge ganzes Jahr: {len(A)}, Breva ≥ {thr} kn: {A.sat_breva.sum()}, ruhig/Nord: {A.sat_ruhig.sum()}, "
           f"mit Regen am Abend (ausgeschlossen): {int((A.regen >= 0.5).sum())}")
     for t in (10, 12, 14, 18):
         print(f"   See ≥ {t:2d} kn aus Süd: {int((A.breva & (A.see >= t)).sum())} Abende")
@@ -259,7 +259,7 @@ def ereignisse(thr=12):
     os.makedirs(RES, exist_ok=True)
     A.drop(columns=[c for c in A if c.startswith("max_") or c == "file"], errors="ignore").to_csv(f"{RES}/breva_sat_abende.csv", index=False)
     D.to_csv(f"{RES}/breva_samolaco_tage.csv")
-    print("\nBreva-Tage je Saison (Samolaco × Faktor, ≥ 2 h am Stück aus Süd):")
+    print("\nBreva-Tage je Jahr (Samolaco × Faktor, ≥ 2 h am Stück aus Süd):")
     yrs = D.index.year.nunique()
     print("  " + ", ".join(f"≥ {t} kn: {D[f'breva{t}'].sum() / yrs:.1f}" for t in (10, 12, 14, 18)))
     print(f"\ngeschrieben: results/breva_sat_abende.csv, results/breva_samolaco_tage.csv")
