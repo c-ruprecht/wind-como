@@ -33,7 +33,14 @@ def config():
     return sh_config()
 
 
+LSWT_NRT = "byoc-401ca642-a169-4783-b1cf-cbd33e98eccb"   # CLMS LSWT 2016–heute, 10-täglich, 1 km (CDSE-Doku)
+
+
 def find_collection(cfg):
+    return LSWT_NRT
+
+
+def _find_collection_catalog(cfg):
     from sentinelhub import SentinelHubCatalog
     cols = list(SentinelHubCatalog(config=cfg).get_collections())
     hits = [c for c in cols if "lake surface water temperature" in (c.get("title", "") + c.get("description", "")).lower()]
