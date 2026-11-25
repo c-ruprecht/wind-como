@@ -1,0 +1,68 @@
+
+=== Satellit: Breva ≥ 12 kn auf dem See, 42 von 90 Tagen (ERA5 = Wetter, wie es war) ===
+                   merkmal  breva  kein_breva  auc  trennkraft
+          wind_see_15_sued  -2.82       -1.26 0.21        0.58
+                 dt_tal_po  -1.80       -3.05 0.70        0.40
+              dp_po_tal_15  -1.25       -3.15 0.70        0.39
+          amp_tal_minus_po  -0.75       -1.95 0.69        0.38
+              dp_po_tal_18  -2.40       -3.60 0.66        0.32
+           dp_nord_sued_12   1.55        2.80 0.34        0.31
+              dp_po_tal_06  -2.30       -3.00 0.65        0.29
+t18_chiavenna_minus_milano  -2.80       -3.30 0.63        0.25
+            tmin_chiavenna  15.05       17.80 0.38        0.25
+        dp_tag_minus_nacht   0.50        0.30 0.62        0.23
+               wind_see_15   2.90        2.50 0.61        0.22
+               tmin_milano  16.70       18.40 0.40        0.19
+             rad_chiavenna   5.10        4.84 0.59        0.18
+            wind_zurich_12   3.95        4.95 0.42        0.16
+          wolken_chiavenna  47.06       62.28 0.43        0.15
+       taupunktdiff_milano  11.75       10.10 0.56        0.12
+         wolken_morgen_see  47.25       56.58 0.44        0.12
+       rad_spaet_chiavenna   1.53        1.41 0.56        0.11
+            wind_milano_12   3.25        3.30 0.44        0.11
+                 regen_see   0.20        0.60 0.45        0.10
+               tmax_milano  26.50       28.45 0.45        0.10
+          wolken_spaet_see  58.00       50.60 0.54        0.09
+                rad_milano   5.40        5.32 0.53        0.07
+              tmax_sondrio  25.10       26.05 0.48        0.04
+           regen_chiavenna   0.35        0.35 0.48        0.04
+            tmax_chiavenna  25.05       25.80 0.48        0.04
+             rad_spaet_see   1.56        1.48 0.49        0.03
+                wolken_see  52.22       56.22 0.49        0.01
+                   rad_see   4.96        4.90 0.50        0.00
+Modell mit allen Merkmalen (XGBoost, je Jahr ausgelassen): AUC 0.69  – Obergrenze bei perfekter Vorhersage
+
+=== Samolaco: Breva ≥ 12 kn auf dem See, 862 von 2348 Tagen (ERA5 = Wetter, wie es war) ===
+                   merkmal  breva  kein_breva  auc  trennkraft
+          wind_see_15_sued  -2.91       -1.72 0.26        0.48
+             rad_chiavenna   5.00        4.36 0.64        0.29
+               wind_see_15   3.10        2.50 0.63        0.26
+       taupunktdiff_milano  12.05       10.00 0.63        0.25
+              dp_po_tal_15  -1.70       -2.50 0.62        0.25
+       rad_spaet_chiavenna   1.52        1.31 0.62        0.23
+              dp_po_tal_18  -2.40       -3.10 0.61        0.22
+                rad_milano   5.43        4.85 0.61        0.21
+                   rad_see   5.01        4.48 0.59        0.19
+           dp_nord_sued_12   1.20        2.25 0.41        0.18
+              dp_po_tal_06  -2.30       -2.90 0.58        0.17
+        dp_tag_minus_nacht   0.50        0.30 0.58        0.16
+         wolken_morgen_see  44.92       61.50 0.42        0.16
+             rad_spaet_see   1.54        1.39 0.58        0.15
+          wolken_chiavenna  55.94       64.39 0.43        0.14
+            tmin_chiavenna  15.60       17.00 0.44        0.12
+            wind_milano_12   3.60        3.20 0.56        0.12
+               tmin_milano  16.90       17.90 0.45        0.10
+           regen_chiavenna   0.40        0.70 0.46        0.09
+          amp_tal_minus_po  -0.90       -1.00 0.53        0.07
+                 dt_tal_po  -2.10       -2.20 0.53        0.07
+                 regen_see   0.40        0.50 0.47        0.06
+                wolken_see  56.28       60.56 0.47        0.06
+t18_chiavenna_minus_milano  -2.80       -2.60 0.48        0.04
+            tmax_chiavenna  24.80       24.60 0.52        0.03
+          wolken_spaet_see  65.30       62.80 0.51        0.03
+              tmax_sondrio  24.95       24.90 0.51        0.02
+               tmax_milano  26.50       26.70 0.50        0.01
+            wind_zurich_12   3.60        3.50 0.50        0.01
+Modell mit allen Merkmalen (XGBoost, je Jahr ausgelassen): AUC 0.83  – Obergrenze bei perfekter Vorhersage
+
+auc > 0,5: höher an Breva-Tagen; < 0,5: niedriger. trennkraft 0 = nutzlos, 1 = trennt perfekt.

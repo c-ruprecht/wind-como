@@ -1,0 +1,56 @@
+Breva-Tage (Samolaco ≥ 10 kn nachmittags) mit Abendüberflug: 25 – um 19:15 noch ≥ 14 kn auf dem See: 22 (lang), < 10 kn: 3 (kurz)
+Samolaco: Nachmittagsmax lang 13.2 / kurz 12.9 kn, zur Überflugstunde lang 6.9 / kurz 4.4 kn
+                   merkmal  lang  kurz  auc  trennkraft
+          wind_see_15_sued -2.94 -2.17 0.12        0.76
+              dp_po_tal_15 -0.95 -3.20 0.81        0.62
+                 dt_tal_po -1.55 -2.60 0.81        0.62
+          amp_tal_minus_po  0.05 -2.20 0.80        0.61
+t18_chiavenna_minus_milano -2.55 -3.30 0.78        0.56
+           dp_nord_sued_12  1.65  3.80 0.23        0.55
+              dp_po_tal_18 -2.00 -3.80 0.77        0.55
+            tmin_chiavenna 15.05 18.40 0.30        0.41
+               wind_see_15  3.05  2.40 0.67        0.35
+              dp_po_tal_06 -2.30 -3.80 0.67        0.33
+               tmax_milano 26.10 29.40 0.33        0.33
+               tmin_milano 16.15 20.20 0.34        0.32
+             rad_spaet_see  1.51  1.47 0.35        0.30
+       taupunktdiff_milano 11.75  8.00 0.62        0.24
+            wind_milano_12  3.25  2.90 0.62        0.24
+           regen_chiavenna  0.35  0.00 0.61        0.21
+          wolken_spaet_see 72.60 40.20 0.61        0.21
+         wolken_morgen_see 54.17 75.67 0.39        0.21
+        dp_tag_minus_nacht  0.65  0.60 0.59        0.18
+            tmax_chiavenna 25.00 27.60 0.41        0.18
+              tmax_sondrio 24.85 27.60 0.43        0.14
+                   rad_see  4.70  4.81 0.44        0.12
+                wolken_see 62.11 61.33 0.55        0.09
+       rad_spaet_chiavenna  1.60  1.46 0.45        0.09
+          wolken_chiavenna 59.00 60.44 0.45        0.09
+                 regen_see  0.05  0.00 0.54        0.08
+                rad_milano  5.29  4.66 0.53        0.06
+             rad_chiavenna  4.99  4.86 0.53        0.06
+            wind_zurich_12  4.55  5.10 0.52        0.03
+
+Rangkorrelation mit dem Seewind um 19:15 an 39 Breva-Tagen (+ = mehr Abendwind):
+dt_tal_po                     0.54
+t18_chiavenna_minus_milano    0.48
+dp_po_tal_06                  0.48
+amp_tal_minus_po              0.43
+dp_po_tal_18                  0.42
+tmax_milano                  -0.41
+dp_po_tal_15                  0.41
+tmin_chiavenna               -0.36
+tmin_milano                  -0.35
+rad_spaet_see                -0.34
+rad_see                      -0.30
+tmax_chiavenna               -0.29
+
+nach Monat:
+see    kurz  lang
+row_0            
+4         0     5
+5         0     6
+6         1     4
+7         1     4
+8         1     1
+9         0     2
