@@ -82,6 +82,21 @@ python training/breva_events.py vorlauf
    Druckgefälle Po-Ebene – Täler, Nord-Süd-Druck (Föhn), Regen. Modell-AUC = Obergrenze bei perfekter Vorhersage.
 3. ECMWF-Läufe 1–7 Tage vorher (ab 2024): AUC nach Vorlauf – ab wann der Breva vorhersagbar ist.
 
+Sauberer Breva-Datensatz und Faktoren (`training/breva_daten.py`):
+```
+python training/breva_daten.py wetter
+python training/breva_daten.py laeufe
+python training/breva_daten.py tage
+python training/breva_daten.py faktoren
+python training/breva_daten.py vorlauf
+```
+- `tage`: jeder Tag Apr–Sep bekommt eine Klasse – Breva (≥ 14 kn auf dem See, ≥ 2 h), Breva schwach, ruhig,
+  Regen/Gewitter, Nordföhn, synoptisch (Wind schon morgens / sehr böig). Gegenprobe mit dem Satellitenbild am Abend.
+- `faktoren`: Wettergrößen an Schönwettertagen (Breva gegen ruhig) und Modell auf allen Tagen; wichtigste Größen (SHAP).
+- Wettergrößen: ERA5 an See, Mailand, Bergamo, Chiavenna, Sondrio, Engadin + Großwetterlage (Zürich, München, Genua,
+  Venedig, Lyon): Einstrahlung, Wolken, Grenzschicht, Bodenfeuchte, CAPE, Temperatur-/Druckgefälle, Föhn-Index,
+  geostrophischer Wind, Drucktendenz, Schnee Engadin, Ersatz Wassertemperatur (30-Tage-Lufttemperatur am See).
+
 Offene Punkte / Plan
 1. ARPA-Download prüfen (Zeitzone der Zeitstempel: Annahme UTC+1 ohne Sommerzeit, gegen bekannte Ereignisse prüfen)
 2. ICON/GFS/ECMWF an den Stationen (Open-Meteo, frühere Läufe) – wie gut trifft ICON den Breva?
