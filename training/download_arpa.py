@@ -2,15 +2,16 @@
 
 Quelle: Open Data Lombardia (Socrata), Regione Lombardia / ARPA Lombardia.
   Stationsverzeichnis   https://www.dati.lombardia.it/resource/nf78-nj6b.json
-  Messwerte             Datensatz „Dati sensori meteo“ (647i-nhxk) als Tabelle; zusätzlich sucht das Skript im Katalog
-                        nach Jahresarchiven (falls ältere Jahre ausgelagert sind).
+  Messwerte             je Messgröße und Zeitraum eigene Datensätze (Geschwindigkeit ab 2021 hu5q-68e3, 2011–2020
+                        x9gp-z9xx; Richtung purm-rsjf / ypty-e75m; Böen gi9u-2aez / ppwf-2tzh), dazu „Dati sensori
+                        meteo“ (647i-nhxk) mit den letzten ~7 Monaten. Zuordnung wie im R-Paket ARPALData.
 Werte: 10-Minuten-Mittel (idoperatore 3 = Mittel, 4 = Maximum/Böe); -9999 = fehlt;
 Richtung 777/7777 = Windstille, 888/8888 = umlaufend.
 
 Ablauf
-  1. Sensoren nachschlagen: für jede Station in STATIONS die IDs von Velocità Vento, Direzione Vento,
-     Raffica (Böe), soweit vorhanden -> data/arpa/sensors.json
-  2. Messwerte je Sensor und Jahr laden -> data/arpa/raw/<sensor>_<jahr>.csv (vorhandene Jahre werden übersprungen,
+  1. Sensoren nachschlagen: für jede Station in STATIONS die IDs von Velocità Vento und Direzione Vento
+     (Böen liegen unter der ID der Geschwindigkeit) -> data/arpa/sensors.json
+  2. Messwerte je Größe, Sensor und Jahr -> data/arpa/raw/<größe>_<sensor>_<jahr>.csv (vorhandene Jahre übersprungen,
      das laufende Jahr wird erneuert)
   3. Stundenwerte je Station (Mittel der 10-Minuten-Werte, Richtung vektoriell, Böe = Maximum)
      -> data/arpa/<station>_wind.csv  Spalten time (UTC, Ende der Stunde), kn, dir, gust_kn
@@ -25,7 +26,15 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "arpa")
 DOMAIN = "https://www.dati.lombardia.it"
 REGISTRY = "nf78-nj6b"
-MAIN = "647i-nhxk"            # „Dati sensori meteo“: alle Messwerte als Tabelle
+MAIN = "647i-nhxk"            # „Dati sensori meteo“: nur die letzten ~7 Monate, alle Größen
+# Historie je Messgröße und Zeitraum (wie im R-Paket ARPALData, url_W_year_par):
+HIST = {"speed": [(2021, "hu5q-68e3"), (2011, "x9gp-z9xx"), (0, "ed5f-uim8")],
+        "dir":   [(2021, "purm-rsjf"), (2011, "ypty-e75m"), (0, "cptm-adt5")],
+        "gust":  [(2021, "gi9u-2aez"), (0, "ppwf-2tzh")]}          # Böen: gleiche Sensor-ID wie die Geschwindigkeit
+
+
+def hist_dataset(kind, year):
+    return next(ds for y0, ds in HIST[kind] if year >= y0)
 CURRENT = "i95f-5avh"         # gefilterte Ansicht davon (nur die letzten Wochen), Rückfall
 MS2KN = 1.943844
 
@@ -104,7 +113,8 @@ def sensors():
         g = next((r for r in mine if "raffica" in r["tipologia"].lower() and "velocit" in r["tipologia"].lower()), None)
         out[key] = {"idstazione": sid, "nome": name, "quota": h,
                     "lat": float(v["lat"]) if v else None, "lon": float(v["lng"]) if v else None,
-                    "speed": v and int(v["idsensore"]), "dir": d and int(d["idsensore"]), "gust": g and int(g["idsensore"]),
+                    "speed": v and int(v["idsensore"]), "dir": d and int(d["idsensore"]),
+                    "gust": (g and int(g["idsensore"])) or (v and int(v["idsensore"])),   # ARPA: Böen unter der ID der Geschwindigkeit
                     "da": v and v.get("datastart", "")[:10], "tipologie": sorted({r["tipologia"] for r in mine})}
         print(f"  {key:10s} {name:28s} Wind {out[key]['speed']}  Richtung {out[key]['dir']}  Böe {out[key]['gust']}  seit {out[key]['da']}")
     os.makedirs(OUT, exist_ok=True)
@@ -114,138 +124,50 @@ def sensors():
 
 # ---------------------------------------------------------------- 2. Datensätze je Jahr
 
-def yearly_datasets():
-    """Archive „Dati sensori meteo <Jahr>“ im Katalog von Open Data Lombardia suchen: {jahr: (id, typ)}.
-    typ "dataset" = abfragbare Tabelle, sonst Datei (ZIP/CSV), die ganz geladen und gefiltert wird."""
-    urls = [f"{DOMAIN}/api/catalog/v1?" + urllib.parse.urlencode({"q": "sensori meteo", "limit": 200}),
-            "https://api.eu.socrata.com/api/catalog/v1?" + urllib.parse.urlencode(
-                {"domains": "www.dati.lombardia.it", "q": "sensori meteo", "limit": 200})]
-    results = []
-    for u in urls:
-        try:
-            results = get(u).get("results", [])
-            if results:
-                break
-        except NotFound as e:
-            print("   Katalog nicht erreichbar:", e)
-    import re
-    found = {}
-    print("   Katalog (nur Messwert-Archive):")
-    for r in results:
-        res = r["resource"]; name = res.get("name", "")
-        if not name.lower().startswith("dati sensori meteo") or res.get("type") not in ("dataset", "file", "blob"):
-            continue                                             # Verzeichnisse („Elenco“, „Anagrafica“), Filter, Grafiken
-        years = [int(x) for x in re.findall(r"(?<!\d)(20\d\d)(?!\d)", name)]
-        print(f"     {res['id']}  {res.get('type', '?'):8s} {name}")
-        if not years:
-            continue
-        span = range(min(years), max(years) + 1)                 # „dal 2011 al 2019“ -> alle Jahre dazwischen
-        for y in span:
-            found.setdefault(y, (res["id"], res.get("type", "?"), name))
-    return found
-
-
 def load_sensor_year(dataset, sensor, year):
     w = f"idsensore='{sensor}' AND data >= '{year}-01-01T00:00:00' AND data < '{year + 1}-01-01T00:00:00'"
-    rows = soql(dataset, **{"$where": w, "$select": "data,valore,idoperatore"})
-    return pd.DataFrame(rows)
-
-
-def archive_file(ds_id, year):
-    """Jahresarchiv als Datei laden (einmal), gibt den lokalen Pfad zurück."""
-    os.makedirs(f"{OUT}/archive", exist_ok=True)
-    meta = get(f"{DOMAIN}/api/views/{ds_id}.json")
-    blob, fname = meta.get("blobId"), meta.get("blobFilename") or f"{year}.bin"
-    path = f"{OUT}/archive/{year}_{fname}"
-    if os.path.exists(path):
-        return path
-    urls = ([f"{DOMAIN}/api/views/{ds_id}/files/{blob}?download=true&filename={urllib.parse.quote(fname)}"] if blob else []) + \
-           [f"{DOMAIN}/download/{ds_id}/application%2Fzip", f"{DOMAIN}/api/views/{ds_id}/rows.csv?accessType=DOWNLOAD"]
-    for u in urls:
-        try:
-            print(f"    lade Archiv {year} ({fname}) …", flush=True)
-            data = get(u, raw=True)
-            open(path, "wb").write(data)
-            print(f"    {len(data) / 1e6:.0f} MB", flush=True)
-            return path
-        except NotFound:
-            continue
-    raise NotFound(f"Archiv {year} ({ds_id}) nicht ladbar")
-
-
-def filter_archive(path, sensor_ids):
-    """Zeilen der gewünschten Sensoren aus einem Jahresarchiv (CSV, auch in ZIP), stückweise gelesen."""
-    import zipfile, io
-    def frames(fh):
-        for ch in pd.read_csv(fh, chunksize=1_000_000):
-            ch.columns = [c.strip().lower() for c in ch.columns]
-            yield ch[ch["idsensore"].astype(str).isin([str(x) for x in sensor_ids])]
-    if zipfile.is_zipfile(path):
-        z = zipfile.ZipFile(path)
-        parts = [f for n in z.namelist() if n.lower().endswith(".csv") for f in frames(z.open(n))]
-    else:
-        parts = list(frames(path))
-    d = pd.concat(parts) if parts else pd.DataFrame()
-    return d.rename(columns={"idoperatore": "idoperatore", "data": "data", "valore": "valore"})
-
-
-def coverage(sid):
-    """Erster und letzter Zeitpunkt eines Sensors im Hauptdatensatz."""
-    try:
-        r = get(f"{DOMAIN}/resource/{MAIN}.json?" + urllib.parse.urlencode(
-            {"$select": "min(data) as von, max(data) as bis, count(*) as n", "$where": f"idsensore='{sid}'"}))
-        return r[0] if r else {}
-    except NotFound as e:
-        return {"fehler": str(e)}
+    rows = soql(dataset, **{"$where": w})
+    d = pd.DataFrame(rows)
+    return d[[c for c in ("data", "valore", "stato", "idoperatore") if c in d]] if len(d) else d
 
 
 def download(sens, first_year):
     this = pd.Timestamp.today().year
     os.makedirs(f"{OUT}/raw", exist_ok=True)
-    wanted = {s[k]: (key, k) for key, s in sens.items() for k in ("speed", "dir", "gust") if s[k]}
-    print(f"   Hauptdatensatz {MAIN}:")
-    for sid, (key, kind) in wanted.items():
-        c = coverage(sid)
-        print(f"     {key} {kind} ({sid}): {str(c.get('von', '?'))[:10]} – {str(c.get('bis', '?'))[:10]}, {c.get('n', '?')} Werte {c.get('fehler', '')}")
-    yd = yearly_datasets()
-    if yd:
-        print("   Jahresarchive:", {y: f"{v[0]} ({v[1]})" for y, v in sorted(yd.items())})
+    jobs = [(key, kind, s[kind]) for key, s in sens.items() for kind in ("speed", "dir", "gust") if s[kind]]
     for y in range(first_year, this + 1):
-        todo = [sid for sid in wanted if not (os.path.exists(f"{OUT}/raw/{sid}_{y}.csv") and y < this)]
-        for sid in todo:
-            df = pd.DataFrame()
-            sources = [MAIN] + ([yd[y][0]] if y in yd and yd[y][1] == "dataset" else []) + [CURRENT]
-            for ds in sources:
+        for key, kind, sid in jobs:
+            f = f"{OUT}/raw/{kind}_{sid}_{y}.csv"
+            if os.path.exists(f) and y < this:
+                continue
+            parts = []
+            for ds in (hist_dataset(kind, y), MAIN if kind != "gust" else None):   # Historie, dazu die letzten 7 Monate
+                if not ds:
+                    continue
                 try:
-                    df = load_sensor_year(ds, sid, y)
-                except NotFound as e:
-                    print("   ", e); continue
-                if len(df):
-                    break
-            if df.empty and y in yd and yd[y][1] != "dataset":   # Archiv als Datei
-                try:
-                    d = filter_archive(archive_file(yd[y][0], y), [sid])
-                    df = d[[c for c in ("data", "valore", "idoperatore") if c in d]]
+                    parts.append(load_sensor_year(ds, sid, y))
                 except NotFound as e:
                     print("   ", e)
-            df.to_csv(f"{OUT}/raw/{sid}_{y}.csv", index=False)
-            key, kind = wanted[sid]
+            df = pd.concat([p for p in parts if len(p)]) if any(len(p) for p in parts) else pd.DataFrame()
+            if len(df):
+                df = df.drop_duplicates("data")
+            df.to_csv(f, index=False)
             print(f"  {key} {kind} {y}: {len(df)} Werte", flush=True)
 
 
 # ---------------------------------------------------------------- 3. Stundenwerte
 
-def read_raw(sid, first_year):
+def read_raw(kind, sid, first_year):
     parts = []
     for y in range(first_year, pd.Timestamp.today().year + 1):
-        f = f"{OUT}/raw/{sid}_{y}.csv"
+        f = f"{OUT}/raw/{kind}_{sid}_{y}.csv"
         if os.path.exists(f) and os.path.getsize(f) > 30:
             parts.append(pd.read_csv(f))
     if not parts:
         return pd.Series(dtype=float)
     d = pd.concat(parts)
-    if "idoperatore" in d:
-        d = d[d.idoperatore.astype(str).isin(["1", "3", "4"])]
+    if "stato" in d:
+        d = d[d.stato.astype(str).str.upper().isin(["VA", "NAN"])]          # nur gültige Werte
     # Zeitstempel: Ortszeit ohne Zone im Archiv (laut ARPA Sonnenzeit = UTC+1); Socrata liefert ohne Zone
     raw_t = d["data"].astype(str)
     t = pd.to_datetime(raw_t, errors="coerce", dayfirst=raw_t.str.contains("/").any())   # Archiv: TT/MM/JJJJ hh:mm:ss
@@ -260,11 +182,11 @@ def hourly(sens, first_year):
     for key, s in sens.items():
         if not s["speed"]:
             continue
-        sp = read_raw(s["speed"], first_year)
+        sp = read_raw("speed", s["speed"], first_year)
         if sp.empty:
             print(f"  {key}: keine Werte"); continue
-        di = read_raw(s["dir"], first_year) if s["dir"] else pd.Series(dtype=float)
-        gu = read_raw(s["gust"], first_year) if s["gust"] else pd.Series(dtype=float)
+        di = read_raw("dir", s["dir"], first_year) if s["dir"] else pd.Series(dtype=float)
+        gu = read_raw("gust", s["gust"], first_year) if s["gust"] else pd.Series(dtype=float)
         df = pd.DataFrame({"ms": sp})
         if len(di):
             dd = di.where(di <= 360)                                    # 777/888: still bzw. umlaufend
