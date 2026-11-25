@@ -38,11 +38,12 @@ MONO = {"wind_see_15_sued": 1, "taupunktdiff_milano": 1, "dp_po_tal_15": 1, "dp_
         "dp_bergamo_sondrio_15": 1, "dp_tag_minus_nacht": 1, "dp_zurich_milano_12": -1, "regen_see": -1,
         "regen_chiavenna": -1, "regen_vortag": -1, "rad_chiavenna": 1, "rad_spaet_chiavenna": 1, "rad_see": 1,
         "wolken_see": -1, "wolken_chiavenna": -1, "wolken_morgen_see": -1}
-OPT = {"ziel": os.environ.get("BREVA_ZIEL", "A"), "monoton": os.environ.get("BREVA_MONOTON", "0") == "1"}
+OPT = {"ziel": os.environ.get("BREVA_ZIEL", "B"), "monoton": os.environ.get("BREVA_MONOTON", "0") == "1"}
 
 
 def target(D, thr):
-    """Ziel A: Störtage (inkl. ERA5-Regen/Föhnindex) = 0. Ziel B: nur aus Stationen (morgens ruhig, kein Nordwind)."""
+    """Ziel B (Standard): nur aus Stationen – Breva auf dem See, morgens ruhig, kein Nordwind; Regen zählt nicht.
+    Trifft den Satelliten besser (0,81 statt 0,72, model_analyse Teil 5). Ziel A: Störtage inkl. ERA5-Regen = 0."""
     if OPT["ziel"] == "B":
         return ((D[f"breva{thr}"] == 1) & (D.sam_morgen < 6) & (D.sam_nord_std < 2)).astype(int)
     return D[f"breva{thr}"].where(D.klasse.isin(["Breva", "Breva schwach", "ruhig"]), 0).astype(int)
