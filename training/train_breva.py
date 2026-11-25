@@ -33,10 +33,28 @@ FEATS = ["wind_see_15_sued", "wind_see_15", "wind_milano_12", "taupunktdiff_mila
 LEAD_GROUPS = {14: [[1], [2], [3], [4], [5], [6], [7]], 18: [[1, 2], [3, 4], [5, 6, 7]]}
 
 
-def xgb_model():
+# Wirkungsrichtungen (model_analyse.py Teil 4: bessere AUC bei 3–5 Tagen Vorlauf und gegen den Satelliten)
+MONO = {"wind_see_15_sued": 1, "taupunktdiff_milano": 1, "dp_po_tal_15": 1, "dp_po_tal_18": 1,
+        "dp_bergamo_sondrio_15": 1, "dp_tag_minus_nacht": 1, "dp_zurich_milano_12": -1, "regen_see": -1,
+        "regen_chiavenna": -1, "regen_vortag": -1, "rad_chiavenna": 1, "rad_spaet_chiavenna": 1, "rad_see": 1,
+        "wolken_see": -1, "wolken_chiavenna": -1, "wolken_morgen_see": -1}
+OPT = {"ziel": os.environ.get("BREVA_ZIEL", "A"), "monoton": os.environ.get("BREVA_MONOTON", "0") == "1"}
+
+
+def target(D, thr):
+    """Ziel A: Störtage (inkl. ERA5-Regen/Föhnindex) = 0. Ziel B: nur aus Stationen (morgens ruhig, kein Nordwind)."""
+    if OPT["ziel"] == "B":
+        return ((D[f"breva{thr}"] == 1) & (D.sam_morgen < 6) & (D.sam_nord_std < 2)).astype(int)
+    return D[f"breva{thr}"].where(D.klasse.isin(["Breva", "Breva schwach", "ruhig"]), 0).astype(int)
+
+
+def xgb_model(feats=None):
     from xgboost import XGBClassifier
+    kw = {}
+    if OPT["monoton"] and feats is not None:
+        kw["monotone_constraints"] = "(" + ",".join(str(MONO.get(f, 0)) for f in feats) + ")"
     return XGBClassifier(n_estimators=250, max_depth=3, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
-                         min_child_weight=5, eval_metric="logloss", verbosity=0)
+                         min_child_weight=5, eval_metric="logloss", verbosity=0, **kw)
 
 
 def compact(m):
@@ -73,21 +91,22 @@ def main():
             if c not in leads[L]:
                 leads[L][c] = np.nan
     os.makedirs(OUT, exist_ok=True)
-    man = {"version": 1, "features": FEATS, "model": MODEL, "points": {p: [la, lo] for p, (la, lo, _) in B.POINTS.items()},
+    print(f"Ziel {OPT['ziel']}, {'monoton' if OPT['monoton'] else 'ohne feste Richtungen'}")
+    man = {"version": 1, "features": FEATS, "ziel": OPT["ziel"], "monoton": OPT["monoton"], "model": MODEL, "points": {p: [la, lo] for p, (la, lo, _) in B.POINTS.items()},
            "trained": f"ERA5 {D.index.year.min()}–{D.index.year.max()}", "calib": {}, "skill": {}, "files": {}}
     test_rows = X.dropna(thresh=len(FEATS) - 5).sample(150, random_state=1)
     man["test"] = {"rows": test_rows.astype(float).where(test_rows.notna(), None).values.tolist(), "p": {}}
     for thr in (14, 18):
-        y = D[f"breva{thr}"].where(D.klasse.isin(["Breva", "Breva schwach", "ruhig"]), 0).astype(int)
+        y = target(D, thr)
         ok = X.notna().mean(axis=1) > 0.7
-        final = xgb_model().fit(X[ok], y[ok])
+        final = xgb_model(FEATS).fit(X[ok], y[ok])
         fn = f"breva_{thr}.json"
         json.dump(compact(final), open(f"{OUT}/{fn}", "w"), separators=(",", ":"))
         man["files"][str(thr)] = fn
         man["test"]["p"][str(thr)] = final.predict_proba(test_rows)[:, 1].round(6).tolist()
         # Eichung je Vorlauf: Modell bis TRAIN_UNTIL, Vorhersagen aus den Läufen danach
         tr = ok & (X.index.year <= TRAIN_UNTIL)
-        m = xgb_model().fit(X[tr], y[tr])
+        m = xgb_model(FEATS).fit(X[tr], y[tr])
         test_days = D.index[D.index.year > TRAIN_UNTIL]
         cal, skill = {}, []
         for grp in LEAD_GROUPS[thr]:

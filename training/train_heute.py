@@ -22,6 +22,9 @@ import breva_daten as B  # noqa: E402
 import train_breva as T  # noqa: E402
 
 HOURS = [9, 11, 13]
+# feste Richtungen auch für die Messungen: mehr Wind in Breva-Richtung / Breva gestern -> nie weniger Chance
+T.MONO.update({f"{st}_{k}": 1 for st in ("samolaco", "colico", "vercana", "morbegno") for k in ("jetzt", "mittel2h", "max_ab10")})
+T.MONO.update({"gestern_breva": 1})
 AXIS = {"samolaco": 157, "colico": 270, "vercana": 225, "morbegno": 245}     # Breva-Richtung je Station (Grad)
 OBS = [f"{st}_{k}" for st in AXIS for k in ("jetzt", "mittel2h", "max_ab10")] + ["tivano_samolaco"]
 VORTAG = ["gestern_breva", "gestern_max"]
@@ -91,7 +94,7 @@ def main():
         if c not in L1:
             L1[c] = np.nan
     L1 = L1[T.FEATS]
-    out = {"version": 1, "hours": HOURS, "features": T.FEATS + OBS + VORTAG, "obs": OBS, "vortag": VORTAG,
+    out = {"version": 1, "ziel": T.OPT["ziel"], "monoton": T.OPT["monoton"], "hours": HOURS, "features": T.FEATS + OBS + VORTAG, "obs": OBS, "vortag": VORTAG,
            "faktor": round(factor, 3), "axis": AXIS, "files": {}, "calib": {}, "skill": {}}
     os.makedirs(T.OUT, exist_ok=True)
     test = D.index.year > T.TRAIN_UNTIL
@@ -100,19 +103,19 @@ def main():
         X = pd.concat([FE, obs_features(O, D.index, hour), V], axis=1)[out["features"]]
         Xl = pd.concat([L1, obs_features(O, D.index, hour), V], axis=1)[out["features"]]
         for thr in (14, 18):
-            y = D[f"breva{thr}"].where(D.klasse.isin(["Breva", "Breva schwach", "ruhig"]), 0).astype(int)
+            y = T.target(D, thr)
             ok = X.notna().mean(axis=1) > 0.7
-            final = T.xgb_model().fit(X[ok], y[ok])
+            final = T.xgb_model(out["features"]).fit(X[ok], y[ok])
             fn = f"heute_{hour}_{thr}.json"
             json.dump(T.compact(final), open(f"{T.OUT}/{fn}", "w"), separators=(",", ":"))
             out["files"][f"{hour}_{thr}"] = fn
-            m = T.xgb_model().fit(X[ok & ~test], y[ok & ~test])
+            m = T.xgb_model(out["features"]).fit(X[ok & ~test], y[ok & ~test])
             good = test & (Xl.notna().mean(axis=1) > 0.7)
             p = m.predict_proba(Xl[good])[:, 1]; yy = y[good].values
             curve = T.iso_curve(p, yy)
             out["calib"][f"{hour}_{thr}"] = curve
             # Vergleich: nur Vorhersage (7-Tage-Merkmale) und nur Messungen
-            mf = T.xgb_model().fit(FE[ok & ~test], y[ok & ~test])
+            mf = T.xgb_model(T.FEATS).fit(FE[ok & ~test], y[ok & ~test])
             obs_only = [c for c in out["features"] if c not in T.FEATS]
             mo = T.xgb_model().fit(X.loc[ok & ~test, obs_only], y[ok & ~test])
             saison = (D.index.month >= 3) & (D.index.month <= 10)        # nur Tage, an denen Breva überhaupt üblich ist

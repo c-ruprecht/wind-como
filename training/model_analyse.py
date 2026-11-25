@@ -295,6 +295,29 @@ def main():
         ["thermik", "foehn_flag", "regen_tag", "gefaelle_mittel", "heiss_ebene"]) + ")"), F, transform=comb)))
     rows.append(dict(variante=f"klein ({int(small)}) + monoton", **S.evaluate(fp_mono(fs_small), fs_small)))
     p(fmt(rows))
+    # ---------------- 5. Kombinationen der Gewinner, Ziel B gegen Ziel A
+    p("\n## 5. Kombinationen (Ziel A = wie bisher, Ziel B = nur Stationen)\n")
+    rows = []
+    for ziel in ("A", "B"):
+        rows.append(dict(ziel=ziel, variante="37 Merkmale", **S.evaluate(fp_xgb(), F, ziel)))
+        rows.append(dict(ziel=ziel, variante="37 + monoton", **S.evaluate(fp_mono(F), F, ziel)))
+        rows.append(dict(ziel=ziel, variante=f"{int(small)} + monoton", **S.evaluate(fp_mono(fs_small), fs_small, ziel)))
+        rows.append(dict(ziel=ziel, variante="37 + monoton, min_child_weight=15", **S.evaluate(fp_mono(F, min_child_weight=15), F, ziel)))
+    p(fmt(rows))
+    # Unsicherheit der Satelliten-AUC (Bootstrap) für Basis A und 37+monoton B
+    rng = np.random.default_rng(0)
+    ys = S.y_sat.values
+    def boot(pred):
+        v = []
+        for _ in range(500):
+            i = rng.integers(0, len(ys), len(ys))
+            if len(set(ys[i])) == 2:
+                v.append(auc(ys[i], pred[i]))
+        return np.percentile(v, [5, 95]).round(3)
+    for ziel, fpf in (("A", fp_xgb()), ("B", fp_mono(F))):
+        y = S.y[ziel]; Xtr = S.FE[F]; ok = S.train & (Xtr.notna().mean(axis=1) > 0.7)
+        pr = fpf(Xtr[ok], y[ok], {1: S.L[1].reindex(columns=F).loc[S.sat_idx]})[1]
+        p(f"Satellit-AUC Ziel {ziel}{' + monoton' if ziel == 'B' else ''}: {auc(ys, pr)}  (90 % Bereich {boot(np.asarray(pr))})")
     p("\nauc_L: ganzes Jahr, L Tage vorher; saison_L: nur März–Oktober; satellit_1: gegen Breva im Satellitenbild (1 Tag vorher).")
     p(f"\nLaufzeit {time.time() - t0:.0f} s")
     open(f"{B.RES}/modell_analyse.md", "w").write("\n".join(out) + "\n")
