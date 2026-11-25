@@ -28,7 +28,7 @@
 <main class="an">
   <nav class="subnav" aria-label="Abschnitte">
     <a href="#breva">Der Breva</a><a href="#wo">Wo am stärksten</a><a href="#wann">Wann</a><a href="#warum">Was ihn macht</a>
-    <a href="#vorhersage">Vorhersage</a><a href="#stationen">Messstationen</a><a href="#methode">Methode</a>
+    <a href="#vorhersage">Vorhersage</a><a href="#pruefung">Modellprüfung</a><a href="#stationen">Messstationen</a><a href="#methode">Methode</a>
   </nav>
 
   <section class="panel prose" id="breva">
@@ -45,6 +45,9 @@
       thermische Sog), Gewitter über den Bergen (kalte Ausflussluft aus Norden), Bewölkung und feuchte Luft
       (weniger Aufheizung) – und große Hitze in der Po-Ebene, bei der der Unterschied zu den Tälern kleiner wird.</p>
     <div id="kpis" class="kpis"></div>
+    <p class="hint"><b>Update 25.11.2026:</b> Das Modell sagt jetzt den Breva so vorher, wie ihn die Stationen messen –
+      ohne Regentage aus dem Wettermodell auszuschließen. Gegen den Satelliten trifft es damit deutlich besser.
+      Außerdem auf Leckage, Verfeinerung und Verkleinerung geprüft: <a href="#pruefung">Modellprüfung</a>.</p>
   </section>
 
   <section class="panel" id="wo">
@@ -94,6 +97,59 @@
     <p class="hint">AUC: Wahrscheinlichkeit, dass ein Breva-Tag höher eingeschätzt wird als ein Tag ohne Breva
       (1 = perfekt, 0,5 = Zufall). Bis Tag 4 ist der Breva gut vorhersagbar, danach zeigt die Chance vor allem die Lage.</p>
     <div id="heuteTab"></div>
+  </section>
+
+  <section class="panel prose" id="pruefung">
+    <h2>Wie verlässlich das Modell ist</h2>
+    <p class="lead">Ein Modell, das auf den eigenen Daten gut aussieht, muss den Wind auf dem See noch nicht treffen.
+      Deshalb wurde es gegen eine unabhängige Wahrheit geprüft – den Wind im Satellitenbild (Sentinel-1, gegen 19:15 Uhr) –
+      und gezielt nach Abkürzungen gesucht, über die es die Antwort „sehen“ statt vorhersagen könnte.</p>
+
+    <h3>Was genau vorhergesagt wird</h3>
+    <p>Bisher galt ein Tag nur als Breva-Tag, wenn er auch nicht als Regen- oder Föhntag eingestuft war – und diese
+      Einstufung kam zum Teil aus dem Wettermodell ERA5. Das Modell konnte dadurch ein Stück seines Ziels einfach aus
+      der Regenvorhersage ablesen: Es sah auf dem Papier sehr gut aus (AUC 0,93), lag aber gegen den Satelliten nur bei 0,72.
+      Viele dieser „Regentage“ hatten nämlich guten Wind auf dem See.</p>
+    <p>Jetzt bestimmen allein die Messungen das Ziel: Samolaco morgens ruhig, kein Nordwind, nachmittags auf dem See
+      mindestens 2 Stunden am Stück über der Schwelle. Das ist die Frage „kann ich kiten?“.</p>
+    <div class="tscroll"><table class="atab num"><thead><tr><th style="text-align:left">Ziel</th><th>AUC morgen</th><th>AUC in 5 Tagen</th><th>gegen Satellit</th><th>90 %-Bereich Satellit</th></tr></thead><tbody>
+      <tr><td style="text-align:left">bisher: ohne Regen-/Föhntage (ERA5)</td><td>0,93</td><td>0,85</td><td>0,72</td><td>0,59–0,83</td></tr>
+      <tr><td style="text-align:left"><b>jetzt: nur aus Stationen</b></td><td>0,88</td><td>0,82</td><td><b>0,81</b></td><td>0,69–0,89</td></tr>
+    </tbody></table></div>
+    <p class="hint">≥ 14 kn, geprüft 2024–2026 mit echten ECMWF-Läufen. Gegen den Satelliten stehen nur 126 Abende mit
+      19 Breva-Fällen zur Verfügung, daher die breiten Bereiche; die Verbesserung zeigt sich aber in allen Varianten.
+      Die niedrigere eigene AUC ist ehrlicher: Die bequeme Abkürzung über die Regenvorhersage fällt weg.</p>
+    <p>Ein Drittel der zusätzlichen Tage ab 18 kn hatte das Wettermodell als Föhntage geführt, obwohl am See morgens
+      Ruhe und nachmittags gleichmäßiger Südwind herrschte – echte Breva-Tage. Die übrigen zwei Drittel sind Südwind mit
+      Regen vor einer Front: im Satellitenbild fast so stark wie ein Breva (Median 15,6 statt 16,8 kn), aber schwerer vorherzusagen.
+      Deshalb ist die Chance ab 18 kn mehrere Tage voraus unsicherer (AUC um 0,74) als ab 14 kn.</p>
+
+    <h3>Leckage: sagt das Modell vorher oder schaut es ab?</h3>
+    <ul class="tips">
+      <li><b>Wetter vom Vortag statt vom Tag selbst</b>: Die Trefferquote fällt in der Saison von 0,90 auf 0,76, mit der
+        Jahreszeit allein auf 0,65. Das Modell liest also wirklich das Wetter des Tages und nicht nur „Sommer“ oder „gestern auch“.</li>
+      <li><b>Zufällige gegen jahresweise Aufteilung</b>: beide 0,951 – benachbarte Tage verraten sich nicht gegenseitig.</li>
+      <li><b>Wettermodell-Analyse gegen echte Vorhersage</b>: Kein Merkmal trennt nur in der nachträglichen Analyse (ERA5)
+        und versagt in der Vorhersage; der größte Abstand ist 0,06.</li>
+      <li><b>Heute-Modell</b>: Samolaco bestimmt das Ziel mit, seine Mittagswerte sind aber kaum zu gut – gegen den
+        Satelliten 0,79, gegen das Ziel 0,81. Vercana und Colico, die nicht ins Ziel eingehen, liegen gleichauf.</li>
+      <li><b>Regen-Merkmale weglassen</b> ändert nichts (0,930 statt 0,928) – sie sind Wetter, kein Abschreiben.</li>
+    </ul>
+
+    <h3>Verfeinern, verkleinern, Wissen einbauen</h3>
+    <ul class="tips">
+      <li><b>Feinabstimmung</b> (tiefere oder flachere Bäume, mehr Bäume, kleinere Lernrate): alle Varianten innerhalb
+        von ±0,005. Das Modell ist nicht über- oder unterangepasst.</li>
+      <li><b>Kleiner geht</b>: 15 statt 37 Wettergrößen verlieren in der Saison nur 0,004–0,008 und treffen den Satelliten
+        gleich gut. Die wichtigsten: Nordföhn-Index, Südwind über dem See, Regen am See und im Tal, Jahreszeit, Sonne im Tal,
+        Wind in der Ebene, Temperatur- und Druckgefälle von der Ebene ins Tal, trockene Luft. Unter 10 Größen wird es spürbar
+        schlechter. Die App nutzt weiter alle 37 – das kostet im Browser nur Millisekunden.</li>
+      <li><b>Lokales Wissen als feste Wirkungsrichtung</b> („mehr Sonne im Tal, mehr Gefälle → nie weniger Breva“): hilft
+        beim alten Ziel bei 3–5 Tagen Vorlauf, beim neuen nicht. Monatsklima als Vorwissen, entsaisonalisierte Temperaturen
+        oder physikalisch kombinierte Größen bringen nichts – das Modell findet diese Zusammenhänge selbst.</li>
+      <li><b>Wassertemperatur</b> (Satellit, Copernicus): kaum eigener Einfluss, wenn Jahreszeit und Luftwerte bekannt
+        sind (AUC der Anomalie 0,61). Bleibt vorerst draußen.</li>
+    </ul>
   </section>
 
   <section class="panel" id="stationen">

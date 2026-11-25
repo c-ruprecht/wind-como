@@ -120,7 +120,7 @@ function vorhersage(A) {
   $("#heuteTab").innerHTML = (H ? `<h3>Heute-Modell</h3><div class="tscroll"><table class="atab num"><thead><tr><th>Stand</th><th>Schwelle</th><th>AUC gesamt</th><th>nur Vorhersage</th><th>nur Messungen</th></tr></thead><tbody>`
     + H.map(r => `<tr><th>${r.uhr} Uhr</th><td>≥ ${r.schwelle} kn</td><td>${de(r.auc, 2)}</td><td>${de(r.auc_nur_vorhersage, 2)}</td><td>${de(r.auc_nur_messungen, 2)}</td></tr>`).join("")
     + `</tbody></table></div>` : "")
-    + `<p class="hint">* Samolaco bestimmt die Breva-Tage mit, seine Werte sind daher zu gut. Vercana (980 m über Domaso) dreht als erste unabhängige Station auf Südwest – ab 11 Uhr ist sie ein klarer Hinweis. Für „heute losfahren?“ verbindet das Heute-Modell die Vorhersage mit diesen Messungen und dem Vortag.</p>`;
+    + `<p class="hint">* Samolaco bestimmt die Breva-Tage mit; gegen den Satelliten sind seine Mittagswerte aber kaum besser als die der anderen Stationen (siehe Modellprüfung). Vercana (980 m über Domaso) dreht als erste unabhängige Station auf Südwest – ab 11 Uhr ist sie ein klarer Hinweis. Für „heute losfahren?“ verbindet das Heute-Modell die Vorhersage mit diesen Messungen und dem Vortag.</p>`;
 }
 function stationen(A) {
   const nm = { samolaco: "Samolaco (Pian di Spagna, 206 m)", colico: "Colico (La Madoneta, 229 m)", morbegno: "Morbegno (Veltlin)", vercana: "Vercana (980 m)",
