@@ -268,77 +268,90 @@ def vergleich(thr_list=(14, 18), train_until=2023):
                     mm = T.xgb_model(F).fit(Xo[tr], yo[tr])
                 out[te] = mm.predict_proba(Xo.loc[common[te]])[:, 1]
             return out
+        def score(m, L, common, ref_p=None, tag=None):
+            """Vorhersagen und Kennzahlen eines Wettermodells auf den Tagen common."""
+            y = y_all.loc[common].values; yrs = common.year.values; season = common.month.isin(range(3, 11))
+            Ec = E.loc[common]; Xm = X[(m, L)].loc[common]
+            r = Xm.corrwith(Ec); nmae = (Xm - Ec).abs().mean() / Ec.std()
+            P = {"": pred(Xm), "|q": pred(qmap(Xm, Ec, yrs)), "|eigen": own(m, L, common, False),
+                 "|kombi": own(m, L, common, True)}
+            okp = ~np.isnan(P["|eigen"]); p = P[""]
+            row = dict(schwelle=thr, vorlauf=L, modell=tag or m, tage=len(common), breva=int(y.sum()),
+                       ab=str(common.min().date()),
+                       merkmal_r=round((r.fillna(0) * gain).sum(), 3), merkmal_nmae=round((nmae.fillna(1) * gain).sum(), 3),
+                       auc=round(auc(y, p), 3), auc_saison=round(auc(y[season], p[season]), 3),
+                       auc_angeglichen=round(auc(y, P["|q"]), 3),
+                       auc_eigen=round(auc(y[okp], P["|eigen"][okp]), 3) if okp.sum() > 50 else np.nan,
+                       auc_kombi=round(auc(y[okp], P["|kombi"][okp]), 3) if okp.sum() > 50 else np.nan,
+                       auc_gleiche_tage=round(auc(y[okp], p[okp]), 3) if okp.sum() > 50 else np.nan,
+                       ref_auc_gleiche_tage=round(auc(y, ref_p), 3) if ref_p is not None else np.nan,
+                       **{f"r_{c}": round(r.get(c, np.nan), 3) for c in F})
+            return P, row, y
+
+        def okdays(idx):
+            return idx[E.loc[idx].notna().mean(axis=1) > 0.7]
+
         for L in B.LEADS:
             ms = [m for m in models if (m, L) in X]
-            if not ms:
+            if REF not in ms:
                 continue
-            # gemeinsame Tage: Referenz zuerst, dann Modelle nach Archivlänge, solange ≥ 150 Tage bleiben
-            ms.sort(key=lambda m: (m != REF, -len(X[(m, L)])))
-            common = X[(ms[0], L)].index; keep = [ms[0]]
-            for m in ms[1:]:
-                c2 = common.intersection(X[(m, L)].index)
-                if len(c2) >= 150:
-                    common, keep = c2, keep + [m]
-                else:
-                    print(f"  Vorlauf {L}: {m} zu kurz überlappend ({len(c2)} Tage) – hier weggelassen")
-            ms = keep
-            common = common[E.loc[common].notna().mean(axis=1) > 0.7]
-            y = y_all.loc[common].values; yrs = common.year.values
-            season = common.month.isin(range(3, 11))
-            Ec = E.loc[common]
-            P = {}
+            # 1) Referenz auf ihrem ganzen Zeitraum
+            cref = okdays(X[(REF, L)].index)
+            _, row, _ = score(REF, L, cref); rows.append(row)
+            # 2) jedes Modell paarweise gegen die Referenz, auf den gemeinsamen Tagen (kurze Archive stutzen nichts)
             for m in ms:
-                Xm = X[(m, L)].loc[common]
-                Xq = qmap(Xm, Ec, yrs)
-                r = Xm.corrwith(Ec)                      # Merkmal-Treue gegen ERA5
-                nmae = (Xm - Ec).abs().mean() / Ec.std()
-                p = pred(Xm); pq = pred(Xq)
-                po = own(m, L, common, False); pk = own(m, L, common, True)
-                P[m] = p; P[m + "|q"] = pq; P[m + "|eigen"] = po; P[m + "|kombi"] = pk
-                okp = ~np.isnan(po)
-                rows.append(dict(schwelle=thr, vorlauf=L, modell=m, tage=len(common), breva=int(y.sum()),
-                                 merkmal_r=round((r.fillna(0) * gain).sum(), 3),
-                                 merkmal_nmae=round((nmae.fillna(1) * gain).sum(), 3),
-                                 auc=round(auc(y, p), 3), auc_saison=round(auc(y[season], p[season]), 3),
-                                 auc_angeglichen=round(auc(y, pq), 3),
-                                 auc_eigen=round(auc(y[okp], po[okp]), 3) if okp.sum() > 50 else np.nan,
-                                 auc_kombi=round(auc(y[okp], pk[okp]), 3) if okp.sum() > 50 else np.nan,
-                                 auc_gleiche_tage=round(auc(y[okp], p[okp]), 3) if okp.sum() > 50 else np.nan,
-                                 **{f"r_{c}": round(r.get(c, np.nan), 3) for c in F}))
-            # Kombinationen
-            if len(ms) > 1:
-                for tag, keys in (("Mittel aller", ms), ("Mittel aller, angeglichen", [m + "|q" for m in ms])):
-                    pm = np.mean([P[k] for k in keys], axis=0); P[tag] = pm
-                    rows.append(dict(schwelle=thr, vorlauf=L, modell=tag, tage=len(common), breva=int(y.sum()),
-                                     auc=round(auc(y, pm), 3), auc_saison=round(auc(y[season], pm[season]), 3)))
-                # je Merkmal das beste Modell, gewählt im ersten Jahr, bewertet danach
-                y0 = yrs.min(); sel = yrs == y0
-                best = {c: max(ms, key=lambda m: np.nan_to_num(X[(m, L)].loc[common[sel], c].corr(Ec.loc[sel, c]), nan=-1))
-                        for c in F}
-                mix = pd.DataFrame({c: X[(best[c], L)].loc[common, c] for c in F})
-                pmix = pred(mix); after = ~sel
-                rows.append(dict(schwelle=thr, vorlauf=L, modell=f"je Merkmal bestes (gewählt {y0}, bewertet danach)",
-                                 tage=int(after.sum()), breva=int(y[after].sum()),
-                                 auc=round(auc(y[after], pmix[after]), 3),
-                                 auc_saison=round(auc(y[after & season], pmix[after & season]), 3),
-                                 ref_auc_gleiche_tage=round(auc(y[after], P[ms[0]][after]), 3) if REF not in ms
-                                 else round(auc(y[after], P[REF][after]), 3)))
-                if thr == thr_list[0] and L in (1, 3):
-                    lines.append(f"\n**Bestes Modell je Merkmal, Vorlauf {L} (gewählt {y0}):** " +
-                                 ", ".join(f"{c} → {best[c]}" for c in gain.sort_values(ascending=False).index[:12]))
-            if REF in ms:
-                for k in [m for m in ms if m != REF] + [m + "|q" for m in ms] + [m + "|kombi" for m in ms] + ["Mittel aller"]:
-                    if k in P:
-                        ok_ = ~np.isnan(P[k])
-                        if ok_.sum() < 100:
-                            continue
-                        lo_, hi_ = block_boot(y[ok_], P[k][ok_], P[REF][ok_], common[ok_])
-                        rows.append(dict(schwelle=thr, vorlauf=L, modell=f"Δ {k} − {REF}", tage=int(ok_.sum()),
-                                         auc=round(auc(y[ok_], P[k][ok_]) - auc(y[ok_], P[REF][ok_]), 3),
-                                         bereich_90=f"{lo_:+.3f} … {hi_:+.3f}"))
+                if m == REF:
+                    continue
+                c = okdays(X[(m, L)].index.intersection(X[(REF, L)].index))
+                if len(c) < 150:
+                    print(f"  Vorlauf {L}: {m} nur {len(c)} gemeinsame Tage – weggelassen"); continue
+                Pr, _, y = score(REF, L, c)
+                Pm, row, _ = score(m, L, c, ref_p=Pr[""]); rows.append(row)
+                for k in ("", "|q", "|kombi"):
+                    ok_ = ~np.isnan(Pm[k])
+                    if ok_.sum() < 100 or len(set(y[ok_])) < 2:
+                        continue
+                    lo_, hi_ = block_boot(y[ok_], Pm[k][ok_], Pr[""][ok_], c[ok_])
+                    rows.append(dict(schwelle=thr, vorlauf=L, modell=f"Δ {m}{k} − {REF}", tage=int(ok_.sum()),
+                                     auc=round(auc(y[ok_], Pm[k][ok_]) - auc(y[ok_], Pr[""][ok_]), 3),
+                                     bereich_90=f"{lo_:+.3f} … {hi_:+.3f}"))
+            # 3) Kombinationen nur aus den Modellen mit langem Archiv (ab spätestens Mitte 2024)
+            longm = [m for m in ms if X[(m, L)].index.min() <= pd.Timestamp("2024-06-30")]
+            if len(longm) > 1:
+                c = X[(longm[0], L)].index
+                for m in longm[1:]:
+                    c = c.intersection(X[(m, L)].index)
+                c = okdays(c)
+                if len(c) >= 150:
+                    P = {m: score(m, L, c)[0] for m in longm}
+                    y = y_all.loc[c].values; season = c.month.isin(range(3, 11)); yrs = c.year.values
+                    pref = P[REF][""]
+                    for tag, pm in (("Mittel (langes Archiv)", np.mean([P[m][""] for m in longm], axis=0)),
+                                    ("Mittel (langes Archiv), angeglichen", np.mean([P[m]["|q"] for m in longm], axis=0))):
+                        rows.append(dict(schwelle=thr, vorlauf=L, modell=tag, tage=len(c), breva=int(y.sum()),
+                                         ab=str(c.min().date()), auc=round(auc(y, pm), 3),
+                                         auc_saison=round(auc(y[season], pm[season]), 3),
+                                         ref_auc_gleiche_tage=round(auc(y, pref), 3)))
+                        lo_, hi_ = block_boot(y, pm, pref, c)
+                        rows.append(dict(schwelle=thr, vorlauf=L, modell=f"Δ {tag} − {REF}", tage=len(c),
+                                         auc=round(auc(y, pm) - auc(y, pref), 3), bereich_90=f"{lo_:+.3f} … {hi_:+.3f}"))
+                    # je Merkmal das beste Modell, gewählt im ersten Jahr, bewertet danach
+                    Ec = E.loc[c]; y0 = yrs.min(); sel = yrs == y0
+                    best = {f: max(longm, key=lambda m: np.nan_to_num(X[(m, L)].loc[c[sel], f].corr(Ec.loc[sel, f]), nan=-1))
+                            for f in F}
+                    mix = pd.DataFrame({f: X[(best[f], L)].loc[c, f] for f in F})
+                    pmix = pred(mix); after = ~sel
+                    rows.append(dict(schwelle=thr, vorlauf=L, modell=f"je Merkmal bestes (gewählt {y0}, bewertet danach)",
+                                     tage=int(after.sum()), breva=int(y[after].sum()),
+                                     auc=round(auc(y[after], pmix[after]), 3),
+                                     auc_saison=round(auc(y[after & season], pmix[after & season]), 3),
+                                     ref_auc_gleiche_tage=round(auc(y[after], pref[after]), 3)))
+                    if thr == thr_list[0] and L in (1, 3):
+                        lines.append(f"\n**Bestes Modell je Merkmal, Vorlauf {L} (gewählt {y0}):** " +
+                                     ", ".join(f"{f} → {best[f]}" for f in gain.sort_values(ascending=False).index[:12]))
     R = pd.DataFrame(rows)
     R.to_csv(f"{RES}/modellvergleich.csv", index=False)
-    base = ["schwelle", "vorlauf", "modell", "tage", "breva", "merkmal_r", "merkmal_nmae", "auc", "auc_saison",
+    base = ["schwelle", "vorlauf", "modell", "ab", "tage", "breva", "merkmal_r", "merkmal_nmae", "auc", "auc_saison",
             "auc_angeglichen", "auc_gleiche_tage", "auc_eigen", "auc_kombi", "ref_auc_gleiche_tage", "bereich_90"]
     for thr in thr_list:
         S = R[(R.schwelle == thr) & ~R.modell.str.startswith("Δ")][[c for c in base if c in R]]
@@ -346,7 +359,8 @@ def vergleich(thr_list=(14, 18), train_until=2023):
                   "der Wichtigkeit im Modell); auc_angeglichen: Merkmale vorher per Quantil-Angleichung auf "
                   "ERA5-Verteilung gebracht; auc_eigen: Modell nur auf den eigenen Vorhersagen dieses Wettermodells "
                   "trainiert (andere Jahre); auc_kombi: ERA5 + eigene Vorhersagen (3-fach gewichtet); "
-                  "auc_gleiche_tage: die ERA5-Variante auf genau diesen Tagen (Vergleichswert für eigen/kombi). "
+                  "auc_gleiche_tage: die ERA5-Variante auf genau diesen Tagen (Vergleichswert für eigen/kombi); "
+                  "ref_auc_gleiche_tage: ECMWF 0.25° auf denselben Tagen wie das Modell (paarweiser Vergleich). "
                   "Alles je Jahr out-of-fold.\n", "```", S.to_string(index=False), "```"]
         Dl = R[(R.schwelle == thr) & R.modell.str.startswith("Δ")][["vorlauf", "modell", "tage", "auc", "bereich_90"]]
         if len(Dl):
