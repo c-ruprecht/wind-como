@@ -55,7 +55,7 @@ def sh_config():
     return cfg
 
 
-def download(start, end):
+def download(start, end, workers=6):
     from sentinelhub import (BBox, CRS, DataCollection, MimeType, SentinelHubCatalog, SentinelHubRequest,
                              bbox_to_dimensions)
     import rasterio
@@ -67,14 +67,17 @@ def download(start, end):
     items = list(SentinelHubCatalog(config=cfg).search(s1, bbox=bbox, time=(start, end)))
     print(f"{len(items)} Überflüge, Bildgröße {size} Pixel à {RES} m", flush=True)
     os.makedirs(f"{OUT}/raw", exist_ok=True)
-    meta, new = [], 0
+    meta, todo = [], []
     for it in items:
         t = pd.Timestamp(it["properties"]["datetime"])
         orbit = it["properties"].get("sat:orbit_state", "")
         fn = f"{OUT}/raw/{t:%Y%m%dT%H%M%S}_{orbit[:3]}.tif"
         meta.append(dict(file=os.path.basename(fn), time=t.isoformat(), orbit=orbit, id=it["id"]))
-        if os.path.exists(fn):
-            continue
+        if not os.path.exists(fn) and fn not in {f for _, f in todo}:
+            todo.append((t, fn))
+    print(f"  {len(todo)} fehlen noch, {workers} parallel", flush=True)
+
+    def fetch(t, fn):
         req = SentinelHubRequest(
             evalscript=EVALSCRIPT,
             input_data=[SentinelHubRequest.input_data(
@@ -83,17 +86,34 @@ def download(start, end):
                                            "demInstance": "COPERNICUS_30", "speckleFilter": {"type": "NONE"}}})],
             responses=[SentinelHubRequest.output_response("default", MimeType.TIFF)],
             bbox=bbox, size=size, config=cfg)
-        try:
-            arr = req.get_data()[0]
-        except Exception as e:
-            print("  Fehler", fn, e); continue
-        with rasterio.open(fn, "w", driver="GTiff", height=arr.shape[0], width=arr.shape[1], count=3, dtype="float32",
+        for attempt in range(5):
+            try:
+                arr = req.get_data()[0]
+                break
+            except Exception as e:
+                if attempt == 4:
+                    return f"Fehler {os.path.basename(fn)}: {e}"
+                time.sleep(10 * (attempt + 1))
+        tmp = fn + ".part"
+        with rasterio.open(tmp, "w", driver="GTiff", height=arr.shape[0], width=arr.shape[1], count=3, dtype="float32",
                            crs="EPSG:4326", transform=from_bounds(*BBOX, arr.shape[1], arr.shape[0]), compress="deflate") as dst:
             for b in range(3):
                 dst.write(arr[:, :, b].astype("float32"), b + 1)
-        new += 1
-        if new % 25 == 0:
-            print(f"  {new} neue Bilder …", flush=True)
+        os.replace(tmp, fn)
+        return None
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    new = 0
+    with ThreadPoolExecutor(max_workers=workers) as ex:
+        futs = [ex.submit(fetch, t, fn) for t, fn in todo]
+        for f in as_completed(futs):
+            err = f.result()
+            if err:
+                print(" ", err, flush=True)
+            else:
+                new += 1
+                if new % 50 == 0:
+                    print(f"  {new}/{len(todo)} neue Bilder …", flush=True)
     pd.DataFrame(meta).drop_duplicates("file").to_csv(f"{OUT}/scenes.csv", index=False)
     print(f"fertig: {new} neue Bilder")
 
@@ -283,9 +303,10 @@ if __name__ == "__main__":
     ap.add_argument("--start", default="2020-01-01")
     ap.add_argument("--end", default=pd.Timestamp.today().strftime("%Y-%m-%d"))
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--workers", type=int, default=6)
     a = ap.parse_args()
     if a.step == "download":
-        download(a.start, a.end)
+        download(a.start, a.end, a.workers)
     elif a.step == "wind":
         wind(a.force)
     else:

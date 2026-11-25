@@ -44,7 +44,7 @@ python training/station_screen.py           # jede Station aus eigenen Messungen
 # Satellit (Sentinel-1, 100 m) – Wind auf dem See gegen alle Stationen -> beste Station
 pip install sentinelhub rasterio
 export CDSE_CLIENT_ID=...  CDSE_CLIENT_SECRET=...
-python training/sar_lake.py download --start 2020-01-01
+python training/sar_lake.py download --start 2015-01-01 --workers 6
 python training/sar_lake.py wind
 python training/sar_lake.py stations
 ```
