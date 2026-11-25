@@ -1,0 +1,10 @@
+station,name,hoehe,stunden,mittag_kn,frueh_kn,amplitude,p10,p14,boe_faktor,sued,tage_breva,max_stunde
+samolaco,Samolaco v.Vignola,206,47629,7.5,2.5,4.6,31.5,8.4,1.72,63,66.7,15
+canzo,Canzo,1233,46925,5.2,6.8,-2.2,9.0,4.5,1.69,25,22.4,1
+vercana,Vercana,980,47643,5.6,2.4,2.7,5.7,3.2,2.01,56,12.2,16
+morbegno,Morbegno eliporto,230,35999,5.9,3.9,3.4,5.0,0.2,2.07,29,11.4,16
+como,Como Villa Gallia,201,45235,3.4,3.4,0.6,3.8,1.2,2.39,17,9.2,10
+sansiro,San Siro Alpe Rescascìa,1285,44002,5.9,4.6,1.2,3.0,0.4,1.81,36,8.1,16
+valmadrera,Valmadrera v.Pozzi,247,10947,3.3,2.0,1.4,1.1,0.1,2.68,65,3.0,14
+colico,Colico v.La Madoneta,229,44670,3.8,1.5,2.5,0.8,0.0,2.5,8,2.3,17
+lecco,Lecco v.Sora,272,46582,2.1,1.4,0.5,0.2,0.0,3.31,60,0.4,17

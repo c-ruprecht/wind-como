@@ -1,0 +1,30 @@
+station,fall,n,r,verhaeltnis_see_zu_station,auc_see_ab_12kn,see_ab_12kn
+colico,Sommerabend Süd (Breva),122,0.4,3.04,0.79,68
+sansiro,Sommerabend Süd (Breva),124,0.48,1.86,0.74,70
+vercana,Sommerabend Süd (Breva),124,0.27,3.21,0.73,70
+"Modell (ICON ab 2022, sonst ERA5)",Sommerabend Süd (Breva),134,0.48,2.11,0.71,80
+morbegno,Sommerabend Süd (Breva),120,0.43,2.37,0.69,68
+samolaco,Sommerabend Süd (Breva),124,0.4,1.95,0.68,70
+canzo,Sommerabend Süd (Breva),122,0.16,2.27,0.59,68
+valmadrera,Sommerabend Süd (Breva),96,0.19,2.99,0.54,48
+como,Sommerabend Süd (Breva),101,0.13,3.26,0.54,56
+lecco,Sommerabend Süd (Breva),122,0.11,2.71,0.48,68
+colico,alle,716,0.45,2.65,0.78,224
+vercana,alle,728,0.35,2.38,0.73,230
+"Modell (ICON ab 2022, sonst ERA5)",alle,779,0.42,1.7,0.73,255
+samolaco,alle,727,0.42,1.63,0.7,229
+lecco,alle,723,0.32,2.79,0.68,227
+morbegno,alle,707,0.23,1.81,0.65,217
+canzo,alle,723,0.27,1.3,0.64,226
+valmadrera,alle,579,0.31,2.17,0.63,169
+sansiro,alle,732,0.3,1.72,0.63,230
+como,alle,605,0.09,1.94,0.57,192
+colico,morgens (Tivano),414,0.39,2.41,0.7,118
+vercana,morgens (Tivano),422,0.38,2.35,0.69,122
+canzo,morgens (Tivano),417,0.34,1.12,0.66,120
+lecco,morgens (Tivano),419,0.32,3.44,0.63,121
+samolaco,morgens (Tivano),421,0.39,1.5,0.59,121
+como,morgens (Tivano),346,0.1,1.84,0.57,102
+sansiro,morgens (Tivano),424,0.22,1.62,0.56,122
+morbegno,morgens (Tivano),409,0.11,1.58,0.56,115
+valmadrera,morgens (Tivano),345,0.23,1.85,0.54,93
