@@ -58,7 +58,8 @@ def _find_collection_catalog(cfg):
 
 def to_celsius(v):
     v = np.asarray(v, float)
-    return np.where(v > 200, v - 273.15, np.where(np.abs(v) > 100, v * 0.01, v))    # Kelvin | Rohwert ×0,01 | °C
+    # Rohwert INT16 = Hundertstel °C (Kelvin = Rohwert × 0,01 + 273,15) | schon Kelvin | schon °C
+    return np.where(v > 400, v * 0.01, np.where(v > 200, v - 273.15, v))
 
 
 def laden(start="2016-04-01"):
@@ -96,6 +97,7 @@ def laden(start="2016-04-01"):
 
 def daily():
     d = pd.read_csv(f"{OUT}/lswt.csv", parse_dates=["von", "bis"])
+    d["lswt_c"] = to_celsius(d.lswt_roh).round(2)                 # neu umrechnen (ältere Dateien falsch skaliert)
     mid = d.von + (d.bis - d.von) / 2
     s = pd.Series(d.lswt_c.values, index=mid).sort_index()
     return s.resample("D").mean().interpolate(limit=25)
