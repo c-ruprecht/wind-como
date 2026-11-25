@@ -353,7 +353,7 @@ def stations():
     S["see"] = S[spots_up].mean(axis=1)                         # Wind auf dem oberen See
     loc = S.time.dt.tz_convert("Europe/Rome")
     S["abends"] = loc.dt.hour >= 12
-    S["sommer"] = loc.dt.month.isin([4, 5, 6, 7, 8, 9])
+    S["sommer"] = loc.dt.month.isin([3, 4, 5, 6, 7, 8, 9, 10])
     S["breva"] = S.abends & S.sommer & (S.dir == AXIS[1])          # Abendüberflug, Modellwind aus Süd
     out = []
     for st in obs:
@@ -382,7 +382,7 @@ def stations():
     print("\nr: Zusammenhang; auc: wie gut die Station Überflüge mit ≥ 12 kn auf dem See erkennt (1 = perfekt, 0,5 = Zufall);"
           "\nVerhältnis: See / Station (Median) – der Faktor, mit dem man die Station auf den See umrechnet.")
     # Welche Station passt zu welchem Spot? r bei Breva-Abenden und bei allen Überflügen
-    for name, m in (("Breva-Abende (Apr–Sep, Süd)", S.breva), ("alle Überflüge", S.index == S.index)):
+    for name, m in (("Breva-Abende (Mär–Okt, Süd)", S.breva), ("alle Überflüge", S.index == S.index)):
         M = {}
         for st in obs:
             c = f"st_{st}"
@@ -418,7 +418,7 @@ def stations():
 
 
 def breva_scenes(S, water, stations, top=12):
-    """Abendüberflüge (Apr–Sep, Süd) mit Breva auf dem See: Liste und Bildtafel, Vergleich mit den Stationen."""
+    """Abendüberflüge (Mär–Okt, Süd) mit Breva auf dem See: Liste und Bildtafel, Vergleich mit den Stationen."""
     B = S[S.breva & S.see.notna()].sort_values("see", ascending=False)
     if B.empty:
         print("\nKeine Breva-Abendüberflüge gefunden."); return
@@ -426,7 +426,7 @@ def breva_scenes(S, water, stations, top=12):
                                                      for c in (f"st_{st}", f"max_{st}") if c in B]
     L = B.assign(ortszeit=B.t_exakt.dt.tz_convert("Europe/Rome").dt.strftime("%Y-%m-%d %H:%M"))[["ortszeit"] + cols]
     L.round(1).to_csv(f"{RES_DIR}/breva_szenen.csv", index=False)
-    print(f"\nBreva-Abendüberflüge (Apr–Sep, Modellwind Süd): {len(B)}, davon See ≥ 10 kn: {(B.see >= 10).sum()}, "
+    print(f"\nBreva-Abendüberflüge (Mär–Okt, Modellwind Süd): {len(B)}, davon See ≥ 10 kn: {(B.see >= 10).sum()}, "
           f"≥ 12 kn: {(B.see >= 12).sum()}, ≥ 14 kn: {(B.see >= 14).sum()}")
     print("Stärkste Fälle (st_ = Station zur Überflugstunde, max_ = Nachmittagsmaximum 11–20 Uhr):")
     print(L.head(25).round(1).to_string(index=False))

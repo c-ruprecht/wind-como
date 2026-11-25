@@ -53,7 +53,7 @@ def breva_evenings():
         A = pd.read_csv(f, parse_dates=["t_exakt"])
         rain = A.set_index("t_exakt").regen
     S["regen"] = S.t_exakt.map(rain).fillna(0) if rain is not None else 0
-    ev = (lt.dt.hour >= 12) & lt.dt.month.isin([4, 5, 6, 7, 8, 9]) & (S.dir == 200) & (S.regen < 1)
+    ev = (lt.dt.hour >= 12) & lt.dt.month.isin([3, 4, 5, 6, 7, 8, 9, 10]) & (S.dir == 200) & (S.regen < 1)
     return S, S[ev]
 
 
@@ -130,7 +130,7 @@ def overlay(B):
 
 def main():
     S, B = breva_evenings()
-    print(f"Breva-Abende (Apr–Sep, Süd, ohne Regen): {len(B)}, davon See ≥ 10 kn: {(B.see >= 10).sum()}")
+    print(f"Breva-Abende (Mär–Okt, Süd, ohne Regen): {len(B)}, davon See ≥ 10 kn: {(B.see >= 10).sum()}")
     cl, src, yrs = climate()
     n_img = overlay(B)
     out = {

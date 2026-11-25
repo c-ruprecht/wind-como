@@ -28,7 +28,7 @@ const POINTS = [
 ];
 
 const THRESHOLDS = [14, 18];
-const SEASON = [4, 5, 6, 7, 8, 9];   // Breva-Saison, für die Klima und Satellit ausgewertet sind
+const SEASON = [3, 4, 5, 6, 7, 8, 9, 10];   // Breva-Saison, für die Klima und Satellit ausgewertet sind
 
 /* Punkte des Breva-Modells (wie training/breva_daten.py POINTS) – Vorhersage ECMWF, 31 Tage zurück für Vortag/30-Tage-Mittel */
 const MODEL_POINTS = {
