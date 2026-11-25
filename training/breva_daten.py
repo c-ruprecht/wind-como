@@ -2,7 +2,10 @@
 
   python training/breva_daten.py wetter      # ERA5 an 11 Punkten (See, Täler, Po-Ebene, Alpen, Großwetterlage), 2014 – gestern
   python training/breva_daten.py laeufe      # ECMWF-Läufe 1–7 Tage vorher an denselben Punkten, 2024 – gestern
+  python training/breva_daten.py archiv      # Vorhersagearchiv ICON (Tag 0) mit Höhenwerten 850/700/500 hPa, ab 2022
   python training/breva_daten.py tage        # Tagesklassen Apr–Sep: Breva / schwach / ruhig / Regen-Gewitter / Nordföhn / synoptisch
+  python training/breva_daten.py pruefen     # jede Größe einzeln: je Monat, über die Jahre, gegen den Satelliten
+  python training/breva_daten.py pruefen --quelle archiv
   python training/breva_daten.py faktoren    # was macht einen Breva-Tag (nur Schönwettertage) + Modell auf allen Tagen
   python training/breva_daten.py vorlauf     # Trefferquote nach Vorlauf 1–7 Tage
 
@@ -56,6 +59,19 @@ POINTS = {
 }
 SYN_POINTS = ["lyon", "zurich", "muenchen", "genova", "venezia", "milano", "bergamo"]   # für den geostrophischen Wind
 
+# Vorhersagearchiv (historical forecast): zusätzlich Höhenwerte und Labilität, ca. ab 2022/2023
+ARCH = os.path.join(DATA, "archiv")
+ARCH_SURF = ["direct_radiation", "diffuse_radiation", "cloud_cover_mid", "cloud_cover_high", "wind_speed_100m",
+             "wind_direction_100m", "wind_gusts_10m", "lifted_index", "vapour_pressure_deficit",
+             "et0_fao_evapotranspiration", "snow_depth"]
+ARCH_UP = [f"{v}_{p}hPa" for p in (850, 700, 500) for v in ("temperature", "relative_humidity", "wind_speed",
+                                                             "wind_direction", "geopotential_height")]
+ARCH_POINTS = {p: (la, lo, vs + ARCH_SURF + ARCH_UP) for p, (la, lo, vs) in POINTS.items()
+               if p in ("milano", "see", "chiavenna", "engadin")}
+ARCH_POINTS.update({p: (la, lo, vs + ["geopotential_height_500hPa"]) for p, (la, lo, vs) in POINTS.items()
+                    if vs == SYN})
+HF_URL = "https://historical-forecast-api.open-meteo.com/v1/forecast"
+
 ERA_URL = "https://archive-api.open-meteo.com/v1/archive"
 PREV_URL = "https://previous-runs-api.open-meteo.com/v1/forecast"
 
@@ -102,6 +118,49 @@ def wetter(start=2014):
             print(f"  ERA5 {p} {y}", flush=True); time.sleep(0.5)
 
 
+def archiv(model="icon_seamless", start=2022):
+    """Vorhersagearchiv (Tag 0 jedes Laufs, zusammengesetzt) mit Höhenwerten – nur Größen, die es auch als Vorhersage gibt."""
+    os.makedirs(ARCH, exist_ok=True)
+    allv = sorted({v for *_, vs in ARCH_POINTS.values() for v in vs})
+    f_sup = os.path.join(ARCH, f"supported_{model}.json")
+    have = json.load(open(f_sup)) if os.path.exists(f_sup) else {}
+    for v in allv:
+        if v not in have:
+            try:
+                j = get_json(HF_URL, dict(latitude=46.07, longitude=9.29, models=model, hourly=v,
+                                          start_date="2024-06-01", end_date="2024-06-01"), tries=2)
+                have[v] = any(x is not None for x in j["hourly"][v])
+            except Exception:
+                have[v] = False
+            json.dump(have, open(f_sup, "w"), indent=1)
+    ok = {v for v in allv if have.get(v)}
+    print(f"{model}-Archiv liefert nicht:", sorted(set(allv) - ok) or "–")
+    yesterday = pd.Timestamp.today().normalize() - pd.Timedelta(days=1)
+    for p, (la, lo, vs) in ARCH_POINTS.items():
+        vs = [v for v in vs if v in ok]
+        for y in range(start, yesterday.year + 1):
+            f = f"{ARCH}/{model}_{p}_{y}.csv"
+            if os.path.exists(f) and y < yesterday.year:
+                continue
+            end = min(pd.Timestamp(f"{y}-12-31"), yesterday)
+            parts = []
+            for i in range(0, len(vs), 15):
+                try:
+                    j = get_json(HF_URL, dict(latitude=la, longitude=lo, models=model, hourly=",".join(vs[i:i + 15]),
+                                              timezone=TZ, wind_speed_unit="kn", start_date=f"{y}-01-01",
+                                              end_date=end.strftime("%Y-%m-%d")))
+                except RuntimeError as err:
+                    print(f"  {p} {y}: {err}"); continue
+                parts.append(pd.DataFrame(j["hourly"]).set_index("time")); time.sleep(0.5)
+            if not parts:
+                continue
+            d = pd.concat(parts, axis=1)
+            d = d[d.notna().mean(axis=1) > 0.3]                       # Zeiten vor Beginn des Archivs weglassen
+            if len(d):
+                d.reset_index().to_csv(f, index=False)
+                print(f"  Archiv {model} {p} {y}: {len(d) // 24} Tage", flush=True)
+
+
 def laeufe(model="ecmwf_ifs025", start="2024-01-01"):
     allv = sorted({v for *_, vs in POINTS.values() for v in vs})
     ok = set(supported("prev", model, allv, suffix="_previous_day1"))
@@ -132,7 +191,8 @@ def load(kind="era5", lead=0, model="ecmwf_ifs025"):
     import glob
     H = {}
     for p in POINTS:
-        fs = sorted(glob.glob(f"{ERA}/{p}_*.csv" if kind == "era5" else f"{PREV}/{model}_{p}_*.csv"))
+        pat = {"era5": f"{ERA}/{p}_*.csv", "prev": f"{PREV}/{model}_{p}_*.csv", "archiv": f"{ARCH}/{model}_{p}_*.csv"}[kind]
+        fs = sorted(glob.glob(pat))
         if not fs:
             continue
         d = pd.concat(pd.read_csv(f) for f in fs)
@@ -205,7 +265,6 @@ def features(H):
         "cape_see": win("see", "cape", 12, 19, "max"),
         "regen_see": win("see", "precipitation", 11, 19, "sum"),
         "regen_chiavenna": win("chiavenna", "precipitation", 11, 19, "sum"),
-        "schnee_engadin": win("engadin", "snow_depth", 0, 23, "mean"),
         "wind_see_15": at("see", "wind_speed_10m", 15),
         "wind_milano_12": at("milano", "wind_speed_10m", 12),
     })
@@ -235,10 +294,58 @@ def features(H):
         # geostrophischer Wind (Nordhalbkugel, tiefer Druck links): nach Nord ∝ +gx, nach Ost ∝ −gy
         F.loc[P.index, "geo_aus_sued"] = gx                                   # >0: Strömung aus Süd (Druck im Osten höher)
         F.loc[P.index, "geo_aus_west"] = -gy                                  # >0: Strömung aus West (Druck im Norden tiefer)
+    # ---- Zusatz- und Höhengrößen (nur im Vorhersagearchiv / in Läufen vorhanden)
+    extra = {
+        "diffus_anteil_see": win("see", "diffuse_radiation", 9, 17, "sum") / win("see", "shortwave_radiation", 9, 17, "sum").clip(lower=1)
+        if ser("see", "diffuse_radiation") is not None else np.nan,                      # Dunst/Schleier
+        "wolken_mittel_see": win("see", "cloud_cover_mid", 9, 17, "mean"),
+        "wolken_hoch_see": win("see", "cloud_cover_high", 9, 17, "mean"),
+        "wind100_see_15": at("see", "wind_speed_100m", 15),
+        "boeen_see_max": win("see", "wind_gusts_10m", 12, 19, "max"),
+        "lifted_index_min": win("milano", "lifted_index", 12, 18, "min"),
+        "lifted_index_chiavenna": win("chiavenna", "lifted_index", 12, 18, "min"),
+        "vpd_milano_13": at("milano", "vapour_pressure_deficit", 13),
+        "verdunstung_milano": win("milano", "et0_fao_evapotranspiration", 0, 23, "sum"),
+        "schnee_engadin_m": win("engadin", "snow_depth", 0, 23, "mean"),
+        "t850_milano_12": at("milano", "temperature_850hPa", 12),
+        "t700_milano_12": at("milano", "temperature_700hPa", 12),
+        "t500_milano_12": at("milano", "temperature_500hPa", 12),
+        "rh700_milano_12": at("milano", "relative_humidity_700hPa", 12),
+        "rh850_milano_12": at("milano", "relative_humidity_850hPa", 12),
+        "wind850_see_12": at("see", "wind_speed_850hPa", 12),
+        "wind700_see_12": at("see", "wind_speed_700hPa", 12),
+        "wind500_see_12": at("see", "wind_speed_500hPa", 12),
+        "t700_engadin_12": at("engadin", "temperature_700hPa", 12),
+    }
+    for k, v in extra.items():
+        F[k] = v
+    for lev in (850, 700, 500):
+        wdl = at("see", f"wind_direction_{lev}hPa", 12)
+        F[f"wind{lev}_aus_sued"] = F[f"wind{lev}_see_12"] * np.cos(np.radians(wdl - 180))
+        F[f"wind{lev}_aus_nord"] = F[f"wind{lev}_see_12"] * np.cos(np.radians(wdl))
+    F["stabil_850_500"] = F.t850_milano_12 - F.t500_milano_12                 # groß = labil
+    F["stabil_850_700"] = F.t850_milano_12 - F.t700_milano_12
+    F["tmax_milano_minus_t850"] = F.tmax_milano - F.t850_milano_12            # Durchmischung der Ebene
+    F["dt700_engadin_milano"] = F.t700_engadin_12 - F.t700_milano_12          # Alpen wärmer als Vorland in 3 km
+    zp = [p for p in SYN_POINTS if p in H and "geopotential_height_500hPa" in H[p]]
+    if len(zp) >= 4:
+        Z = pd.concat([at(p, "geopotential_height_500hPa", 12).rename(p) for p in zp], axis=1)
+        lat0 = np.mean([POINTS[p][0] for p in zp])
+        xy = np.array([[(POINTS[p][1] - 9.2) * 111.2 * np.cos(np.radians(lat0)) / 100, (POINTS[p][0] - lat0) * 111.2 / 100]
+                       for p in zp])
+        A = np.c_[np.ones(len(zp)), xy]; ok = Z.notna().all(axis=1)
+        coef = np.full((len(Z), 3), np.nan)
+        if ok.any():
+            coef[ok.values] = np.linalg.lstsq(A, Z[ok].values.T, rcond=None)[0].T
+        F.loc[Z.index, "z500_aus_sued"] = coef[:, 1]                          # Höhenströmung aus Süd (Trog im Westen)
+        F.loc[Z.index, "z500_aus_west"] = -coef[:, 2]
+        F.loc[Z.index, "z500_staerke"] = np.hypot(coef[:, 1], coef[:, 2])
+        F.loc[Z.index, "z500_see"] = Z.mean(axis=1)                            # Hoch/Tief über der Region
     doy = F.index.dayofyear
     F["doy_sin"], F["doy_cos"] = np.sin(2 * np.pi * doy / 365.25), np.cos(2 * np.pi * doy / 365.25)
     F.index = pd.DatetimeIndex(F.index).tz_localize(None)
-    return F.drop(columns=["p_milano_12", "tmean_see"])
+    F = F.drop(columns=["p_milano_12", "tmean_see"], errors="ignore")
+    return F.loc[:, F.notna().any()]
 
 
 # ---------------------------------------------------------------- Tagesklassen
@@ -380,6 +487,105 @@ def faktoren(thr=14):
     open(f"{RES}/breva_faktoren_{thr}.txt", "w").write("\n".join(lines) + "\n")
 
 
+# ---------------------------------------------------------------- Prüfung: welche Größen hängen wirklich zusammen
+
+def _auc(x, y):
+    from sklearn.metrics import roc_auc_score
+    ok = x.notna() & y.notna()
+    return roc_auc_score(y[ok], x[ok]) if ok.sum() >= 20 and y[ok].nunique() == 2 and (y[ok] == 1).sum() >= 5 \
+        and (y[ok] == 0).sum() >= 5 else np.nan
+
+
+def auc_je_monat(x, y):
+    """AUC innerhalb jedes Monats, nach Fallzahl gemittelt – Jahreszeit fällt heraus."""
+    a, w = [], []
+    for m in sorted(set(x.index.month)):
+        sel = x.index.month == m
+        v = _auc(x[sel], y[sel])
+        if np.isfinite(v):
+            a.append(v); w.append(sel.sum())
+    return float(np.average(a, weights=w)) if a else np.nan
+
+
+def stabil_jahre(x, y, ref):
+    """Anteil der Jahre, in denen der Zusammenhang dieselbe Richtung hat wie insgesamt."""
+    s = []
+    for yr in sorted(set(x.index.year)):
+        sel = x.index.year == yr
+        v = _auc(x[sel], y[sel])
+        if np.isfinite(v):
+            s.append(np.sign(v - 0.5) == np.sign(ref - 0.5))
+    return (float(np.mean(s)), len(s)) if s else (np.nan, 0)
+
+
+def anomalie(x):
+    """Abweichung vom mittleren Jahresgang (Tag des Jahres, 31 Tage geglättet)."""
+    clim = x.groupby(x.index.dayofyear).mean().reindex(range(1, 367))
+    clim = pd.concat([clim.iloc[-15:], clim, clim.iloc[:15]]).rolling(31, center=True, min_periods=5).mean().iloc[15:-15]
+    return x - clim.reindex(x.index.dayofyear).values
+
+
+def pruefen(quelle="era5", model="icon_seamless", thr=14):
+    """Jede Größe einzeln gegen den Breva prüfen – je Monat, über die Jahre, gegen den Satelliten."""
+    D = pd.read_csv(f"{RES}/breva_tage.csv", index_col=0, parse_dates=True)
+    F = features(load(quelle, model=model)).reindex(D.index)
+    F = F.loc[:, F.notna().mean() > 0.3]
+    days = F.dropna(how="all").index
+    D, F = D.loc[days], F.loc[days]
+    yrs = f"{days.year.min()}–{days.year.max()}"
+    sauber = D.sauber.astype(bool)
+    y_bs = D[f"breva{thr}"].where(sauber)                                         # Breva gegen schwach/ruhig (Schönwetter)
+    y_all = (D.klasse == "Breva").astype(int)                                      # Breva gegen alle anderen Tage
+    y_st = D.klasse.isin(["Regen/Gewitter", "Nordföhn", "synoptisch"]).astype(int)  # Störung gegen Schönwetter
+    sat = D.sat_see.where((D.regen < 1) & D.sat_see.notna())                        # Satellit am Abend, ohne Regen
+    rows = []
+    for c in F.columns:
+        if c.startswith("doy"):
+            continue
+        x = F[c]
+        a = _auc(x, y_bs); am = auc_je_monat(x, y_bs)
+        st, ny = stabil_jahre(x, y_bs, am if np.isfinite(am) else a)
+        xa = anomalie(x)
+        ok = sat.notna() & xa.notna()
+        rho = xa[ok].corr(sat[ok], method="spearman") if ok.sum() >= 20 else np.nan
+        rows.append(dict(merkmal=c, n=int(x.notna().sum()),
+                         breva=x[y_bs == 1].median(), kein=x[y_bs == 0].median(),
+                         auc=a, auc_je_monat=am, stabil=st, jahre=ny,
+                         auc_gegen_alle=auc_je_monat(x, y_all), auc_stoerung=auc_je_monat(x, y_st),
+                         rho_satellit=rho, sat_n=int(ok.sum())))
+    T = pd.DataFrame(rows)
+    T["kraft"] = (T.auc_je_monat - 0.5).abs() * 2
+    T = T.sort_values("kraft", ascending=False).reset_index(drop=True)
+    # Doppelte: Größen, die fast dasselbe messen (|rho| > 0.85), dem stärkeren zuordnen
+    C = F[T.merkmal].corr(method="spearman").abs()
+    rep = {}
+    for c in T.merkmal:
+        if c in rep:
+            continue
+        rep[c] = ""
+        for o in T.merkmal:
+            if o not in rep and C.loc[c, o] > 0.85:
+                rep[o] = c
+    T["wie"] = T.merkmal.map(rep)
+    T["urteil"] = np.select(
+        [(T.kraft >= 0.2) & (T.stabil >= 0.8), (T.kraft >= 0.1) & (T.stabil >= 0.7)], ["stark", "mittel"], "schwach")
+    pd.set_option("display.width", 250); pd.set_option("display.max_rows", 200)
+    out = T.round(2)
+    print(f"Quelle {quelle}{'/' + model if quelle != 'era5' else ''}, {yrs}, {len(days)} Tage Apr–Sep; "
+          f"Schönwetter: {int(y_bs.notna().sum())} Tage, davon Breva ≥ {thr} kn: {int((y_bs == 1).sum())}; "
+          f"Satellitenabende ohne Regen: {int(sat.notna().sum())}")
+    print(out.to_string(index=False))
+    print("""
+auc / auc_je_monat: Breva gegen schwach/ruhig an Schönwettertagen (je Monat: Jahreszeit herausgerechnet).
+  > 0,5 = an Breva-Tagen höher, < 0,5 = niedriger; kraft 0 = nutzlos, 1 = trennt perfekt.
+stabil: Anteil der Jahre mit derselben Richtung. auc_gegen_alle: Breva gegen alle Tage inkl. Störungen.
+auc_stoerung: Regen/Gewitter/Nordföhn/synoptisch gegen Schönwetter. rho_satellit: Rangkorrelation der Abweichung
+vom Jahresgang mit dem Seewind im Satellitenbild am Abend. wie: misst fast dasselbe wie diese (stärkere) Größe.""")
+    tag = quelle if quelle == "era5" else f"{quelle}_{model}"
+    out.to_csv(f"{RES}/pruefung_{tag}.csv", index=False)
+    print(f"\ngeschrieben: results/pruefung_{tag}.csv")
+
+
 def vorlauf(thr=(14, 18), model="ecmwf_ifs025", train_until=2023):
     from sklearn.metrics import roc_auc_score, brier_score_loss
     D = pd.read_csv(f"{RES}/breva_tage.csv", index_col=0, parse_dates=True)
@@ -411,9 +617,14 @@ def vorlauf(thr=(14, 18), model="ecmwf_ifs025", train_until=2023):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["wetter", "laeufe", "tage", "faktoren", "vorlauf"])
+    ap.add_argument("step", choices=["wetter", "archiv", "laeufe", "tage", "pruefen", "faktoren", "vorlauf"])
+    ap.add_argument("--quelle", default="era5", choices=["era5", "archiv"])
     ap.add_argument("--schwelle", type=int, default=14)
     ap.add_argument("--modell", default="ecmwf_ifs025")
     a = ap.parse_args()
+    arch_model = a.modell if a.modell != "ecmwf_ifs025" or a.step != "archiv" else "icon_seamless"
     {"wetter": wetter, "laeufe": lambda: laeufe(a.modell), "tage": tage,
+     "archiv": lambda: archiv(arch_model),
+     "pruefen": lambda: pruefen(a.quelle, a.modell if a.quelle == "era5" else
+                                (a.modell if a.modell != "ecmwf_ifs025" else "icon_seamless"), a.schwelle),
      "faktoren": lambda: faktoren(a.schwelle), "vorlauf": lambda: vorlauf(model=a.modell)}[a.step]()

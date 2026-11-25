@@ -85,13 +85,22 @@ python training/breva_events.py vorlauf
 Sauberer Breva-Datensatz und Faktoren (`training/breva_daten.py`):
 ```
 python training/breva_daten.py wetter
+python training/breva_daten.py archiv
 python training/breva_daten.py laeufe
 python training/breva_daten.py tage
+python training/breva_daten.py pruefen
+python training/breva_daten.py pruefen --quelle archiv
 python training/breva_daten.py faktoren
 python training/breva_daten.py vorlauf
 ```
 - `tage`: jeder Tag Apr–Sep bekommt eine Klasse – Breva (≥ 14 kn auf dem See, ≥ 2 h), Breva schwach, ruhig,
   Regen/Gewitter, Nordföhn, synoptisch (Wind schon morgens / sehr böig). Gegenprobe mit dem Satellitenbild am Abend.
+- Nur Größen, die es auch als 7-Tage-Vorhersage gibt (Modellausgaben) oder langsam ändernde Zustände (Jahreszeit,
+  Wassertemperatur-Ersatz, Bodenfeuchte). Messungen und Satellit dienen nur als Wahrheit und Prüfung.
+- `archiv`: Vorhersagearchiv ICON ab 2022 mit Höhenwerten 850/700/500 hPa (Temperatur, Feuchte, Wind, Geopotential),
+  Labilität (Lifted Index), Diffusstrahlung (Dunst), Böen, Verdunstung, Schnee.
+- `pruefen`: jede Größe einzeln – AUC je Monat (Jahreszeit herausgerechnet), Stabilität über die Jahre, gegen alle
+  Tage, gegen Störungen, Rangkorrelation mit dem Seewind im Satellitenbild; doppelte Größen zusammengefasst.
 - `faktoren`: Wettergrößen an Schönwettertagen (Breva gegen ruhig) und Modell auf allen Tagen; wichtigste Größen (SHAP).
 - Wettergrößen: ERA5 an See, Mailand, Bergamo, Chiavenna, Sondrio, Engadin + Großwetterlage (Zürich, München, Genua,
   Venedig, Lyon): Einstrahlung, Wolken, Grenzschicht, Bodenfeuchte, CAPE, Temperatur-/Druckgefälle, Föhn-Index,
