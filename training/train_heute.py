@@ -115,11 +115,17 @@ def main():
             mf = T.xgb_model().fit(FE[ok & ~test], y[ok & ~test])
             obs_only = [c for c in out["features"] if c not in T.FEATS]
             mo = T.xgb_model().fit(X.loc[ok & ~test, obs_only], y[ok & ~test])
+            saison = (D.index.month >= 3) & (D.index.month <= 10)        # nur Tage, an denen Breva überhaupt üblich ist
+            gs = good & saison
+            ys = y[gs].values
+            r_s = dict(auc_saison=round(roc_auc_score(ys, m.predict_proba(Xl[gs])[:, 1]), 3),
+                       auc_saison_nur_vorhersage=round(roc_auc_score(ys, mf.predict_proba(L1[gs])[:, 1]), 3),
+                       auc_saison_nur_messungen=round(roc_auc_score(ys, mo.predict_proba(X.loc[gs, obs_only])[:, 1]), 3))
             r = dict(uhr=hour, schwelle=thr, tage=int(good.sum()), breva=int(yy.sum()),
                      auc=round(roc_auc_score(yy, p), 3),
                      auc_nur_vorhersage=round(roc_auc_score(yy, mf.predict_proba(L1[good])[:, 1]), 3),
                      auc_nur_messungen=round(roc_auc_score(yy, mo.predict_proba(X.loc[good, obs_only])[:, 1]), 3),
-                     brier=round(brier_score_loss(yy, np.interp(p, *curve)), 3))
+                     brier=round(brier_score_loss(yy, np.interp(p, *curve)), 3), **r_s)
             imp = T.xgb_model().fit(X[ok], y[ok]).get_booster().get_score(importance_type="gain")
             r["wichtig"] = ", ".join(k for k, _ in sorted(imp.items(), key=lambda kv: -kv[1])[:5])
             rows_all.append(r)

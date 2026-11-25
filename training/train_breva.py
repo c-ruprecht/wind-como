@@ -106,8 +106,12 @@ def main():
                 cal[str(L)] = curve
             from sklearn.isotonic import IsotonicRegression
             pc = np.interp(p, curve[0], curve[1])
+            mon = np.concatenate([test_days[(leads[L].loc[test_days, FEATS].notna().mean(axis=1) > 0.7).values].month
+                                  for L in grp])
+            sa = (mon >= 3) & (mon <= 10)
             skill.append(dict(vorlauf="+".join(map(str, grp)), tage=len(yy), breva=int(yy.sum()),
-                              auc=round(roc_auc_score(yy, p), 3), brier_roh=round(brier_score_loss(yy, p), 3),
+                              auc=round(roc_auc_score(yy, p), 3),
+                              auc_saison=round(roc_auc_score(yy[sa], p[sa]), 3), brier_roh=round(brier_score_loss(yy, p), 3),
                               brier_geeicht=round(brier_score_loss(yy, pc), 3), mittel_roh=round(float(p.mean()), 3),
                               mittel_geeicht=round(float(pc.mean()), 3), anteil_echt=round(float(yy.mean()), 3)))
         cal["0"] = cal.get("1")
