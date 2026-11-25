@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e8a">
+<title>Breva – Kitewind oberer Comer See</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Breva</h1>
+    <span class="sub">Kitewind oberer Comer See · Colico · Gera · Domaso · Dervio</span>
+  </div>
+  <div class="controls">
+    <label class="sel" for="modelSel">Modell
+      <select id="modelSel">
+        <option value="icon">ICON</option>
+        <option value="ecmwf">ECMWF</option>
+      </select>
+    </label>
+    <button type="button" id="refreshBtn" class="btn">Aktualisieren</button>
+  </div>
+</header>
+
+<main>
+  <p class="status" id="status" role="status">Lade Daten …</p>
+  <p class="beta">Erste Version: Die 7-Tage-Werte sind <b>Breva-Zeichen</b> aus den Wettermodellen, noch kein trainiertes Modell.</p>
+
+  <section class="mapbox" aria-label="Karte">
+    <div id="map"></div>
+    <div class="layer-toggle" role="group" aria-label="Kartenansicht">
+      <button type="button" id="btnMap" class="seg on" aria-pressed="true">Karte</button>
+      <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellit</button>
+      <button type="button" id="btnBreva" class="seg" aria-pressed="false" title="Mittlerer Seewind an Breva-Abenden aus Sentinel-1-Radarbildern">Breva-Bild</button>
+    </div>
+    <div class="wind-legend" id="brevaLegend" hidden aria-label="Legende Seewind"></div>
+  </section>
+
+  <section class="panel" id="now" aria-live="polite"></section>
+
+  <section class="panel" aria-labelledby="weekH">
+    <div class="panel-head">
+      <h2 id="weekH">Breva in den nächsten 7 Tagen</h2>
+      <div class="thr-toggle" role="group" aria-label="Schwelle">
+        <button type="button" class="seg on" data-thr="14" aria-pressed="true">14+ kn</button>
+        <button type="button" class="seg" data-thr="18" aria-pressed="false">18+ kn</button>
+      </div>
+    </div>
+    <div class="weekwrap"><table class="week sig" id="week"></table></div>
+    <p class="hint">Breva-Zeichen: Südwind über dem See im Modell, Druckgefälle von der Po-Ebene ins Tal, Sonne im Tal,
+      kein Nordföhn, trockene Luft; Regen dämpft. Die Gewichte und Schwellen stammen aus dem Vergleich mit 2014–2026
+      (ERA5 gegen Breva-Tage) und sind vorläufig. „Üblich“: Anteil der Tage im selben Monat mit mind. 2 h Breva
+      ab der Schwelle auf dem See (Samolaco mit Satellitenfaktor). Tag anklicken für die Stunden.</p>
+  </section>
+
+  <section class="panel" id="detail" aria-live="polite"></section>
+
+  <section class="notes">
+    <p>Modelle: Open-Meteo (ICON, ECMWF). Messungen: ARPA Lombardia (dati.lombardia.it), 10-Minuten-Werte.
+      Breva-Bild und Faktoren: Copernicus Sentinel-1, eigene Auswertung (100 m, CMOD5.N).</p>
+    <p>Karte © OpenStreetMap-Mitwirkende, OpenFreeMap. Satellit: Sentinel-2 cloudless, EOX (enthält modifizierte Copernicus-Sentinel-Daten 2020).</p>
+    <p>Ohne Gewähr. Wind und Wetter am See ändern sich schnell; vor Ort entscheiden. Schifffahrt und Badezonen beachten.</p>
+  </section>
+</main>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="spots.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

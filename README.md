@@ -116,3 +116,15 @@ Offene Punkte / Plan
 ## Datenquellen
 
 ARPA Lombardia / Regione Lombardia – Open Data Lombardia · Open-Meteo (CC BY 4.0) · Copernicus Sentinel-1
+
+## App (erste Version)
+
+`app/` wird über GitHub Pages veröffentlicht (`.github/workflows/pages.yml`, in den Repo-Einstellungen unter
+Pages „GitHub Actions“ als Quelle wählen). Lokal: `cd app && python -m http.server`, dann `http://localhost:8000`
+(mit `?demo` und Dateien in `app/demo/` ohne Netz testbar).
+
+- **Jetzt:** ARPA-Messungen (10 min, live) × Satellitenfaktor Spot/Station, nur wenn die Station Breva-Richtung misst.
+- **7 Tage:** Breva-Zeichen aus ICON/ECMWF (Südwind am See, Druckgefälle Mailand–Chiavenna, Sonne im Tal, kein
+  Nordföhn, trockene Luft, Regen dämpft) – vorläufig, bis das Modell trainiert ist; dazu das Breva-Klima je Monat.
+- **Breva-Bild:** Median des Seewinds an Breva-Abenden (Sentinel-1) als Kartenauflage.
+- Daten aktualisieren: `python training/export_app.py` (schreibt `app/breva.json`, `app/img/breva_mittel.png`).
