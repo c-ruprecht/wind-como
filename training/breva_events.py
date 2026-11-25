@@ -168,7 +168,7 @@ def features(H):
         "wind_zurich_12": at("zurich", "wind_speed_10m", 12),
     })
     wd = at("see", "wind_direction_10m", 15)
-    F["wind_see_15_sued"] = F.wind_see_15 * -np.cos(np.radians(wd - 200))       # Komponente aus SSW (+) / NNO (−)
+    F["wind_see_15_sued"] = F.wind_see_15 * np.cos(np.radians(wd - 200))        # Komponente aus SSW (+) / NNO (−)
     F["dt_tal_po"] = F.tmax_chiavenna - F.tmax_milano
     F["amp_tal_minus_po"] = (F.tmax_chiavenna - F.tmin_chiavenna) - (F.tmax_milano - F.tmin_milano)
     F["dp_tag_minus_nacht"] = F.dp_po_tal_15 - F.dp_po_tal_06                  # thermisches Tief bildet sich tagsüber
