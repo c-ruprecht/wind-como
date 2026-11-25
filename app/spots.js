@@ -29,3 +29,12 @@ const POINTS = [
 
 const THRESHOLDS = [14, 18];
 const SEASON = [4, 5, 6, 7, 8, 9];   // Breva-Saison, für die Klima und Satellit ausgewertet sind
+
+/* Punkte des Breva-Modells (wie training/breva_daten.py POINTS) – Vorhersage ECMWF, 31 Tage zurück für Vortag/30-Tage-Mittel */
+const MODEL_POINTS = {
+  milano: [45.46, 9.19], bergamo: [45.70, 9.67], see: [46.07, 9.29], chiavenna: [46.32, 9.40], sondrio: [46.17, 9.87],
+  engadin: [46.50, 9.84], zurich: [47.38, 8.54], muenchen: [48.14, 11.58], genova: [44.41, 8.93], venezia: [45.44, 12.33],
+  lyon: [45.76, 4.84]
+};
+const MODEL_VARS = ["temperature_2m", "dew_point_2m", "pressure_msl", "shortwave_radiation", "cloud_cover", "precipitation",
+  "wind_speed_10m", "wind_direction_10m"];

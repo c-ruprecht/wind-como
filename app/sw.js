@@ -1,6 +1,6 @@
 /* Service Worker: App offline verfügbar, Kartenkacheln zwischenspeichern, Daten immer frisch versuchen. */
-const VERSION = "breva-v1";
-const SHELL = ["./", "index.html", "style.css", "app.js", "spots.js", "breva.json", "img/breva_mittel.png",
+const VERSION = "breva-v2";
+const SHELL = ["./", "index.html", "style.css", "app.js", "spots.js", "breva_model.js", "breva.json", "img/breva_mittel.png", "analyse.html", "analyse.js", "analyse.json",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
 const TILE_HOSTS = ["tiles.openfreemap.org", "tiles.maps.eox.at", "unpkg.com", "fonts.gstatic.com", "fonts.googleapis.com"];
 const MAX_TILES = 1500;

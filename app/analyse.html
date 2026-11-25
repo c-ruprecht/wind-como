@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b6e8a">
+<title>Windanalyse &amp; Breva – oberer Comer See</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Breva</h1>
+    <span class="sub">Windanalyse oberer Comer See</span>
+  </div>
+  <nav class="nav" aria-label="Hauptmenü">
+    <a href="./">Vorhersage</a>
+    <a href="analyse.html" aria-current="page">Windanalyse &amp; Breva</a>
+  </nav>
+</header>
+
+<main class="an">
+  <nav class="subnav" aria-label="Abschnitte">
+    <a href="#breva">Der Breva</a><a href="#wo">Wo am stärksten</a><a href="#wann">Wann</a><a href="#warum">Was ihn macht</a>
+    <a href="#vorhersage">Vorhersage</a><a href="#stationen">Messstationen</a><a href="#methode">Methode</a>
+  </nav>
+
+  <section class="panel prose" id="breva">
+    <h2>Der Breva</h2>
+    <p>Der Breva ist der Nachmittagswind des Comer Sees. Er weht von Süden den See hinauf, an sonnigen Tagen von etwa
+      Mittag bis zum Abend, und ist am oberen See zwischen Dervio und Colico am kräftigsten. Morgens weht schwächer
+      der Gegenwind aus Norden, der Tivano.</p>
+    <p><b>Wie er entsteht:</b> Die Sonne heizt die Alpentäler nördlich des Sees – Valchiavenna und Veltlin – stärker auf
+      als die Po-Ebene. Über den Tälern bildet sich tagsüber ein flaches Hitzetief, die Luft aus der Ebene strömt nach.
+      Der See ist der Kanal dorthin: Zwischen steilen Hängen wird die Strömung gebündelt und am Nordende in die beiden
+      Täler aufgeteilt – in Richtung Chiavenna nach Norden, in Richtung Sondrio nach Osten. Abends kühlen die Täler ab,
+      der Druckunterschied verschwindet und der Wind schläft ein.</p>
+    <p><b>Was ihn stört:</b> Nordföhn und kräftige Nordlagen (die Strömung über die Alpen ist stärker als der
+      thermische Sog), Gewitter über den Bergen (kalte Ausflussluft aus Norden), Bewölkung und feuchte Luft
+      (weniger Aufheizung) – und große Hitze in der Po-Ebene, bei der der Unterschied zu den Tälern kleiner wird.</p>
+    <div id="kpis" class="kpis"></div>
+  </section>
+
+  <section class="panel" id="wo">
+    <h2>Wo er am stärksten weht</h2>
+    <p class="lead">Der Wind auf dem Wasser lässt sich mit Radarbildern des Satelliten Sentinel-1 messen: Wind raut die
+      Wasseroberfläche auf, das Radar sieht die Rauigkeit (100 m Auflösung). Gemittelt über die Abende mit Breva ergibt
+      sich das typische Bild.</p>
+    <div class="anmap-wrap"><div id="anmap"></div><div class="wind-legend" id="anLegend"></div></div>
+    <div id="spotbars"></div>
+    <p class="hint">Die Aufnahmen entstehen gegen 19:15 Uhr – in der Spätphase des Breva. Das Bild zeigt also, wo der
+      Breva am Abend am längsten durchhält: im Nordbecken bei Colico, Sorico und Gera, wo die Strömung in die Täler
+      gebündelt wird. Erfahrungsberichte nennen mittags auch die Enge zwischen Dervio und Cremia als Ort der stärksten
+      Böen – dort setzt der Breva zuerst ein und lässt vermutlich auch zuerst nach.</p>
+    <figure class="satex"><img src="img/breva_top.png" alt="Die stärksten Breva-Abende im Satellitenbild" loading="lazy">
+      <figcaption>Die stärksten Abende mit Südwind (Sentinel-1). Titel: Wind auf dem oberen See und Samolaco zur Überflugstunde (Nachmittagsmaximum). Typischer Breva: am Nordende am stärksten, nach Süden abnehmend. Bilder, auf denen der ganze See tiefrot ist (z. B. 13.7.2021, 15.8.2025), sind vermutlich Gewitterböen – sie gehen nicht in das Breva-Bild oben ein, wenn es geregnet hat.</figcaption></figure>
+  </section>
+
+  <section class="panel" id="wann">
+    <h2>Wann: Tagesgang und Saison</h2>
+    <h3>Tagesgang an Breva-Tagen</h3>
+    <div class="charts"><figure><figcaption>Mittlerer Wind je Stunde (kn), April–September</figcaption><div id="diurnal"></div><div class="legend" id="diurnalLeg"></div></figure></div>
+    <p class="hint">Volle Linie: Breva-Tage, gestrichelt: übrige Tage. Die Stationen stehen im Tal oder am Hang und
+      messen nur einen Teil des Seewinds (Faktor siehe Messstationen).</p>
+    <h3>Saison</h3>
+    <div class="charts"><figure><figcaption>Tage je Monat und Saison nach Klasse</figcaption><div id="months"></div><div class="legend" id="monthsLeg"></div></figure>
+      <figure><figcaption>Breva-Tage (≥ 14 kn) je Saison</figcaption><div id="years"></div></figure></div>
+    <p class="hint" id="seasonHint"></p>
+  </section>
+
+  <section class="panel" id="warum">
+    <h2>Was einen Breva-Tag ausmacht</h2>
+    <p class="lead">Jede Wettergröße wurde einzeln gegen die Breva-Tage geprüft – an Schönwettertagen, innerhalb
+      desselben Monats (damit nicht einfach die Jahreszeit spricht) und Jahr für Jahr. Quelle: ERA5-Wetterdaten
+      2014–2026, das Wetter, wie es war.</p>
+    <div class="tscroll"><table class="atab num" id="faktTab"></table></div>
+    <p class="hint">Trennkraft: 0 = nutzlos, 1 = trennt Breva-Tage perfekt. Stabil: Anteil der Jahre mit demselben
+      Zusammenhang. Satellit: Zusammenhang mit dem Seewind im Abendbild (Abweichung vom Jahresgang).</p>
+    <ul class="tips" id="warumTips"></ul>
+  </section>
+
+  <section class="panel" id="vorhersage">
+    <h2>Wie gut er vorhersagbar ist</h2>
+    <p class="lead">Das Breva-Modell lernt aus den Wettergrößen der Jahre 2014–2023 und wurde an den echten
+      ECMWF-Vorhersagen 2024–2026 geprüft – also so, wie es die App benutzt.</p>
+    <div class="charts"><figure><figcaption>Trefferquote (AUC) nach Vorlauf</figcaption><div id="lead"></div><div class="legend" id="leadLeg"></div></figure>
+      <figure><figcaption>Heute: wie früh die Stationen den Breva verraten (AUC)</figcaption><div class="tscroll"><table class="atab num-c" id="timing"></table></div></figure></div>
+    <p class="hint">AUC: Wahrscheinlichkeit, dass ein Breva-Tag höher eingeschätzt wird als ein Tag ohne Breva
+      (1 = perfekt, 0,5 = Zufall). Bis Tag 4 ist der Breva gut vorhersagbar, danach zeigt die Chance vor allem die Lage.</p>
+    <div id="heuteTab"></div>
+  </section>
+
+  <section class="panel" id="stationen">
+    <h2>Messstationen</h2>
+    <p class="lead">Die ARPA-Stationen am oberen See stehen geschützt oder abseits des Wassers. Erst der Vergleich mit
+      dem Satelliten zeigt, wie viel Wind auf dem See ankommt.</p>
+    <div class="tscroll"><table class="atab num" id="stTab"></table></div>
+    <p class="hint">Faktor: Seewind / Station zur Überflugstunde an Breva-Abenden. Trefferquote: wie gut die Station
+      Abende mit ≥ 12 kn auf dem See erkennt. Samolaco ist die Station mit dem klarsten Breva-Tagesgang; sein
+      Nachmittagsmaximum mal <b id="sfak"></b> entspricht dem Wind auf dem oberen See.</p>
+  </section>
+
+  <section class="panel prose" id="methode">
+    <h2>Methode und Grenzen</h2>
+    <ul class="tips">
+      <li><b>Breva-Tag</b>: Samolaco morgens ruhig, nachmittags Wind aus SSO–S, gleichmäßig; auf dem See (Samolaco ×
+        Satellitenfaktor) mind. 2 h am Stück ab 14 kn. Regen-, Föhn- und Sturmtage werden getrennt geführt.</li>
+      <li><b>Satellit</b>: Sentinel-1 (seit 2014), Wind aus dem Radarsignal mit CMOD5.N, Windrichtung aus den
+        Messungen in Samolaco und Colico. Nur alle paar Tage ein Bild, immer gegen 7:30 und 19:15 Uhr.</li>
+      <li><b>Wettergrößen</b>: ERA5 (Training) und ECMWF-Vorhersagen (App) an 11 Punkten von Lyon bis Venedig.</li>
+      <li><b>Grenzen</b>: Keine Station misst direkt am Wasser bei Dervio, Cremia oder Domaso – der Tagesverlauf auf dem
+        See ist geschätzt. Private Stationen (Domaso, Gravedona, Cremia) würden das verbessern.</li>
+    </ul>
+    <p class="hint" id="stand"></p>
+  </section>
+</main>
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script src="spots.js"></script>
+<script src="analyse.js"></script>
+</body>
+</html>

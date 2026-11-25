@@ -128,3 +128,13 @@ Pages „GitHub Actions“ als Quelle wählen). Lokal: `cd app && python -m http
   Nordföhn, trockene Luft, Regen dämpft) – vorläufig, bis das Modell trainiert ist; dazu das Breva-Klima je Monat.
 - **Breva-Bild:** Median des Seewinds an Breva-Abenden (Sentinel-1) als Kartenauflage.
 - Daten aktualisieren: `python training/export_app.py` (schreibt `app/breva.json`, `app/img/breva_mittel.png`).
+
+### Modelle für die App
+
+```
+python training/train_breva.py      # 7 Tage: app/model/breva_14.json, breva_18.json, manifest.json (Eichung je Vorlauf)
+python training/train_heute.py      # Heute 9/11/13 Uhr: app/model/heute*.json (Vorhersage + Messungen + Vortag)
+python training/export_analyse.py   # Seite „Windanalyse & Breva“: app/analyse.json, Bilder
+```
+Die App rechnet die Merkmale selbst aus der ECMWF-Vorhersage an 11 Punkten (`app/breva_model.js`, identisch zu
+`breva_daten.features`, geprüft auf 1e-13) und die Stationsmerkmale aus den ARPA-Stundenmitteln.

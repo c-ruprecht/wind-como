@@ -15,7 +15,10 @@ const CACHE_KEY = "breva-cache-v1";
 const state = {
   fc: null, obs: {}, info: null,
   model: load("model", "icon"), thr: Number(load("thr", 14)) === 18 ? 18 : 14,
-  spot: load("spot", "gera_lario"), day: 0, map: null, markers: [], layer: load("layer", "map")
+  spot: load("spot", "gera_lario"), day: 0, map: null, markers: [], layer: load("layer", "map"),
+  mfc: null,        // Modellpunkte (ECMWF, mit 31 Tagen Vergangenheit)
+  M: null,          // { man, m14, m18, heute, h: {"9_14": Modell, …} }
+  hourly: null      // Stundenmittel der Stationen { station: { "YYYY-MM-DDTHH": {kn, dir} } }
 };
 
 /* ---------- Helfer ---------- */
@@ -78,12 +81,42 @@ async function fetchForecast() {
   return { spots, points, fetched: new Date().toISOString() };
 }
 
+/* ---------- Vorhersage an den Modellpunkten (ECMWF, wie im Training) ---------- */
+async function fetchModelPoints() {
+  const ids = Object.keys(MODEL_POINTS);
+  const p = new URLSearchParams({
+    latitude: ids.map(k => MODEL_POINTS[k][0]).join(","), longitude: ids.map(k => MODEL_POINTS[k][1]).join(","),
+    hourly: MODEL_VARS.join(","), models: "ecmwf_ifs025", wind_speed_unit: "kn", timezone: "Europe/Rome",
+    past_days: "31", forecast_days: "7"
+  });
+  let res = await fetchJSON(DEMO ? "demo/points.json" : "https://api.open-meteo.com/v1/forecast?" + p);
+  if (!Array.isArray(res)) res = [res];
+  const H = {};
+  ids.forEach((k, i) => {
+    const h = res[i]?.hourly; if (!h) return;
+    H[k] = { time: h.time };
+    for (const v of MODEL_VARS) H[k][v] = h[v] || h[`${v}_ecmwf_ifs025`] || [];
+  });
+  return H;
+}
+async function loadModels() {
+  const man = await fetchJSON("model/manifest.json");
+  const M = { man, h: {} };
+  const jobs = Object.entries(man.files).map(([thr, f]) => fetchJSON("model/" + f, 60000).then(m => { M["m" + thr] = m; }));
+  jobs.push(fetchJSON("model/heute.json").then(async H => {
+    M.heute = H;
+    await Promise.all(Object.entries(H.files).map(([k, f]) => fetchJSON("model/" + f, 60000).then(m => { M.h[k] = m; })));
+  }).catch(e => console.warn("Heute-Modell", e)));
+  await Promise.all(jobs);
+  return M;
+}
+
 /* ---------- Messungen (ARPA Lombardia, 10-Minuten-Werte, Zeit = UTC+1) ---------- */
 async function fetchObs() {
   const ids = STATIONS.flatMap(s => [s.speed, s.dir]);
-  const since = new Date(Date.now() + 3600e3 - 6 * 3600e3).toISOString().slice(0, 19);   // UTC+1, letzte 6 h
+  const since = new Date(Date.now() + 3600e3 - 44 * 3600e3).toISOString().slice(0, 19);  // UTC+1, ab gestern früh
   const q = new URLSearchParams({ $where: `idsensore in(${ids.map(i => `'${i}'`).join(",")}) AND data > '${since}'`,
-    $order: "data DESC", $limit: "5000" });
+    $order: "data DESC", $limit: "20000" });
   const rows = await fetchJSON(DEMO ? "demo/arpa.json" : `${ARPA}?${q}`);
   const out = {};
   for (const st of STATIONS) {
@@ -104,7 +137,32 @@ async function fetchObs() {
     const dir = n ? (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360 : null;
     const hourAgo = sp.filter(x => last - x.t >= 50 * 60e3 && last - x.t <= 70 * 60e3);
     const kn1h = hourAgo.length ? hourAgo.reduce((a, x) => a + x.v, 0) / hourAgo.length * MS2KN : null;
-    out[st.id] = { kn, dir, time: last, kn1h, series: sp.map(x => ({ t: x.t, kn: x.v * MS2KN })) };
+    out[st.id] = { kn, dir, time: last, kn1h, series: sp.filter(x => last - x.t <= 6 * 3600e3).map(x => ({ t: x.t, kn: x.v * MS2KN })),
+                   hourly: hourlyMeans(sp, dmap) };
+  }
+  return out;
+}
+/* Stundenmittel wie im Training (download_arpa.py): Stunde endet zur vollen Stunde, mind. 3 von 6 Werten,
+   Richtung als Vektormittel. Schlüssel "YYYY-MM-DDTHH" in Ortszeit (Europe/Rome). */
+function localKey(d) {
+  const s = d.toLocaleString("sv-SE", { timeZone: "Europe/Rome" });
+  return s.slice(0, 10) + "T" + s.slice(11, 13);
+}
+function hourlyMeans(sp, dmap) {
+  const g = new Map();
+  for (const x of sp) {
+    const end = new Date(Math.ceil(x.t.getTime() / 3600e3) * 3600e3);
+    const k = localKey(end);
+    if (!g.has(k)) g.set(k, []);
+    g.get(k).push(x);
+  }
+  const out = {};
+  for (const [k, xs] of g) {
+    if (xs.length < 3) continue;
+    let u = 0, v = 0, n = 0;
+    for (const x of xs) { const d = dmap.get(x.t.getTime()); if (d == null || d > 360) continue;
+      u += -x.v * Math.sin(d * Math.PI / 180); v += -x.v * Math.cos(d * Math.PI / 180); n++; }
+    out[k] = { kn: xs.reduce((a, x) => a + x.v, 0) / xs.length * MS2KN, dir: n ? (Math.atan2(-u, -v) * 180 / Math.PI + 360) % 360 : null };
   }
   return out;
 }
@@ -169,6 +227,44 @@ function climateP(date, thr) {
   return state.info?.klima?.[String(thr)]?.[m] ?? null;
 }
 
+/* ---------- Modelle: 7 Tage und Heute ---------- */
+let F7cache = null;
+function features7() {
+  if (!state.mfc || !state.M) return null;
+  if (!F7cache) F7cache = BrevaModel.features(state.mfc, MODEL_POINTS);
+  return F7cache;
+}
+function weekProb(date, i, thr) {
+  const F = features7(), M = state.M; if (!F || !M || !M["m" + thr] || !F[date]) return null;
+  const raw = BrevaModel.predictProba(M["m" + thr], BrevaModel.vec(F[date], M.man.features));
+  const cal = M.man.calib[String(thr)] || {};
+  return BrevaModel.calibrate(cal[String(i)] ?? cal["7"], raw);
+}
+const pClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
+function hourlyAll() {
+  const h = {}; for (const st of STATIONS) if (state.obs[st.id]?.hourly) h[st.id] = state.obs[st.id].hourly; return h;
+}
+function shiftDate(d, n) { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+function heute() {
+  const M = state.M, H = M?.heute, F = features7(); const ds = days();
+  if (!H || !F || !ds.length) return null;
+  const today = ds[0], hourly = hourlyAll();
+  const have = h => ["vercana", "samolaco", "colico"].some(st => hourly[st]?.[`${today}T${String(h).padStart(2, "0")}`]);
+  const hour = [...H.hours].reverse().find(h => have(h)) ?? null;
+  const g = BrevaModel.brevaDay(hourly, shiftDate(today, -1), H.faktor);
+  const res = { hour, gestern: g, today, p: {}, pForecast: {}, obs: null };
+  for (const thr of THRESHOLDS) res.pForecast[thr] = weekProb(today, 0, thr);
+  if (hour == null) { res.p = { ...res.pForecast }; return res; }
+  const obs = BrevaModel.obsFeatures(hourly, today, hour);
+  res.obs = obs;
+  const x = { ...F[today], ...obs, gestern_breva: g ? g.breva : NaN, gestern_max: g ? g.max : NaN };
+  for (const thr of THRESHOLDS) {
+    const m = M.h[`${hour}_${thr}`]; if (!m) continue;
+    res.p[thr] = BrevaModel.calibrate(H.calib[`${hour}_${thr}`], BrevaModel.predictProba(m, BrevaModel.vec(x, H.features)));
+  }
+  return res;
+}
+
 /* ---------- Karte ---------- */
 function initMap() {
   const map = new maplibregl.Map({ container: "map", style: "https://tiles.openfreemap.org/styles/liberty",
@@ -213,7 +309,8 @@ function drawMarkers() {
     const est = nowEstimate(sp.id);
     const el = document.createElement("button");
     el.type = "button";
-    el.className = `spot-mk mk-${signalClass(sig?.score)}${sp.id === state.spot ? " cur" : ""}`;
+    const pt = state.M && features7() && today ? weekProb(today, 0, state.thr) : null;
+    el.className = `spot-mk mk-${pt != null ? pClass(pt) : signalClass(sig?.score)}${sp.id === state.spot ? " cur" : ""}`;
     const nowTxt = est && est.kn != null ? `jetzt ~${Math.round(est.kn)} kn` : (state.info?.spot_zu_see?.[sp.id] ? `Breva ×${de(state.info.spot_zu_see[sp.id], 2)}` : "");
     el.innerHTML = `<span class="dot"></span><span class="lab"><b>${sp.short}</b><span>${nowTxt}</span></span>`;
     el.setAttribute("aria-label", `${sp.name}${nowTxt ? ": " + nowTxt : ""}`);
@@ -255,7 +352,27 @@ function drawNow() {
       <span>${o ? `<b>${Math.round(o.kn)} kn</b> ${compass(o.dir)} ${trend} <small>${fmtTime(o.time)}${breva ? " · Breva-Richtung" : ""}</small>` : "keine Daten"}</span>
       ${o ? spark(o.series) : "<span></span>"}</li>`;
   }).join("");
-  box.innerHTML = `<div class="panel-head"><h2>Jetzt</h2><span class="meta">Messung × Satellitenfaktor, auf dem Wasser</span></div>
+  const H = heute();
+  const ds = days();
+  const cl = ds.length ? climateP(ds[0], state.thr) : null;
+  const fmtObs = v => v == null || !Number.isFinite(v) ? "–" : `${v >= 0 ? "" : "−"}${de(Math.abs(v))} kn`;
+  const heuteHtml = H ? `<div class="heute">
+      <div class="hcards">${THRESHOLDS.map(t => `<div class="hcard ${pClass(H.p[t])}"><span class="hp">${H.p[t] == null ? "–" : Math.round(H.p[t] * 100) + "\u00a0%"}</span>
+        <span class="hl">Breva ≥ ${t} kn heute<br><small>mind. 2 h am Stück</small></span></div>`).join("")}</div>
+      <p class="hint">${H.hour == null ? "Nur Vorhersage – Messungen fließen ab 9 Uhr ein (Modell 9, 11 und 13 Uhr)."
+        : `Stand ${H.hour} Uhr: Vorhersage für heute + Messungen bis ${H.hour} Uhr + gestern. ${state.M.heute.hours.some(h => h > H.hour) ? `Neu um ${state.M.heute.hours.filter(h => h > H.hour).join(" und ")} Uhr.` : "Letzter Stand des Tages – ab jetzt zählt „Jetzt am Spot“."}`}</p>
+      <ul class="hfak">
+        <li><b>Vorhersage allein</b> (ECMWF, 7-Tage-Modell): ${THRESHOLDS.map(t => `≥${t}: ${pct(H.pForecast[t])}`).join(" · ")}</li>
+        <li><b>Gestern Breva</b>: ${H.gestern == null ? "unbekannt" : H.gestern.breva ? `ja (bis ~${Math.round(H.gestern.max)} kn auf dem See)` : `nein (max ~${Math.round(H.gestern.max)} kn)`}
+          <small>– nach einem Breva-Tag folgt in ${pct(state.M.heute.vortag_stat?.["1"])} der Fälle wieder einer, sonst in ${pct(state.M.heute.vortag_stat?.["0"])}</small></li>
+        ${H.obs ? `<li><b>Breva-Richtung jetzt</b>: Vercana ${fmtObs(H.obs.vercana_jetzt)}, Samolaco ${fmtObs(H.obs.samolaco_jetzt)}, Colico ${fmtObs(H.obs.colico_jetzt)}, Morbegno ${fmtObs(H.obs.morbegno_jetzt)}
+          <small>– Wind in Breva-Richtung, negativ = Gegenwind. Vercana dreht als erste auf Südwest.</small></li>
+        <li><b>Tivano heute früh</b> (Samolaco aus Nord, 5–9 Uhr): ${fmtObs(H.obs.tivano_samolaco)}</li>` : ""}
+        ${cl ? `<li><b>Üblich</b> im ${new Date(ds[0] + "T12:00:00").toLocaleDateString("de-DE", { month: "long" })}: ${pct(cl.p)} der Tage ≥ ${state.thr} kn</li>` : ""}
+      </ul></div>` : "";
+  box.innerHTML = `<div class="panel-head"><h2>Heute</h2><span class="meta">Lohnt es sich loszufahren?</span></div>
+    ${heuteHtml}
+    <h3>Jetzt am Spot <small class="meta">Messung × Satellitenfaktor, auf dem Wasser</small></h3>
     <div class="weekwrap"><table class="nowtab"><tbody>${rows}</tbody></table></div>
     <p class="hint">Die ARPA-Stationen stehen im Tal oder am Hang und messen den Breva nur zum Teil. Der Wert am Spot ist die Messung
       mal dem Verhältnis Spot/Station, das die Sentinel-1-Bilder an ${state.info?.sat_abende ?? "…"} Breva-Abenden zeigen. Gilt nur, wenn
@@ -282,8 +399,12 @@ function drawWeek() {
       return `<td data-day="${i}" title="${p?.txt ?? ""}"><span class="bar"><i style="width:${p?.s == null ? 0 : Math.round(p.s * 100)}%"></i></span></td>`; }).join("")}</tr>`;
   }).join("");
   const rainRow = S.map(({ sig }, i) => `<td data-day="${i}" class="rain">${sig == null ? "" : sig.rain >= 2 ? "🌧" : sig.rain >= 0.5 ? "🌦" : ""}</td>`).join("");
+  const modelRow = state.M && features7() ? `<tr><th scope="row">Chance ≥ ${state.thr} kn<br><small>Breva-Modell, mind. 2 h</small></th>${S.map(({ d, season }, i) => {
+      const p = weekProb(d, i, state.thr);
+      return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span></td>`; }).join("")}</tr>` : "";
   t.innerHTML = `<thead><tr><th scope="col" class="spotcol"></th>${head}</tr></thead><tbody>
-    <tr><th scope="row">Breva-Zeichen<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
+    ${modelRow}
+    <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva-Zeichen<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
     <tr><th scope="row">Üblich ${state.thr}+ kn<br><small>Anteil Tage im Monat</small></th>${clRow}</tr>
     ${partRows}
     <tr class="part"><th scope="row">Regen 11–19 Uhr</th>${rainRow}</tr></tbody>`;
@@ -307,6 +428,8 @@ function drawDetail() {
   box.innerHTML = `<div class="panel-head"><h2>${sp.name} · ${dayLabel(date, ds.indexOf(date))}</h2>
       <span class="meta">${sp.shore}${ratio ? ` · bei Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % gegenüber dem Mittel des oberen Sees` : ""}</span></div>
     <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
+    ${state.M && features7() ? `<p class="sigline"><b>Breva-Modell:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
+      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> ≥ ${t} kn`; }).join(" · ")}</p>` : ""}
     ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>
       ${cl ? ` · üblich an ${pct(cl.p)} der Tage im Monat mind. 2 h ab ${state.thr} kn` : ""}${sig.rainF < 1 ? ` · Regen ${de(sig.rain)} mm dämpft` : ""}</p>
       <ul class="parts">${sig.parts.map(p => `<li><span class="bar"><i style="width:${p.s == null ? 0 : Math.round(p.s * 100)}%"></i></span> ${p.label}: ${p.txt}</li>`).join("")}</ul>` : ""}
@@ -344,14 +467,15 @@ async function refresh() {
   const st = $("#status");
   st.textContent = "Lade Vorhersage und Messwerte …"; st.className = "status";
   $("#refreshBtn").disabled = true;
-  const [fc, obs] = await Promise.allSettled([fetchForecast(), fetchObs()]);
+  const [fc, obs, mfc] = await Promise.allSettled([fetchForecast(), fetchObs(), fetchModelPoints()]);
   if (fc.status === "fulfilled") state.fc = fc.value;
+  if (mfc.status === "fulfilled") { state.mfc = mfc.value; F7cache = null; } else console.warn("Modellpunkte", mfc.reason);
   if (obs.status === "fulfilled") state.obs = obs.value;
   else console.warn("ARPA", obs.reason);
   const nObs = Object.keys(state.obs).length;
   if (fc.status === "fulfilled") {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ fc: state.fc })); } catch (e) {}
-    st.textContent = `Vorhersage von ${fmtTime(new Date(state.fc.fetched))} Uhr · ${nObs} von ${STATIONS.length} Stationen live${obs.status === "rejected" ? " (ARPA nicht erreichbar)" : ""}`;
+    st.textContent = `Vorhersage von ${fmtTime(new Date(state.fc.fetched))} Uhr · ${nObs} von ${STATIONS.length} Stationen live${obs.status === "rejected" ? " (ARPA nicht erreichbar)" : ""} · ${state.M && state.mfc ? "Breva-Modell aktiv" : "Breva-Modell lädt …"}`;
   } else if (state.fc) {
     st.textContent = `Keine Verbindung zu Open-Meteo (${fc.reason.message}). Zeige gespeicherte Vorhersage.`; st.className = "status warn";
   } else {
@@ -381,6 +505,9 @@ function init() {
   setLayer(state.layer);
   renderAll();
   fetchJSON("breva.json").then(x => { state.info = x; addOverlay(); renderAll(); }).catch(e => console.warn("breva.json", e));
+  loadModels().then(M => { state.M = M; F7cache = null; renderAll();
+    $("#status").textContent = $("#status").textContent.replace("Breva-Modell lädt …", state.mfc ? "Breva-Modell aktiv" : "Breva-Modell lädt …"); })
+    .catch(e => console.warn("Breva-Modell nicht geladen (erst training/train_breva.py laufen lassen)", e));
   refresh();
   setInterval(() => fetchObs().then(o => { state.obs = o; renderAll(); }).catch(() => {}), 10 * 60e3);
   if ("serviceWorker" in navigator && !DEMO) navigator.serviceWorker.register("sw.js").catch(() => {});

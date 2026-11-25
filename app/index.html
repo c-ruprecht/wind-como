@@ -20,6 +20,10 @@
     <h1>Breva</h1>
     <span class="sub">Kitewind oberer Comer See · Colico · Gera · Domaso · Dervio</span>
   </div>
+  <nav class="nav" aria-label="Hauptmenü">
+    <a href="./" aria-current="page">Vorhersage</a>
+    <a href="analyse.html">Windanalyse &amp; Breva</a>
+  </nav>
   <div class="controls">
     <label class="sel" for="modelSel">Modell
       <select id="modelSel">
@@ -33,7 +37,7 @@
 
 <main>
   <p class="status" id="status" role="status">Lade Daten …</p>
-  <p class="beta">Erste Version: Die 7-Tage-Werte sind <b>Breva-Zeichen</b> aus den Wettermodellen, noch kein trainiertes Modell.</p>
+  <p class="beta">Erste Version. Chancen aus dem Breva-Modell (trainiert 2014–2026, geeicht an ECMWF-Läufen 2024–2026); <a href="analyse.html">wie es entsteht</a>.</p>
 
   <section class="mapbox" aria-label="Karte">
     <div id="map"></div>
@@ -74,6 +78,7 @@
 
 <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 <script src="spots.js"></script>
+<script src="breva_model.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
