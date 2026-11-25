@@ -54,12 +54,22 @@ def _ssl():
 CTX = _ssl()
 
 
-def get(url, tries=6):
+class NotFound(Exception):
+    pass
+
+
+def get(url, tries=6, raw=False):
     for i in range(tries):
         try:
-            with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept": "application/json"}),
-                                        timeout=180, context=CTX) as r:
-                return json.loads(r.read())
+            with urllib.request.urlopen(urllib.request.Request(url, headers={"Accept": "*/*" if raw else "application/json"}),
+                                        timeout=600, context=CTX) as r:
+                body = r.read()
+                return body if raw else json.loads(body)
+        except urllib.error.HTTPError as e:
+            if e.code in (400, 403, 404):
+                raise NotFound(f"{e.code} {url[:140]}")
+            wait = 60 if e.code == 429 else 5 * (i + 1)
+            print(f"    {e} – neuer Versuch in {wait} s", flush=True); time.sleep(wait)
         except (urllib.error.URLError, TimeoutError, ValueError) as e:
             if "CERTIFICATE_VERIFY_FAILED" in str(e):
                 sys.exit("SSL-Zertifikate fehlen: im conda-Env mit python starten oder pip install certifi")
@@ -104,47 +114,98 @@ def sensors():
 # ---------------------------------------------------------------- 2. Datensätze je Jahr
 
 def yearly_datasets():
-    """Archiv-Datensätze „Dati sensori meteo <Jahr>“ über den Socrata-Katalog suchen: {jahr: dataset_id}."""
-    cat = get("https://api.us.socrata.com/api/catalog/v1?" + urllib.parse.urlencode(
-        {"domains": "www.dati.lombardia.it", "q": "dati sensori meteo", "limit": 100}))
+    """Archive „Dati sensori meteo <Jahr>“ im Katalog von Open Data Lombardia suchen: {jahr: (id, typ)}.
+    typ "dataset" = abfragbare Tabelle, sonst Datei (ZIP/CSV), die ganz geladen und gefiltert wird."""
+    urls = [f"{DOMAIN}/api/catalog/v1?" + urllib.parse.urlencode({"q": "sensori meteo", "limit": 200}),
+            "https://api.eu.socrata.com/api/catalog/v1?" + urllib.parse.urlencode(
+                {"domains": "www.dati.lombardia.it", "q": "sensori meteo", "limit": 200})]
+    results = []
+    for u in urls:
+        try:
+            results = get(u).get("results", [])
+            if results:
+                break
+        except NotFound as e:
+            print("   Katalog nicht erreichbar:", e)
     found = {}
-    for r in cat.get("results", []):
+    for r in results:
         res = r["resource"]; name = res.get("name", "")
-        if "sensori meteo" not in name.lower() or res.get("type") != "dataset":
+        if "sensori meteo" not in name.lower():
             continue
         for y in range(2000, 2100):
-            if str(y) in name:
-                found.setdefault(y, res["id"])
+            if str(y) in name and y not in found:
+                found[y] = (res["id"], res.get("type", "?"), name)
     return found
 
 
-def load_sensor_year(dataset, sensor, year):
-    w = f"idsensore='{sensor}' AND data >= '{year}-01-01T00:00:00' AND data < '{year + 1}-01-01T00:00:00'"
-    rows = soql(dataset, **{"$where": w, "$select": "data,valore,idoperatore"})
-    return pd.DataFrame(rows)
+def archive_file(ds_id, year):
+    """Jahresarchiv als Datei laden (einmal), gibt den lokalen Pfad zurück."""
+    os.makedirs(f"{OUT}/archive", exist_ok=True)
+    meta = get(f"{DOMAIN}/api/views/{ds_id}.json")
+    blob, fname = meta.get("blobId"), meta.get("blobFilename") or f"{year}.bin"
+    path = f"{OUT}/archive/{year}_{fname}"
+    if os.path.exists(path):
+        return path
+    urls = ([f"{DOMAIN}/api/views/{ds_id}/files/{blob}?download=true&filename={urllib.parse.quote(fname)}"] if blob else []) + \
+           [f"{DOMAIN}/download/{ds_id}/application%2Fzip", f"{DOMAIN}/api/views/{ds_id}/rows.csv?accessType=DOWNLOAD"]
+    for u in urls:
+        try:
+            print(f"    lade Archiv {year} ({fname}) …", flush=True)
+            data = get(u, raw=True)
+            open(path, "wb").write(data)
+            print(f"    {len(data) / 1e6:.0f} MB", flush=True)
+            return path
+        except NotFound:
+            continue
+    raise NotFound(f"Archiv {year} ({ds_id}) nicht ladbar")
+
+
+def filter_archive(path, sensor_ids):
+    """Zeilen der gewünschten Sensoren aus einem Jahresarchiv (CSV, auch in ZIP), stückweise gelesen."""
+    import zipfile, io
+    def frames(fh):
+        for ch in pd.read_csv(fh, chunksize=1_000_000):
+            ch.columns = [c.strip().lower() for c in ch.columns]
+            yield ch[ch["idsensore"].astype(str).isin([str(x) for x in sensor_ids])]
+    if zipfile.is_zipfile(path):
+        z = zipfile.ZipFile(path)
+        parts = [f for n in z.namelist() if n.lower().endswith(".csv") for f in frames(z.open(n))]
+    else:
+        parts = list(frames(path))
+    d = pd.concat(parts) if parts else pd.DataFrame()
+    return d.rename(columns={"idoperatore": "idoperatore", "data": "data", "valore": "valore"})
 
 
 def download(sens, first_year):
     yd = yearly_datasets()
-    print("Archiv-Datensätze je Jahr:", {y: yd[y] for y in sorted(yd)} or "keine gefunden")
+    print("Jahresarchive:", {y: f"{v[0]} ({v[1]})" for y, v in sorted(yd.items())} or "keine gefunden")
     this = pd.Timestamp.today().year
     os.makedirs(f"{OUT}/raw", exist_ok=True)
-    for key, s in sens.items():
-        for kind in ("speed", "dir", "gust"):
-            sid = s[kind]
-            if not sid:
-                continue
-            for y in range(first_year, this + 1):
-                f = f"{OUT}/raw/{sid}_{y}.csv"
-                if os.path.exists(f) and y < this:
-                    continue
-                df = pd.DataFrame()
-                for ds in ([yd[y]] if y in yd else []) + [CURRENT]:      # Archiv des Jahres, sonst laufender Datensatz
-                    df = load_sensor_year(ds, sid, y)
-                    if len(df):
-                        break
-                df.to_csv(f, index=False)
-                print(f"  {key} {kind} {y}: {len(df)} Werte", flush=True)
+    wanted = {s[k]: (key, k) for key, s in sens.items() for k in ("speed", "dir", "gust") if s[k]}
+    for y in range(first_year, this + 1):
+        todo = [sid for sid in wanted if not (os.path.exists(f"{OUT}/raw/{sid}_{y}.csv") and y < this)]
+        if not todo:
+            continue
+        got = {}
+        if y in yd and yd[y][1] == "dataset":                    # Archiv als Tabelle: gezielt abfragen
+            for sid in todo:
+                got[sid] = load_sensor_year(yd[y][0], sid, y)
+        elif y in yd:                                            # Archiv als Datei: einmal laden, filtern
+            try:
+                d = filter_archive(archive_file(yd[y][0], y), todo)
+                for sid in todo:
+                    got[sid] = d[d.idsensore.astype(str) == str(sid)][[c for c in ("data", "valore", "idoperatore") if c in d]]
+            except NotFound as e:
+                print("   ", e)
+        for sid in todo:                                         # sonst / fehlend: laufender Datensatz
+            if sid not in got or got[sid].empty:
+                try:
+                    got[sid] = load_sensor_year(CURRENT, sid, y)
+                except NotFound as e:
+                    print("   ", e); got[sid] = pd.DataFrame()
+            got[sid].to_csv(f"{OUT}/raw/{sid}_{y}.csv", index=False)
+            key, kind = wanted[sid]
+            print(f"  {key} {kind} {y}: {len(got[sid])} Werte", flush=True)
 
 
 # ---------------------------------------------------------------- 3. Stundenwerte
@@ -161,7 +222,8 @@ def read_raw(sid, first_year):
     if "idoperatore" in d:
         d = d[d.idoperatore.astype(str).isin(["1", "3", "4"])]
     # Zeitstempel: Ortszeit ohne Zone im Archiv (laut ARPA Sonnenzeit = UTC+1); Socrata liefert ohne Zone
-    t = pd.to_datetime(d["data"], errors="coerce")
+    raw_t = d["data"].astype(str)
+    t = pd.to_datetime(raw_t, errors="coerce", dayfirst=raw_t.str.contains("/").any())   # Archiv: TT/MM/JJJJ hh:mm:ss
     v = pd.to_numeric(d["valore"], errors="coerce")
     s = pd.Series(v.values, index=t).dropna()
     s = s[s > -9000]
