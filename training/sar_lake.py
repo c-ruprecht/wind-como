@@ -65,6 +65,15 @@ def download(start, end, workers=6):
     bbox = BBox(BBOX, crs=CRS.WGS84)
     size = bbox_to_dimensions(bbox, resolution=RES)
     items = list(SentinelHubCatalog(config=cfg).search(s1, bbox=bbox, time=(start, end)))
+    # benachbarte Kacheln desselben Überflugs (wenige Sekunden auseinander) ergeben dasselbe Mosaik: nur eine behalten
+    items.sort(key=lambda it: it["properties"]["datetime"])
+    keep, last = [], None
+    for it in items:
+        t = pd.Timestamp(it["properties"]["datetime"])
+        if last is None or t - last > pd.Timedelta(minutes=5):
+            keep.append(it)
+        last = t
+    items = keep
     print(f"{len(items)} Überflüge, Bildgröße {size} Pixel à {RES} m", flush=True)
     os.makedirs(f"{OUT}/raw", exist_ok=True)
     meta, todo = [], []
@@ -263,6 +272,9 @@ def stations():
             rec[f"max_{st}"] = float(nm.max()) if len(nm) >= 6 else np.nan
         rows.append(rec)
     S = pd.DataFrame(rows)
+    # benachbarte Kacheln desselben Überflugs sind identisch: einmal zählen
+    S = S.sort_values("t_exakt")
+    S = S[S.t_exakt.diff().fillna(pd.Timedelta(hours=1)) > pd.Timedelta(minutes=5)].reset_index(drop=True)
     os.makedirs(RES_DIR, exist_ok=True)
     S.drop(columns="file").to_csv(f"{RES_DIR}/sar_spots.csv", index=False)
     spots_up = [k for k in ("colico", "gera_lario", "sorico_punta", "domaso") if k in S]

@@ -4,6 +4,7 @@
   python training/breva_events.py laeufe        # alte Vorhersageläufe (ECMWF IFS, 1–7 Tage vorher), 2024 – gestern
   python training/breva_events.py ereignisse    # Breva-Abende aus Sentinel-1 + Breva-Tage aus Samolaco
   python training/breva_events.py analyse       # welche Wettergrößen trennen Breva-Tage von ruhigen Tagen (ERA5)
+  python training/breva_events.py lang          # was macht einen langen Breva (um 19:15 noch Wind auf dem See)
   python training/breva_events.py vorlauf       # ab wie vielen Tagen vorher ist der Breva vorhersagbar
 
 Voraussetzung: results/sar_spots.csv (sar_lake.py stations) und data/arpa/samolaco_wind.csv.
@@ -155,6 +156,12 @@ def features(H):
         "dp_po_tal_15": at("milano", "pressure_msl", 15) - at("chiavenna", "pressure_msl", 15),
         "dp_po_tal_06": at("milano", "pressure_msl", 6) - at("chiavenna", "pressure_msl", 6),
         "dp_nord_sued_12": at("zurich", "pressure_msl", 12) - at("milano", "pressure_msl", 12),
+        "dp_po_tal_18": at("milano", "pressure_msl", 18) - at("chiavenna", "pressure_msl", 18),
+        "rad_spaet_see": win("see", "shortwave_radiation", 15, 18, "sum") / 1000,       # Sonne am späten Nachmittag
+        "rad_spaet_chiavenna": win("chiavenna", "shortwave_radiation", 15, 18, "sum") / 1000,
+        "wolken_spaet_see": win("see", "cloud_cover", 15, 19, "mean"),
+        "wolken_morgen_see": win("see", "cloud_cover", 6, 11, "mean"),
+        "t18_chiavenna_minus_milano": at("chiavenna", "temperature_2m", 18) - at("milano", "temperature_2m", 18),
         "taupunktdiff_milano": at("milano", "temperature_2m", 13) - at("milano", "dew_point_2m", 13),
         "wind_see_15": at("see", "wind_speed_10m", 15),
         "wind_milano_12": at("milano", "wind_speed_10m", 12),
@@ -174,16 +181,19 @@ def features(H):
 # ---------------------------------------------------------------- Ereignisse
 
 def sat_factor(S):
-    """See / Samolaco zur Überflugstunde bei Breva-Abenden (Satellit)."""
-    x = S[S.breva & (S.see >= 10) & (S.st_samolaco >= 3)]
-    return float((x.see / x.st_samolaco).median()) if len(x) >= 10 else 1.0, len(x)
+    """See (19:15) / Samolaco-Nachmittagsmaximum bei Breva-Abenden. Bewusst gegen das Maximum und nicht gegen die
+    Überflugstunde: in Samolaco ist der Breva um 19:15 oft schon abgeflaut, auf dem See nicht – der Faktor zur
+    Überflugstunde (~2) würde die Breva-Tage stark überschätzen."""
+    x = S[S.breva & (S.see >= 10) & (S.max_samolaco >= 5)]
+    return float((x.see / x.max_samolaco).median()) if len(x) >= 10 else 1.0, len(x)
 
 
 def load_sat():
     f = os.path.join(RES, "sar_spots.csv")
     if not os.path.exists(f):
         return None
-    S = pd.read_csv(f, parse_dates=["time", "t_exakt"])
+    S = pd.read_csv(f, parse_dates=["time", "t_exakt"]).sort_values("t_exakt")
+    S = S[S.t_exakt.diff().fillna(pd.Timedelta(hours=1)) > pd.Timedelta(minutes=5)]    # Kacheln desselben Überflugs
     up = [k for k in ("colico", "gera_lario", "sorico_punta", "domaso") if k in S]
     S["see"] = S[up].mean(axis=1)
     lt = S.t_exakt.dt.tz_convert(TZ)
@@ -293,6 +303,51 @@ def analyse(thr=12):
     open(f"{RES}/breva_merkmale.txt", "w").write("\n".join(lines) + "\n")
 
 
+def lang(thr=14, calm=10, day_thr=10):
+    """Langer Breva: an Tagen mit Breva (Samolaco-Nachmittagsmax ≥ day_thr kn) – weht er um 19:15 noch auf dem See?
+    lang = Seewind beim Abendüberflug ≥ thr, kurz = < calm. Welche Wettergrößen unterscheiden die beiden?"""
+    from sklearn.metrics import roc_auc_score
+    S = load_sat()
+    if S is None:
+        sys.exit("results/sar_spots.csv fehlt")
+    A = S[S.abend & (S.dir == 200)].drop_duplicates("datum").set_index("datum")
+    A = A[A.max_samolaco >= day_thr]
+    A = A[(A.see >= thr) | (A.see < calm)]
+    y = (A.see >= thr).astype(int)
+    F = features(load_hourly("era5"))
+    X = F.reindex(y.index).dropna(thresh=len(F.columns) - 3); y = y.reindex(X.index)
+    lines = []
+    p = lambda s="": (print(s), lines.append(s))
+    p(f"Breva-Tage (Samolaco ≥ {day_thr} kn nachmittags) mit Abendüberflug: {len(y)} – "
+      f"um 19:15 noch ≥ {thr} kn auf dem See: {int(y.sum())} (lang), < {calm} kn: {int((y == 0).sum())} (kurz)")
+    if y.nunique() < 2 or len(y) < 15:
+        p("zu wenige Fälle"); return
+    st = A.reindex(X.index)
+    p(f"Samolaco: Nachmittagsmax lang {st.max_samolaco[y == 1].median():.1f} / kurz {st.max_samolaco[y == 0].median():.1f} kn, "
+      f"zur Überflugstunde lang {st.st_samolaco[y == 1].median():.1f} / kurz {st.st_samolaco[y == 0].median():.1f} kn")
+    rows = []
+    for c in X.columns:
+        if c.startswith("doy"):
+            continue
+        ok = X[c].notna()
+        a = roc_auc_score(y[ok], X[c][ok])
+        rows.append(dict(merkmal=c, lang=X[c][y == 1].median(), kurz=X[c][y == 0].median(), auc=a, trennkraft=abs(a - .5) * 2))
+    T = pd.DataFrame(rows).sort_values("trennkraft", ascending=False).round(2)
+    p(T.to_string(index=False))
+    mon = pd.crosstab(X.index.month, y).rename(columns={0: "kurz", 1: "lang"})
+    # stetig: Rangkorrelation jeder Größe mit dem Seewind um 19:15 an allen Breva-Tagen (braucht keine Klassen)
+    Aall = S[S.abend & (S.dir == 200)].drop_duplicates("datum").set_index("datum")
+    Aall = Aall[Aall.max_samolaco >= day_thr]
+    Xa = F.reindex(Aall.index).dropna(thresh=len(F.columns) - 3)
+    sp = Xa.drop(columns=["doy_sin", "doy_cos"]).corrwith(Aall.see.reindex(Xa.index), method="spearman")
+    p(f"\nRangkorrelation mit dem Seewind um 19:15 an {len(Xa)} Breva-Tagen (+ = mehr Abendwind):")
+    p(sp.reindex(sp.abs().sort_values(ascending=False).index).round(2).head(12).to_string())
+    p("\nnach Monat:\n" + mon.to_string())
+    if len(y) >= 40:
+        a, _ = loyo_auc(X, y); p(f"Modell (XGBoost, je Jahr ausgelassen): AUC {a:.2f}")
+    open(f"{RES}/breva_lang.txt", "w").write("\n".join(lines) + "\n")
+
+
 def vorlauf(thr=(12, 14), model="ecmwf_ifs025", train_until=2023):
     """Modell an ERA5 + Samolaco bis train_until, getestet ab train_until+1 mit Vorhersagen 0–7 Tage vorher."""
     from sklearn.metrics import roc_auc_score, brier_score_loss
@@ -339,8 +394,8 @@ def vorlauf(thr=(12, 14), model="ecmwf_ifs025", train_until=2023):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("step", choices=["wetter", "laeufe", "ereignisse", "analyse", "vorlauf"])
-    ap.add_argument("--schwelle", type=float, default=12)
+    ap.add_argument("step", choices=["wetter", "laeufe", "ereignisse", "analyse", "lang", "vorlauf"])
+    ap.add_argument("--schwelle", type=float, default=None)
     ap.add_argument("--modell", default="ecmwf_ifs025")
     a = ap.parse_args()
     if a.step == "wetter":
@@ -348,8 +403,10 @@ if __name__ == "__main__":
     elif a.step == "laeufe":
         laeufe(a.modell)
     elif a.step == "ereignisse":
-        ereignisse(a.schwelle)
+        ereignisse(a.schwelle or 12)
     elif a.step == "analyse":
-        analyse(a.schwelle)
+        analyse(a.schwelle or 12)
+    elif a.step == "lang":
+        lang(a.schwelle or 14)
     else:
         vorlauf(model=a.modell)
