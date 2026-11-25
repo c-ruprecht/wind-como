@@ -207,14 +207,15 @@ def wind(force=False):
     print(f"Wasser/Land-Schwelle {thr:.1f} dB, Wassermaske {water.sum()} Pixel à {RES} m")
     icon = icon_direction(sorted(sc.t.unique()))
     done = new = 0
+    skip = {"kein Rohbild": [], "keine Modellrichtung": [], "Fehler": []}
     for _, row in sc.iterrows():
         p = f"{OUT}/raw/{row.file}"; out = f"{OUT}/wind/{row.file[:-4]}.npz"
         if not os.path.exists(p):
-            continue
+            skip["kein Rohbild"].append(row.t.year); continue
         if not force and os.path.exists(out):
             done += 1; continue
         if row.t not in icon.index or pd.isna(icon.wd.get(row.t)):
-            continue
+            skip["keine Modellrichtung"].append(row.t.year); continue
         wd = snap_axis(float(icon.wd[row.t]))
         with rasterio.open(p) as r:
             vv, inc, m = r.read(1), r.read(2), r.read(3)
@@ -226,6 +227,11 @@ def wind(force=False):
         np.savez_compressed(out, v=v.astype("float32"), dir=wd, icon_kn=float(icon.ws[row.t]), time=str(row.t))
         new += 1
     print(f"Wind gerechnet: {new} neu, {done} vorhanden")
+    for why, ys in skip.items():
+        if ys:
+            print(f"  übersprungen ({why}): {len(ys)} –", dict(sorted(pd.Series(ys).value_counts().items())))
+    have = pd.Series([os.path.basename(f)[:4] for f in glob.glob(f"{OUT}/wind/*.npz")]).value_counts().sort_index()
+    print("  Windbilder je Jahr:", dict(have))
 
 
 # ---------------------------------------------------------------- 3. Stationen bewerten
