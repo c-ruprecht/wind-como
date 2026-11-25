@@ -69,6 +69,19 @@ Stationsvergleich (`station_screen.py`, 9 Stationen, Sommer, Nachmittag 13–18 
   Südgruppe Como–Lecco–Canzo läuft getrennt (r ~0 zum Norden) – für die Spots am oberen See ungeeignet.
 - Offen: Faktor See/Samolaco und Trefferquote aus dem Satelliten (`sar_lake.py stations`).
 
+Breva-Ereignisse und Vorhersagbarkeit (`training/breva_events.py`):
+```
+python training/breva_events.py wetter
+python training/breva_events.py laeufe
+python training/breva_events.py ereignisse
+python training/breva_events.py analyse
+python training/breva_events.py vorlauf
+```
+1. Breva-Abende aus Sentinel-1 (Apr–Sep, Abendüberflug, See ≥ 12 kn aus Süd), dazu Breva-Tage aus Samolaco × Satellitenfaktor.
+2. ERA5 (Wetter, wie es war): welche Größen trennen Breva-Tage von ruhigen – Einstrahlung, Wolken, Temperatur- und
+   Druckgefälle Po-Ebene – Täler, Nord-Süd-Druck (Föhn), Regen. Modell-AUC = Obergrenze bei perfekter Vorhersage.
+3. ECMWF-Läufe 1–7 Tage vorher (ab 2024): AUC nach Vorlauf – ab wann der Breva vorhersagbar ist.
+
 Offene Punkte / Plan
 1. ARPA-Download prüfen (Zeitzone der Zeitstempel: Annahme UTC+1 ohne Sommerzeit, gegen bekannte Ereignisse prüfen)
 2. ICON/GFS/ECMWF an den Stationen (Open-Meteo, frühere Läufe) – wie gut trifft ICON den Breva?
