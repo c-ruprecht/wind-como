@@ -241,31 +241,40 @@ def auc(score, label):
 def stations():
     water = np.load(f"{OUT}/water_mask.npy")
     ys, xs, sel = spot_pixels(water)
-    obs = {os.path.basename(f)[:-9]: pd.read_csv(f, parse_dates=["time"]).set_index("time")
-           for f in glob.glob(os.path.join(ROOT, "data", "arpa", "*_wind.csv"))}
+    obs = {}
+    for f in glob.glob(os.path.join(ROOT, "data", "arpa", "*_wind.csv")):
+        d = pd.read_csv(f, parse_dates=["time"]).set_index("time")
+        d.index = pd.DatetimeIndex(d.index).tz_convert("UTC")
+        obs[os.path.basename(f)[:-9]] = d.sort_index()
     rows = []
     for f in sorted(glob.glob(f"{OUT}/wind/*.npz")):
         z = np.load(f); v = z["v"] * KN; t = pd.Timestamp(str(z["time"]))
         t = t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
-        rec = {"time": t, "dir": float(z["dir"]), "icon_kn": float(z["icon_kn"])}
+        te = pd.Timestamp(os.path.basename(f)[:15], tz="UTC")           # genaue Überflugzeit aus dem Dateinamen
+        rec = {"time": t, "t_exakt": te, "file": f, "dir": float(z["dir"]), "icon_kn": float(z["icon_kn"])}
         for k, idx in sel.items():
             vals = v[ys[idx], xs[idx]]; vals = vals[np.isfinite(vals)]
             rec[k] = float(np.median(vals)) if vals.size >= 5 else np.nan
+        lab = te.ceil("h")                                              # Stationsstunde, die den Überflug enthält
+        day = te.tz_convert("Europe/Rome").normalize()
         for st, d in obs.items():
-            rec[f"st_{st}"] = float(d.kn.get(t, np.nan))
+            rec[f"st_{st}"] = float(d.kn.get(lab, np.nan))
+            nm = d.kn.loc[day + pd.Timedelta(hours=12):day + pd.Timedelta(hours=20)]   # Nachmittag 11–20 Uhr Ortszeit
+            rec[f"max_{st}"] = float(nm.max()) if len(nm) >= 6 else np.nan
         rows.append(rec)
     S = pd.DataFrame(rows)
     os.makedirs(RES_DIR, exist_ok=True)
-    S.to_csv(f"{RES_DIR}/sar_spots.csv", index=False)
+    S.drop(columns="file").to_csv(f"{RES_DIR}/sar_spots.csv", index=False)
     spots_up = [k for k in ("colico", "gera_lario", "sorico_punta", "domaso") if k in S]
     S["see"] = S[spots_up].mean(axis=1)                         # Wind auf dem oberen See
     loc = S.time.dt.tz_convert("Europe/Rome")
     S["abends"] = loc.dt.hour >= 12
-    S["sommer"] = loc.dt.month.isin([5, 6, 7, 8, 9])
+    S["sommer"] = loc.dt.month.isin([4, 5, 6, 7, 8, 9])
+    S["breva"] = S.abends & S.sommer & (S.dir == AXIS[1])          # Abendüberflug, Modellwind aus Süd
     out = []
     for st in obs:
         c = f"st_{st}"
-        for name, m in (("alle", S.index == S.index), ("Sommerabend (Breva)", S.abends & S.sommer),
+        for name, m in (("alle", S.index == S.index), ("Sommerabend Süd (Breva)", S.breva),
                         ("morgens (Tivano)", ~S.abends)):
             x = S[m & S[c].notna() & S.see.notna()]
             if len(x) < 20:
@@ -275,7 +284,7 @@ def stations():
                             verhaeltnis_see_zu_station=round(float((x.see / x[c]).where(x[c] >= 3).median()), 2),
                             auc_see_ab_12kn=round(auc(x[c].values, strong.values), 2),
                             see_ab_12kn=int(strong.sum())))
-    for name, m in (("alle", S.index == S.index), ("Sommerabend (Breva)", S.abends & S.sommer)):
+    for name, m in (("alle", S.index == S.index), ("Sommerabend Süd (Breva)", S.breva)):
         x = S[m & S.see.notna()]
         if len(x) >= 20:
             out.append(dict(station="Modell (ICON ab 2022, sonst ERA5)", fall=name, n=len(x), r=round(x.icon_kn.corr(x.see), 2),
@@ -288,10 +297,11 @@ def stations():
     print(R.to_string(index=False))
     print("\nr: Zusammenhang; auc: wie gut die Station Überflüge mit ≥ 12 kn auf dem See erkennt (1 = perfekt, 0,5 = Zufall);"
           "\nVerhältnis: See / Station (Median) – der Faktor, mit dem man die Station auf den See umrechnet.")
+    breva_scenes(S, water, list(obs))
     # Karte: mittlerer Wind bei Sommerabenden mit Breva auf dem See
     try:
         import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
-        ev = S[S.abends & S.sommer & (S.see >= 8)]
+        ev = S[S.breva & (S.see >= 8)]
         files = {}
         for f in glob.glob(f"{OUT}/wind/*.npz"):
             tt = pd.Timestamp(str(np.load(f)["time"]))
@@ -308,6 +318,45 @@ def stations():
             plt.savefig(f"{RES_DIR}/sar_mean.png", dpi=150, bbox_inches="tight")
     except Exception as e:
         print("Karte nicht gezeichnet:", e)
+
+
+def breva_scenes(S, water, stations, top=12):
+    """Abendüberflüge (Apr–Sep, Süd) mit Breva auf dem See: Liste und Bildtafel, Vergleich mit den Stationen."""
+    B = S[S.breva & S.see.notna()].sort_values("see", ascending=False)
+    if B.empty:
+        print("\nKeine Breva-Abendüberflüge gefunden."); return
+    cols = ["see"] + [k for k in SPOTS if k in B] + [c for st in ("samolaco", "vercana", "colico", "morbegno")
+                                                     for c in (f"st_{st}", f"max_{st}") if c in B]
+    L = B.assign(ortszeit=B.t_exakt.dt.tz_convert("Europe/Rome").dt.strftime("%Y-%m-%d %H:%M"))[["ortszeit"] + cols]
+    L.round(1).to_csv(f"{RES_DIR}/breva_szenen.csv", index=False)
+    print(f"\nBreva-Abendüberflüge (Apr–Sep, Modellwind Süd): {len(B)}, davon See ≥ 10 kn: {(B.see >= 10).sum()}, "
+          f"≥ 12 kn: {(B.see >= 12).sum()}, ≥ 14 kn: {(B.see >= 14).sum()}")
+    print("Stärkste Fälle (st_ = Station zur Überflugstunde, max_ = Nachmittagsmaximum 11–20 Uhr):")
+    print(L.head(25).round(1).to_string(index=False))
+    for st in stations:
+        c, mx = f"st_{st}", f"max_{st}"
+        x = B[(B.see >= 10) & B[c].notna()]
+        if len(x) >= 5:
+            print(f"  See ≥ 10 kn (n={len(x)}): {st:10s} zur Überflugstunde Median {x[c].median():4.1f} kn, "
+                  f"See/Station {(x.see / x[c].clip(lower=1)).median():.2f}; "
+                  f"Nachmittagsmax {x[mx].median():4.1f} kn, See/Max {(x.see / x[mx].clip(lower=1)).median():.2f}")
+    try:
+        import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
+        T = B.head(top); n = len(T); nc = 4; nr = int(np.ceil(n / nc))
+        fig, axs = plt.subplots(nr, nc, figsize=(4 * nc, 4.3 * nr), squeeze=False)
+        for ax, (_, r) in zip(axs.flat, T.iterrows()):
+            v = np.load(r.file)["v"] * KN
+            im = ax.imshow(np.where(water, v, np.nan), extent=(BBOX[0], BBOX[2], BBOX[1], BBOX[3]), cmap="turbo", vmin=0, vmax=22)
+            lt = r.t_exakt.tz_convert("Europe/Rome")
+            sam = f"Samolaco {r.get('st_samolaco', np.nan):.0f} (max {r.get('max_samolaco', np.nan):.0f})"
+            ax.set_title(f"{lt:%d.%m.%Y %H:%M}\nSee {r.see:.0f} kn · {sam}", fontsize=9)
+            ax.set_xticks([]); ax.set_yticks([])
+        for ax in list(axs.flat)[n:]:
+            ax.axis("off")
+        fig.colorbar(im, ax=axs, shrink=0.6, label="kn")
+        fig.savefig(f"{RES_DIR}/breva_top.png", dpi=110, bbox_inches="tight")
+    except Exception as e:
+        print("Bildtafel nicht gezeichnet:", e)
 
 
 if __name__ == "__main__":
