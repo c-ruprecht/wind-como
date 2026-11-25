@@ -127,15 +127,27 @@ def yearly_datasets():
                 break
         except NotFound as e:
             print("   Katalog nicht erreichbar:", e)
+    import re
     found = {}
+    print("   Katalog:")
     for r in results:
         res = r["resource"]; name = res.get("name", "")
         if "sensori meteo" not in name.lower():
             continue
-        for y in range(2000, 2100):
-            if str(y) in name and y not in found:
-                found[y] = (res["id"], res.get("type", "?"), name)
+        years = [int(x) for x in re.findall(r"(?<!\d)(20\d\d)(?!\d)", name)]
+        print(f"     {res['id']}  {res.get('type', '?'):8s} {name}")
+        if not years:
+            continue
+        span = range(min(years), max(years) + 1)                 # „dal 2011 al 2019“ -> alle Jahre dazwischen
+        for y in span:
+            found.setdefault(y, (res["id"], res.get("type", "?"), name))
     return found
+
+
+def load_sensor_year(dataset, sensor, year):
+    w = f"idsensore='{sensor}' AND data >= '{year}-01-01T00:00:00' AND data < '{year + 1}-01-01T00:00:00'"
+    rows = soql(dataset, **{"$where": w, "$select": "data,valore,idoperatore"})
+    return pd.DataFrame(rows)
 
 
 def archive_file(ds_id, year):
