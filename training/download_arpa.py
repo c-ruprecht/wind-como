@@ -2,8 +2,8 @@
 
 Quelle: Open Data Lombardia (Socrata), Regione Lombardia / ARPA Lombardia.
   Stationsverzeichnis   https://www.dati.lombardia.it/resource/nf78-nj6b.json
-  Messwerte             Datensatz „Dati sensori meteo“ (i95f-5avh, laufende Daten) und je Jahr ein Archiv-Datensatz,
-                        die das Skript über den Socrata-Katalog selbst sucht.
+  Messwerte             Datensatz „Dati sensori meteo“ (647i-nhxk) als Tabelle; zusätzlich sucht das Skript im Katalog
+                        nach Jahresarchiven (falls ältere Jahre ausgelagert sind).
 Werte: 10-Minuten-Mittel (idoperatore 3 = Mittel, 4 = Maximum/Böe); -9999 = fehlt;
 Richtung 777/7777 = Windstille, 888/8888 = umlaufend.
 
@@ -25,7 +25,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "arpa")
 DOMAIN = "https://www.dati.lombardia.it"
 REGISTRY = "nf78-nj6b"
-CURRENT = "i95f-5avh"
+MAIN = "647i-nhxk"            # „Dati sensori meteo“: alle Messwerte als Tabelle
+CURRENT = "i95f-5avh"         # gefilterte Ansicht davon (nur die letzten Wochen), Rückfall
 MS2KN = 1.943844
 
 # Stationen am und um den Comer See (idstazione aus dem Verzeichnis, Höhe m)
@@ -129,11 +130,11 @@ def yearly_datasets():
             print("   Katalog nicht erreichbar:", e)
     import re
     found = {}
-    print("   Katalog:")
+    print("   Katalog (nur Messwert-Archive):")
     for r in results:
         res = r["resource"]; name = res.get("name", "")
-        if "sensori meteo" not in name.lower():
-            continue
+        if not name.lower().startswith("dati sensori meteo") or res.get("type") not in ("dataset", "file", "blob"):
+            continue                                             # Verzeichnisse („Elenco“, „Anagrafica“), Filter, Grafiken
         years = [int(x) for x in re.findall(r"(?<!\d)(20\d\d)(?!\d)", name)]
         print(f"     {res['id']}  {res.get('type', '?'):8s} {name}")
         if not years:
@@ -188,36 +189,48 @@ def filter_archive(path, sensor_ids):
     return d.rename(columns={"idoperatore": "idoperatore", "data": "data", "valore": "valore"})
 
 
+def coverage(sid):
+    """Erster und letzter Zeitpunkt eines Sensors im Hauptdatensatz."""
+    try:
+        r = get(f"{DOMAIN}/resource/{MAIN}.json?" + urllib.parse.urlencode(
+            {"$select": "min(data) as von, max(data) as bis, count(*) as n", "$where": f"idsensore='{sid}'"}))
+        return r[0] if r else {}
+    except NotFound as e:
+        return {"fehler": str(e)}
+
+
 def download(sens, first_year):
-    yd = yearly_datasets()
-    print("Jahresarchive:", {y: f"{v[0]} ({v[1]})" for y, v in sorted(yd.items())} or "keine gefunden")
     this = pd.Timestamp.today().year
     os.makedirs(f"{OUT}/raw", exist_ok=True)
     wanted = {s[k]: (key, k) for key, s in sens.items() for k in ("speed", "dir", "gust") if s[k]}
+    print(f"   Hauptdatensatz {MAIN}:")
+    for sid, (key, kind) in wanted.items():
+        c = coverage(sid)
+        print(f"     {key} {kind} ({sid}): {str(c.get('von', '?'))[:10]} – {str(c.get('bis', '?'))[:10]}, {c.get('n', '?')} Werte {c.get('fehler', '')}")
+    yd = yearly_datasets()
+    if yd:
+        print("   Jahresarchive:", {y: f"{v[0]} ({v[1]})" for y, v in sorted(yd.items())})
     for y in range(first_year, this + 1):
         todo = [sid for sid in wanted if not (os.path.exists(f"{OUT}/raw/{sid}_{y}.csv") and y < this)]
-        if not todo:
-            continue
-        got = {}
-        if y in yd and yd[y][1] == "dataset":                    # Archiv als Tabelle: gezielt abfragen
-            for sid in todo:
-                got[sid] = load_sensor_year(yd[y][0], sid, y)
-        elif y in yd:                                            # Archiv als Datei: einmal laden, filtern
-            try:
-                d = filter_archive(archive_file(yd[y][0], y), todo)
-                for sid in todo:
-                    got[sid] = d[d.idsensore.astype(str) == str(sid)][[c for c in ("data", "valore", "idoperatore") if c in d]]
-            except NotFound as e:
-                print("   ", e)
-        for sid in todo:                                         # sonst / fehlend: laufender Datensatz
-            if sid not in got or got[sid].empty:
+        for sid in todo:
+            df = pd.DataFrame()
+            sources = [MAIN] + ([yd[y][0]] if y in yd and yd[y][1] == "dataset" else []) + [CURRENT]
+            for ds in sources:
                 try:
-                    got[sid] = load_sensor_year(CURRENT, sid, y)
+                    df = load_sensor_year(ds, sid, y)
                 except NotFound as e:
-                    print("   ", e); got[sid] = pd.DataFrame()
-            got[sid].to_csv(f"{OUT}/raw/{sid}_{y}.csv", index=False)
+                    print("   ", e); continue
+                if len(df):
+                    break
+            if df.empty and y in yd and yd[y][1] != "dataset":   # Archiv als Datei
+                try:
+                    d = filter_archive(archive_file(yd[y][0], y), [sid])
+                    df = d[[c for c in ("data", "valore", "idoperatore") if c in d]]
+                except NotFound as e:
+                    print("   ", e)
+            df.to_csv(f"{OUT}/raw/{sid}_{y}.csv", index=False)
             key, kind = wanted[sid]
-            print(f"  {key} {kind} {y}: {len(got[sid])} Werte", flush=True)
+            print(f"  {key} {kind} {y}: {len(df)} Werte", flush=True)
 
 
 # ---------------------------------------------------------------- 3. Stundenwerte
