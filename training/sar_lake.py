@@ -241,6 +241,8 @@ def wind(force=False):
         v[ok] = cmod5n_inverse(vv[ok], phi, inc[ok])
         np.savez_compressed(out, v=v.astype("float32"), dir=wd, icon_kn=float(icon.ws[row.t]), time=str(row.t))
         new += 1
+        if new % 100 == 0:
+            print(f"  {new} Windbilder neu gerechnet (zuletzt {row.file[:8]}) …", flush=True)
     print(f"Wind gerechnet: {new} neu, {done} vorhanden")
     for why, ys in skip.items():
         if ys:

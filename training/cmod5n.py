@@ -29,7 +29,8 @@ def cmod5n_forward(v, phi, theta):
     s_vec = np.where(s < s0, s0, s)
     a3 = 1.0 / (1.0 + np.exp(-s_vec))
     low = s < s0
-    a3 = np.where(low, a3 * (np.where(low, s, 1) / s0) ** (s0 * (1.0 - a3)), a3)
+    with np.errstate(invalid="ignore"):
+        a3 = np.where(low, a3 * (np.where(low, s, 1) / s0) ** (s0 * (1.0 - a3)), a3)
     b0 = (a3 ** gam) * 10.0 ** (a0 + a1 * v)
     b1 = C[15] * v * (0.5 + x - np.tanh(4.0 * (x + C[16] + C[17] * v)))
     b1 = C[14] * (1.0 + x) - b1
@@ -54,8 +55,13 @@ def cmod5n_inverse(sigma0, phi, theta):
     ok = np.isfinite(s) & np.isfinite(phi) & np.isfinite(theta) & (s > 0)
     if not ok.any():
         return out
-    model = cmod5n_forward(V_GRID[None, :], phi[ok][:, None], theta[ok][:, None])   # (n, nv)
-    err = np.abs(10 * np.log10(model) - 10 * np.log10(s[ok])[:, None])
+    # Nachschlagetabelle: Richtung auf 1°, Einfallswinkel auf 0,05° gerundet – über dem See gibt es nur wenige
+    # verschiedene Paare, das spart > 99 % der Rechenzeit
+    key = np.stack([np.round(phi[ok]).astype(int), np.round(theta[ok] * 20).astype(int)], axis=1)
+    uniq, inv = np.unique(key, axis=0, return_inverse=True)
+    model = cmod5n_forward(V_GRID[None, :], uniq[:, 0][:, None].astype(float), (uniq[:, 1] / 20.0)[:, None])
+    lut = 10 * np.log10(model)                                                         # (m, nv)
+    err = np.abs(lut[inv.ravel()] - 10 * np.log10(s[ok])[:, None])
     out[ok] = V_GRID[np.argmin(err, axis=1)]
     return out
 
