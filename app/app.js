@@ -429,7 +429,9 @@ function drawDetail() {
       <span class="meta">${sp.shore}${ratio ? ` · bei Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % gegenüber dem Mittel des oberen Sees` : ""}</span></div>
     <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
     ${state.M && features7() ? `<p class="sigline"><b>Breva-Modell:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
-      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> ≥ ${t} kn`; }).join(" · ")}</p>` : ""}
+      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> ≥ ${t} kn`; }).join(" · ")}${
+      sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
+        ? `<br><small>🌧 Südwind mit Regen: eher Wind vor einer Front als thermischer Breva – meist gleichmäßig, aber nass; auf Gewitter achten.</small>` : ""}</p>` : ""}
     ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>
       ${cl ? ` · üblich an ${pct(cl.p)} der Tage im Monat mind. 2 h ab ${state.thr} kn` : ""}${sig.rainF < 1 ? ` · Regen ${de(sig.rain)} mm dämpft` : ""}</p>
       <ul class="parts">${sig.parts.map(p => `<li><span class="bar"><i style="width:${p.s == null ? 0 : Math.round(p.s * 100)}%"></i></span> ${p.label}: ${p.txt}</li>`).join("")}</ul>` : ""}
