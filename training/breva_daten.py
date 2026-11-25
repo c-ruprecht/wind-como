@@ -414,13 +414,17 @@ def tage():
     D["cape"] = W["cape_max"] if "cape_max" in W else np.nan
     # Klassen
     k = np.full(len(D), "ruhig", dtype=object)
-    thermisch = np.ones(len(D), bool)
-    gew = (D.regen >= 1).values
+    # Thermischer Ablauf an den Stationen: morgens ruhig, nachmittags Süd, gleichmäßig
+    sig = ((D.sam_morgen < 6) & (D.sam_sued_anteil >= 0.6) & (D.sam_boe < 2.3)).values
     foehn = ((D.sam_nord_std >= 2) | (col("dp_zurich_milano_12") >= 4)).values
     syn = (D.sam_morgen >= 6).values | ((D.sam_boe >= 2.3) & (D.sam_max >= 10)).values
+    # Regen zählt nur, wenn er den Breva stört: ab 1 mm ohne thermischen Ablauf, ab 5 mm (Gewitter) immer.
+    # ERA5 regnet im Sommer in den Bergen fast jeden zweiten Nachmittag ein wenig – das allein ist kein Störtag.
+    gew = (((D.regen >= 1).values & ~sig) | (D.regen >= 5).values)
     k[D.breva10.values == 1] = "Breva schwach"
-    k[D.breva14.values == 1] = "Breva"
-    k[syn] = "synoptisch"; k[foehn] = "Nordföhn"; k[gew] = "Regen/Gewitter"
+    k[(D.breva14.values == 1)] = "Breva"
+    k[syn & ~sig] = "synoptisch"; k[foehn] = "Nordföhn"; k[gew] = "Regen/Gewitter"
+    D["thermisch"] = sig
     D["klasse"] = k
     # Gegenprobe Satellit (wo Abendüberflug)
     has = D.sat_see.notna()
@@ -529,7 +533,10 @@ def anomalie(x):
 def pruefen(quelle="era5", model="icon_seamless", thr=14):
     """Jede Größe einzeln gegen den Breva prüfen – je Monat, über die Jahre, gegen den Satelliten."""
     D = pd.read_csv(f"{RES}/breva_tage.csv", index_col=0, parse_dates=True)
-    F = features(load(quelle, model=model)).reindex(D.index)
+    H = load(quelle, model=model)
+    if not H:
+        sys.exit(f"keine Daten für {quelle}/{model} – erst: python training/breva_daten.py {quelle if quelle != 'era5' else 'wetter'}")
+    F = features(H).reindex(D.index)
     F = F.loc[:, F.notna().mean() > 0.3]
     days = F.dropna(how="all").index
     D, F = D.loc[days], F.loc[days]
@@ -595,7 +602,11 @@ def vorlauf(thr=(14, 18), model="ecmwf_ifs025", train_until=2023):
     if not any(len(v.dropna(how="all")) for v in leads.values()):
         sys.exit("keine Läufe – erst: python training/breva_daten.py laeufe")
     test_days = D.index[D.index.year > train_until]
-    cols = [c for c in FE.columns if leads[1].loc[test_days, c].notna().mean() > 0.5]
+    cols = [c for c in FE.columns if c in leads[1] and leads[1].loc[test_days, c].notna().mean() > 0.5]
+    for L in LEADS:
+        for c in cols:
+            if c not in leads[L]:
+                leads[L][c] = np.nan
     print(f"{len(cols)} von {len(FE.columns)} Größen auch in den {model}-Läufen; fehlend:",
           sorted(set(FE.columns) - set(cols)))
     rows = []
