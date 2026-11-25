@@ -53,6 +53,22 @@ Erste Prüfung (Mai–Sep, 2014–2026): Colico und Como messen den Breva kaum �
 ab 14 kn in 0,1 % bzw. 1 % der Stunden, Böe/Mittel ~2,5 (geschützte Standorte), kaum Südwind.
 Deshalb erst die beste Station mit dem Satelliten auswählen.
 
+Stationsvergleich (`station_screen.py`, 9 Stationen, Sommer, Nachmittag 13–18 Uhr):
+
+| Station | Mittag kn | Tagesgang kn | ab 14 kn % | Süd % | Breva-Tage/Sommer | Max. Stunde |
+|---|---|---|---|---|---|---|
+| **Samolaco** (206 m, Pian di Spagna) | 7.5 | 4.6 | 8.4 | 63 | 66.7 | 15 |
+| Vercana (980 m, über Domaso) | 5.6 | 2.7 | 3.2 | 56 | 12.2 | 16 |
+| Morbegno (230 m) | 5.9 | 3.4 | 0.2 | 29 | 11.4 | 16 |
+| Colico (229 m) | 3.8 | 2.5 | 0.0 | 8 | 2.3 | 17 |
+| Como / Lecco / Valmadrera | 2–3.4 | ≤1.4 | ≤1.2 | – | ≤9 | – |
+| Canzo (1233 m) | 5.2 | −2.2 | 4.5 | 25 | – | 1 (Höhenwind) |
+
+- **Samolaco** zeigt die klare Breva-Signatur (starker Tagesgang, Süd, Maximum 15 Uhr): Kandidat für die Trainingsstation.
+- Nordgruppe Samolaco–Vercana–Colico–Morbegno hängt zusammen (r 0.47–0.69, Vercana–Samolaco 0.69);
+  Südgruppe Como–Lecco–Canzo läuft getrennt (r ~0 zum Norden) – für die Spots am oberen See ungeeignet.
+- Offen: Faktor See/Samolaco und Trefferquote aus dem Satelliten (`sar_lake.py stations`).
+
 Offene Punkte / Plan
 1. ARPA-Download prüfen (Zeitzone der Zeitstempel: Annahme UTC+1 ohne Sommerzeit, gegen bekannte Ereignisse prüfen)
 2. ICON/GFS/ECMWF an den Stationen (Open-Meteo, frühere Läufe) – wie gut trifft ICON den Breva?
