@@ -28,7 +28,19 @@ Gravedona (casarina.com), Gravedona ed Uniti (Centro Meteo Lombardo), Colico Pia
 ```
 conda env create -f environment.yml && conda activate windcomo
 python training/download_arpa.py            # Sensoren nachschlagen, 10-min-Werte laden, Stundenwerte -> data/arpa/
+python training/station_screen.py           # jede Station aus eigenen Messungen bewerten (Breva-Tagesgang, Böen, Richtung)
+
+# Satellit (Sentinel-1, 100 m) – Wind auf dem See gegen alle Stationen -> beste Station
+pip install sentinelhub rasterio
+export CDSE_CLIENT_ID=...  CDSE_CLIENT_SECRET=...
+python training/sar_lake.py download --start 2020-01-01
+python training/sar_lake.py wind
+python training/sar_lake.py stations
 ```
+
+Erste Prüfung (Mai–Sep, 2014–2026): Colico und Como messen den Breva kaum – nachmittags im Mittel 3–4 kn,
+ab 14 kn in 0,1 % bzw. 1 % der Stunden, Böe/Mittel ~2,5 (geschützte Standorte), kaum Südwind.
+Deshalb erst die beste Station mit dem Satelliten auswählen.
 
 Offene Punkte / Plan
 1. ARPA-Download prüfen (Zeitzone der Zeitstempel: Annahme UTC+1 ohne Sommerzeit, gegen bekannte Ereignisse prüfen)
