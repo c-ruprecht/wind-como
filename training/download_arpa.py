@@ -7,6 +7,8 @@ Quelle: Open Data Lombardia (Socrata), Regione Lombardia / ARPA Lombardia.
                         meteo“ (647i-nhxk) mit den letzten ~7 Monaten. Zuordnung wie im R-Paket ARPALData.
 Werte: 10-Minuten-Mittel (idoperatore 3 = Mittel, 4 = Maximum/Böe); -9999 = fehlt;
 Richtung 777/7777 = Windstille, 888/8888 = umlaufend.
+Zeitstempel: feste Zone UTC+1 (keine Sommerzeit – geprüft: an den Umstelltagen weder Lücke noch Doppelung).
+Böen: nur im Archiv (bis 2/2026), die Livedaten der letzten Monate enthalten keine Böen.
 
 Ablauf
   1. Sensoren nachschlagen: für jede Station in STATIONS die IDs von Velocità Vento und Direzione Vento
@@ -178,6 +180,26 @@ def read_raw(kind, sid, first_year):
     return s[~s.index.duplicated()].sort_index()
 
 
+def clean(out, key):
+    """Plausibilität der Stundenwerte: festhängende Richtung (≥ 12 h gleich bei Wind > 3 kn) und Einzelspitzen
+    (> 30 kn und mehr als dreimal so viel wie die Stunden davor und danach) werden entfernt."""
+    n0 = out.notna().sum()
+    if "dir" in out:
+        r = out.dir.round(0)
+        grp = (r != r.shift()).cumsum()
+        stuck = (r.groupby(grp).transform("size") >= 12) & (out.kn > 3)
+        out.loc[stuck, "dir"] = np.nan
+    nb = pd.concat([out.kn.shift(1), out.kn.shift(-1)], axis=1).mean(axis=1)
+    spike = (out.kn > 30) & (out.kn > 3 * nb.clip(lower=1))
+    out.loc[spike, ["kn"] + (["dir"] if "dir" in out else [])] = np.nan
+    if "gust_kn" in out:
+        out.loc[out.gust_kn < out.kn * 0.9, "gust_kn"] = np.nan
+    d = (n0 - out.notna().sum())
+    if d.sum():
+        print(f"  {key}: bereinigt " + ", ".join(f"{c} {int(v)}" for c, v in d.items() if v))
+    return out
+
+
 def hourly(sens, first_year):
     for key, s in sens.items():
         if not s["speed"]:
@@ -198,6 +220,7 @@ def hourly(sens, first_year):
             out["dir"] = (np.degrees(np.arctan2(-h.u, -h.v)) + 360) % 360
         if len(gu):
             out["gust_kn"] = gu.resample("1h", label="right", closed="right").max() * MS2KN
+        out = clean(out, key)
         n = df.ms.resample("1h", label="right", closed="right").count()
         out = out[n >= 3]                                              # mindestens 3 von 6 Zehn-Minuten-Werten
         out.to_csv(f"{OUT}/{key}_wind.csv", index_label="time", float_format="%.2f")

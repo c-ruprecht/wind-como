@@ -415,7 +415,8 @@ def tage():
     # Klassen
     k = np.full(len(D), "ruhig", dtype=object)
     # Thermischer Ablauf an den Stationen: morgens ruhig, nachmittags Süd, gleichmäßig
-    sig = ((D.sam_morgen < 6) & (D.sam_sued_anteil >= 0.6) & (D.sam_boe < 2.3)).values
+    # Böen fehlen in den ARPA-Livedaten (Archiv endet 2/2026): ohne Böenwert zählt nur Morgenruhe und Richtung
+    sig = ((D.sam_morgen < 6) & (D.sam_sued_anteil >= 0.6) & ((D.sam_boe < 2.3) | D.sam_boe.isna())).values
     foehn = ((D.sam_nord_std >= 2) | (col("dp_zurich_milano_12") >= 4)).values
     syn = (D.sam_morgen >= 6).values | ((D.sam_boe >= 2.3) & (D.sam_max >= 10)).values
     # Regen zählt nur, wenn er den Breva stört: ab 1 mm ohne thermischen Ablauf, ab 5 mm (Gewitter) immer.
