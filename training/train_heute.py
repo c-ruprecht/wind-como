@@ -109,25 +109,33 @@ def main():
             fn = f"heute_{hour}_{thr}.json"
             json.dump(T.compact(final), open(f"{T.OUT}/{fn}", "w"), separators=(",", ":"))
             out["files"][f"{hour}_{thr}"] = fn
-            m = T.xgb_model(out["features"]).fit(X[ok & ~test], y[ok & ~test])
             good = test & (Xl.notna().mean(axis=1) > 0.7)
-            p = m.predict_proba(Xl[good])[:, 1]; yy = y[good].values
+            obs_only = [c for c in out["features"] if c not in T.FEATS]
+
+            def oof(feats, Xtr, Xte):
+                """je Testjahr: Modell an ERA5/Messungen aller anderen Jahre, Vorhersage dieses Jahres"""
+                pr = pd.Series(np.nan, index=D.index)
+                for yr in sorted(set(D.index[good].year)):
+                    tr = ok & (D.index.year != yr); te = good & (D.index.year == yr)
+                    m = T.xgb_model(feats).fit(Xtr.loc[tr, feats], y[tr])
+                    pr[te] = m.predict_proba(Xte.loc[te, feats])[:, 1]
+                return pr
+            P = oof(out["features"], X, Xl)
+            Pf = oof(T.FEATS, FE, L1)                 # nur Vorhersage
+            Po = oof(obs_only, X, X)                  # nur Messungen
+            p = P[good].values; yy = y[good].values
             curve = T.iso_curve(p, yy)
             out["calib"][f"{hour}_{thr}"] = curve
-            # Vergleich: nur Vorhersage (7-Tage-Merkmale) und nur Messungen
-            mf = T.xgb_model(T.FEATS).fit(FE[ok & ~test], y[ok & ~test])
-            obs_only = [c for c in out["features"] if c not in T.FEATS]
-            mo = T.xgb_model().fit(X.loc[ok & ~test, obs_only], y[ok & ~test])
             saison = (D.index.month >= 3) & (D.index.month <= 10)        # nur Tage, an denen Breva überhaupt üblich ist
             gs = good & saison
             ys = y[gs].values
-            r_s = dict(auc_saison=round(roc_auc_score(ys, m.predict_proba(Xl[gs])[:, 1]), 3),
-                       auc_saison_nur_vorhersage=round(roc_auc_score(ys, mf.predict_proba(L1[gs])[:, 1]), 3),
-                       auc_saison_nur_messungen=round(roc_auc_score(ys, mo.predict_proba(X.loc[gs, obs_only])[:, 1]), 3))
+            r_s = dict(auc_saison=round(roc_auc_score(ys, P[gs]), 3),
+                       auc_saison_nur_vorhersage=round(roc_auc_score(ys, Pf[gs]), 3),
+                       auc_saison_nur_messungen=round(roc_auc_score(ys, Po[gs]), 3))
             r = dict(uhr=hour, schwelle=thr, tage=int(good.sum()), breva=int(yy.sum()),
                      auc=round(roc_auc_score(yy, p), 3),
-                     auc_nur_vorhersage=round(roc_auc_score(yy, mf.predict_proba(L1[good])[:, 1]), 3),
-                     auc_nur_messungen=round(roc_auc_score(yy, mo.predict_proba(X.loc[good, obs_only])[:, 1]), 3),
+                     auc_nur_vorhersage=round(roc_auc_score(yy, Pf[good]), 3),
+                     auc_nur_messungen=round(roc_auc_score(yy, Po[good]), 3),
                      brier=round(brier_score_loss(yy, np.interp(p, *curve)), 3), **r_s)
             imp = T.xgb_model().fit(X[ok], y[ok]).get_booster().get_score(importance_type="gain")
             r["wichtig"] = ", ".join(k for k, _ in sorted(imp.items(), key=lambda kv: -kv[1])[:5])
@@ -135,7 +143,7 @@ def main():
             out["skill"][f"{hour}_{thr}"] = {k: v for k, v in r.items() if k != "wichtig"}
     pd.set_option("display.width", 220)
     R = pd.DataFrame(rows_all)
-    print(f"Heute-Modell, geprüft {T.TRAIN_UNTIL + 1}–heute (Vorhersage = ECMWF-Lauf vom Vortag):")
+    print(f"Heute-Modell, geprüft {T.TRAIN_UNTIL + 1}–heute je Jahr out-of-fold (Vorhersage = ECMWF-Lauf vom Vortag):")
     print(R.drop(columns="wichtig").to_string(index=False))
     print("\nwichtigste Größen (Gain):")
     for r in rows_all:

@@ -105,19 +105,26 @@ def main():
         json.dump(compact(final), open(f"{OUT}/{fn}", "w"), separators=(",", ":"))
         man["files"][str(thr)] = fn
         man["test"]["p"][str(thr)] = final.predict_proba(test_rows)[:, 1].round(6).tolist()
-        # Eichung je Vorlauf: Modell bis TRAIN_UNTIL, Vorhersagen aus den Läufen danach
-        tr = ok & (X.index.year <= TRAIN_UNTIL)
-        m = xgb_model(FEATS).fit(X[tr], y[tr])
+        # Eichung je Vorlauf, out-of-fold: für jedes Jahr mit archivierten Vorhersagen ein Modell an ERA5 aller
+        # ANDEREN Jahre; damit dieses Jahr aus den echten Läufen vorhersagen. So sieht jede Eichungs-Vorhersage ein
+        # Modell mit fast allen Daten (wie das Endmodell), aber nie das eigene Jahr.
         test_days = D.index[D.index.year > TRAIN_UNTIL]
+        oof = {}
+        for yr in sorted(set(test_days.year)):
+            m = xgb_model(FEATS).fit(X[ok & (X.index.year != yr)], y[ok & (X.index.year != yr)])
+            for L in B.LEADS:
+                d = test_days[test_days.year == yr]; Xt = leads[L].loc[d, FEATS]
+                good = Xt.notna().mean(axis=1) > 0.7
+                if good.sum():
+                    oof.setdefault(L, []).append(pd.Series(m.predict_proba(Xt[good])[:, 1], index=d[good.values]))
         cal, skill = {}, []
         for grp in LEAD_GROUPS[thr]:
             ps, ys = [], []
             for L in grp:
-                Xt = leads[L].loc[test_days, FEATS]
-                good = Xt.notna().mean(axis=1) > 0.7
-                if good.sum() == 0:
+                if L not in oof:
                     continue
-                ps.append(m.predict_proba(Xt[good])[:, 1]); ys.append(y[test_days][good].values)
+                pr = pd.concat(oof[L])
+                ps.append(pr.values); ys.append(y[pr.index].values)
             if not ps:
                 continue
             p, yy = np.concatenate(ps), np.concatenate(ys)
@@ -126,8 +133,7 @@ def main():
                 cal[str(L)] = curve
             from sklearn.isotonic import IsotonicRegression
             pc = np.interp(p, curve[0], curve[1])
-            mon = np.concatenate([test_days[(leads[L].loc[test_days, FEATS].notna().mean(axis=1) > 0.7).values].month
-                                  for L in grp])
+            mon = np.concatenate([pd.concat(oof[L]).index.month for L in grp if L in oof])
             sa = (mon >= 3) & (mon <= 10)
             skill.append(dict(vorlauf="+".join(map(str, grp)), tage=len(yy), breva=int(yy.sum()),
                               auc=round(roc_auc_score(yy, p), 3),
@@ -137,7 +143,7 @@ def main():
         cal["0"] = cal.get("1")
         man["calib"][str(thr)] = cal
         man["skill"][str(thr)] = skill
-        print(f"\n≥ {thr} kn: {int(y[ok].sum())} Breva-Tage von {int(ok.sum())} (ERA5); Prüfung {TRAIN_UNTIL + 1}–heute mit {MODEL}:")
+        print(f"\n≥ {thr} kn: {int(y[ok].sum())} Breva-Tage von {int(ok.sum())} (ERA5); Prüfung {TRAIN_UNTIL + 1}–heute mit {MODEL}, je Jahr out-of-fold:")
         print(pd.DataFrame(skill).to_string(index=False))
     json.dump(man, open(f"{OUT}/manifest.json", "w"), separators=(",", ":"))
     print(f"\ngeschrieben: app/model/manifest.json, breva_14.json, breva_18.json ({len(FEATS)} Merkmale)")
