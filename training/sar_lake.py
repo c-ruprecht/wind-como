@@ -297,6 +297,19 @@ def stations():
     print(R.to_string(index=False))
     print("\nr: Zusammenhang; auc: wie gut die Station Überflüge mit ≥ 12 kn auf dem See erkennt (1 = perfekt, 0,5 = Zufall);"
           "\nVerhältnis: See / Station (Median) – der Faktor, mit dem man die Station auf den See umrechnet.")
+    # Welche Station passt zu welchem Spot? r bei Breva-Abenden und bei allen Überflügen
+    for name, m in (("Breva-Abende (Apr–Sep, Süd)", S.breva), ("alle Überflüge", S.index == S.index)):
+        M = {}
+        for st in obs:
+            c = f"st_{st}"
+            M[st] = {k: round(S.loc[m, [c, k]].dropna()[c].corr(S.loc[m, [c, k]].dropna()[k]), 2)
+                     for k in SPOTS if k in S and S.loc[m, [c, k]].dropna().shape[0] >= 20}
+        M = pd.DataFrame(M).T
+        if not M.empty:
+            M = M.loc[M.mean(axis=1).sort_values(ascending=False).index]
+            print(f"\nZusammenhang r Station (Zeile) – Satellitenwind am Spot (Spalte), {name}:")
+            print(M.to_string())
+            M.to_csv(f"{RES_DIR}/station_spot_r_{'breva' if 'Breva' in name else 'alle'}.csv")
     breva_scenes(S, water, list(obs))
     # Karte: mittlerer Wind bei Sommerabenden mit Breva auf dem See
     try:
