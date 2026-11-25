@@ -1,7 +1,7 @@
 uhr,schwelle,tage,breva,auc,auc_nur_vorhersage,auc_nur_messungen,brier,wichtig
-9,14,961,108,0.931,0.928,0.795,0.058,"wind_see_15_sued, rad_chiavenna, dp_zurich_milano_12, rad_spaet_chiavenna, regen_see"
-9,18,961,34,0.863,0.842,0.756,0.03,"wind_see_15_sued, dp_lyon_venezia_12, rad_chiavenna, geo_aus_sued, doy_sin"
-11,14,961,108,0.927,0.928,0.828,0.06,"wind_see_15_sued, rad_chiavenna, dp_zurich_milano_12, rad_spaet_chiavenna, vercana_jetzt"
-11,18,961,34,0.871,0.842,0.835,0.029,"wind_see_15_sued, vercana_mittel2h, colico_jetzt, colico_max_ab10, geo_aus_sued"
-13,14,961,108,0.94,0.928,0.889,0.056,"vercana_mittel2h, vercana_jetzt, wind_see_15_sued, samolaco_jetzt, dp_zurich_milano_12"
-13,18,961,34,0.898,0.842,0.891,0.027,"samolaco_jetzt, vercana_mittel2h, samolaco_mittel2h, samolaco_max_ab10, wind_see_15_sued"
+9,14,961,129,0.927,0.926,0.792,0.064,"wind_see_15_sued, rad_chiavenna, dp_zurich_milano_12, rad_spaet_chiavenna, regen_see"
+9,18,961,40,0.862,0.842,0.761,0.033,"wind_see_15_sued, geo_aus_sued, gestern_max, tmax_chiavenna, doy_sin"
+11,14,961,129,0.93,0.926,0.836,0.063,"wind_see_15_sued, rad_chiavenna, rad_spaet_chiavenna, dp_zurich_milano_12, vercana_jetzt"
+11,18,961,40,0.87,0.842,0.83,0.033,"wind_see_15_sued, vercana_mittel2h, geo_aus_sued, colico_max_ab10, vercana_max_ab10"
+13,14,961,129,0.942,0.926,0.886,0.059,"vercana_mittel2h, vercana_jetzt, samolaco_jetzt, rad_chiavenna, wind_see_15_sued"
+13,18,961,40,0.9,0.842,0.895,0.03,"samolaco_jetzt, vercana_mittel2h, samolaco_mittel2h, samolaco_max_ab10, dp_zurich_milano_12"
