@@ -174,6 +174,40 @@ def icon_direction(times):
     return d.drop_duplicates("time").set_index("time")
 
 
+def station_direction():
+    """Gemessene Richtung zur Überflugstunde: Samolaco (Breva aus SSO–S, Nord aus NW–NO) und Colico (Breva aus W–SW,
+    Nord aus N–O). Gibt eine Funktion t_exakt -> (200 | 20 | None, Text) zurück."""
+    obs = {}
+    for st in ("samolaco", "colico"):
+        f = os.path.join(ROOT, "data", "arpa", f"{st}_wind.csv")
+        if os.path.exists(f):
+            d = pd.read_csv(f, parse_dates=["time"]).set_index("time")
+            d.index = pd.DatetimeIndex(d.index).tz_convert("UTC")
+            obs[st] = d.sort_index()
+    rules = {"samolaco": (3.0, (112, 202), (300, 60)), "colico": (2.5, (200, 315), (330, 100))}
+    inside = lambda d, a, b: (a <= d <= b) if a <= b else (d >= a or d <= b)
+
+    def decide(te):
+        lab = te.ceil("h")
+        votes = []
+        for st, (kmin, sued, nord) in rules.items():
+            d = obs.get(st)
+            if d is None or lab not in d.index:
+                continue
+            kn, di = d.kn.get(lab), d.dir.get(lab)
+            if pd.isna(kn) or pd.isna(di) or kn < kmin:
+                continue
+            if inside(di, *sued):
+                votes.append((st, 200.0))
+            elif inside(di, *nord):
+                votes.append((st, 20.0))
+        dirs = {v for _, v in votes}
+        if len(dirs) == 1:
+            return dirs.pop(), "station:" + "+".join(st for st, _ in votes)
+        return None, "widerspruch" if dirs else "keine"
+    return decide
+
+
 def snap_axis(wd):
     """Modellrichtung auf die Seeachse legen: Wind aus NNO oder SSW."""
     diff = lambda a, b: abs((a - b + 180) % 360 - 180)
@@ -216,6 +250,8 @@ def wind(force=False):
     np.save(f"{OUT}/water_mask.npy", water)
     print(f"Wasser/Land-Schwelle {thr:.1f} dB, Wassermaske {water.sum()} Pixel à {RES} m")
     icon = icon_direction(sorted(sc.t.unique()))
+    decide = station_direction()
+    src_count = {}
     done = new = 0
     skip = {"kein Rohbild": [], "keine Modellrichtung": [], "Fehler": []}
     for _, row in sc.iterrows():
@@ -224,9 +260,17 @@ def wind(force=False):
             skip["kein Rohbild"].append(row.t.year); continue
         if not force and os.path.exists(out):
             done += 1; continue
-        if row.t not in icon.index or pd.isna(icon.wd.get(row.t)):
+        te = pd.Timestamp(row.file[:15], tz="UTC")
+        wd_st, src = decide(te)
+        has_model = row.t in icon.index and not pd.isna(icon.wd.get(row.t))
+        if wd_st is not None:
+            wd = wd_st                                              # gemessene Richtung (Samolaco/Colico)
+        elif has_model:
+            wd = snap_axis(float(icon.wd[row.t])); src = "modell"
+        else:
             skip["keine Modellrichtung"].append(row.t.year); continue
-        wd = snap_axis(float(icon.wd[row.t]))
+        src_count[src.split(":")[0]] = src_count.get(src.split(":")[0], 0) + 1
+        wd_model = snap_axis(float(icon.wd[row.t])) if has_model else np.nan
         try:
             with rasterio.open(p) as r:
                 vv, inc, m = r.read(1), r.read(2), r.read(3)
@@ -239,11 +283,14 @@ def wind(force=False):
         ok = water & (m > 0) & np.isfinite(vv) & (vv > 0)
         v = np.full(vv.shape, np.nan)
         v[ok] = cmod5n_inverse(vv[ok], phi, inc[ok])
-        np.savez_compressed(out, v=v.astype("float32"), dir=wd, icon_kn=float(icon.ws[row.t]), time=str(row.t))
+        np.savez_compressed(out, v=v.astype("float32"), dir=wd, dir_modell=wd_model, dir_quelle=src,
+                            icon_kn=float(icon.ws[row.t]) if has_model else np.nan, time=str(row.t))
         new += 1
         if new % 100 == 0:
             print(f"  {new} Windbilder neu gerechnet (zuletzt {row.file[:8]}) …", flush=True)
     print(f"Wind gerechnet: {new} neu, {done} vorhanden")
+    if src_count:
+        print("  Windrichtung aus:", src_count, "(station = gemessen in Samolaco/Colico, modell = ICON/ERA5)")
     for why, ys in skip.items():
         if ys:
             print(f"  übersprungen ({why}): {len(ys)} –", dict(sorted(pd.Series(ys).value_counts().items())))
@@ -283,7 +330,9 @@ def stations():
         z = np.load(f); v = z["v"] * KN; t = pd.Timestamp(str(z["time"]))
         t = t.tz_localize("UTC") if t.tzinfo is None else t.tz_convert("UTC")
         te = pd.Timestamp(os.path.basename(f)[:15], tz="UTC")           # genaue Überflugzeit aus dem Dateinamen
-        rec = {"time": t, "t_exakt": te, "file": f, "dir": float(z["dir"]), "icon_kn": float(z["icon_kn"])}
+        rec = {"time": t, "t_exakt": te, "file": f, "dir": float(z["dir"]), "icon_kn": float(z["icon_kn"]),
+               "dir_modell": float(z["dir_modell"]) if "dir_modell" in z else float(z["dir"]),
+               "dir_quelle": str(z["dir_quelle"]) if "dir_quelle" in z else "modell"}
         for k, idx in sel.items():
             vals = v[ys[idx], xs[idx]]; vals = vals[np.isfinite(vals)]
             rec[k] = float(np.median(vals)) if vals.size >= 5 else np.nan

@@ -341,7 +341,7 @@ def features(H):
         F.loc[Z.index, "z500_aus_west"] = -coef[:, 2]
         F.loc[Z.index, "z500_staerke"] = np.hypot(coef[:, 1], coef[:, 2])
         F.loc[Z.index, "z500_see"] = Z.mean(axis=1)                            # Hoch/Tief über der Region
-    doy = F.index.dayofyear
+    doy = F.index.day_of_year
     F["doy_sin"], F["doy_cos"] = np.sin(2 * np.pi * doy / 365.25), np.cos(2 * np.pi * doy / 365.25)
     F.index = pd.DatetimeIndex(F.index).tz_localize(None)
     F = F.drop(columns=["p_milano_12", "tmean_see"], errors="ignore")
@@ -399,7 +399,8 @@ def tage():
     S = sat_evenings()
     D = D.join(S, how="left")
     W = F.reindex(D.index)
-    regen = (W.regen_see.fillna(0) + W.regen_chiavenna.fillna(0))
+    col = lambda c: W[c] if c in W else pd.Series(np.nan, index=W.index)
+    regen = col("regen_see").fillna(0) + col("regen_chiavenna").fillna(0)
     clean_eve = (D.dir == 200) & (regen < 1) & (D.sam_morgen < 6) & (D.sat_see >= 10) & (D.sam_max >= 5)
     f = float((D.sat_see / D.sam_max)[clean_eve].median()) if clean_eve.sum() >= 15 else 1.5
     print(f"Satellitenfaktor See/Samolaco-Max (saubere Breva-Abende, n={int(clean_eve.sum())}): {f:.2f}")
@@ -410,12 +411,12 @@ def tage():
         D[f"breva{thr}"] = (run2((sx.kn * f >= thr) & ss, sd).reindex(D.index) >= 2).astype(int)
     D["see_max_est"] = D.sam_max * f
     D["regen"] = regen
-    D["cape"] = W.cape_max
+    D["cape"] = W["cape_max"] if "cape_max" in W else np.nan
     # Klassen
     k = np.full(len(D), "ruhig", dtype=object)
     thermisch = np.ones(len(D), bool)
     gew = (D.regen >= 1).values
-    foehn = ((D.sam_nord_std >= 2) | (W.dp_zurich_milano_12 >= 4)).values
+    foehn = ((D.sam_nord_std >= 2) | (col("dp_zurich_milano_12") >= 4)).values
     syn = (D.sam_morgen >= 6).values | ((D.sam_boe >= 2.3) & (D.sam_max >= 10)).values
     k[D.breva10.values == 1] = "Breva schwach"
     k[D.breva14.values == 1] = "Breva"
@@ -520,9 +521,9 @@ def stabil_jahre(x, y, ref):
 
 def anomalie(x):
     """Abweichung vom mittleren Jahresgang (Tag des Jahres, 31 Tage geglättet)."""
-    clim = x.groupby(x.index.dayofyear).mean().reindex(range(1, 367))
+    clim = x.groupby(x.index.day_of_year).mean().reindex(range(1, 367))
     clim = pd.concat([clim.iloc[-15:], clim, clim.iloc[:15]]).rolling(31, center=True, min_periods=5).mean().iloc[15:-15]
-    return x - clim.reindex(x.index.dayofyear).values
+    return x - clim.reindex(x.index.day_of_year).values
 
 
 def pruefen(quelle="era5", model="icon_seamless", thr=14):
