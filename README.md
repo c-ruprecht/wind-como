@@ -7,6 +7,17 @@ Südwind am Nachmittag) und Tivano (Nordwind morgens).
 
 Spots (geplant): Colico, Gera Lario, Sorico/La Punta, Domaso, Dervio, Cremia.
 
+## Ziele
+
+1. **Wo ist heute/jetzt Wind?** Live-Messungen (ARPA alle 10 min, private Stationen am Wasser) mit Satellitenfaktor
+   auf die Spots umgerechnet (Jetzt-korr.), dazu lokales Modell und korrigiertes ICON-Feld für den restlichen Tag.
+2. **Kommt in den nächsten 7 Tagen ein Breva ≥ 14 / ≥ 18 kn?** Tageschance „mind. 2 h am Stück“, geeicht.
+   Der Breva ist thermisch: Merkmale aus den Modellen sind vor allem Einstrahlung/Bewölkung, Temperaturgefälle
+   Po-Ebene (Mailand) – Alpentäler (Chiavenna, Sondrio), Druckgefälle Mailand – Täler, Höhenwind 850 hPa
+   (Nordföhn/Westlagen unterdrücken den Breva), Jahreszeit.
+
+Voraussetzung: eine Messstation, die den Wind auf dem See wirklich abbildet – Auswahl mit dem Satelliten (unten).
+
 ## Messstationen
 
 ARPA Lombardia, offen über Open Data Lombardia (Socrata, ohne Zugangsdaten), 10-Minuten-Werte, Historie ab Datum:
