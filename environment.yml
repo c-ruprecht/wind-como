@@ -38,4 +38,4 @@ dependencies:
   - tqdm>=4.66
   - pip
   - pip:
-    - global-land-mask   # Land/Wasser-Maske für ostsee_waves.py
+    - sentinelhub        # Sentinel-1-Bilder über Copernicus Data Space (sar_lake.py)
