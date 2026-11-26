@@ -1,0 +1,18 @@
+modell,name,ok,aufloesung,max_vorlauf,ab
+ecmwf_ifs025,ECMWF IFS 0.25° (bisher),True,25 km,7.0,2024-02-01
+ecmwf_ifs,ECMWF IFS HRES,True,9 km,7.0,2025-10-01
+ecmwf_aifs025_single,ECMWF AIFS (KI),True,25 km,7.0,2025-03-01
+icon_seamless,DWD ICON Seamless,True,2–11 km,6.0,2024-02-01
+icon_global,DWD ICON Global,True,11 km,6.0,2024-02-01
+icon_eu,DWD ICON-EU,True,7 km,4.0,2024-02-01
+icon_d2,DWD ICON-D2,True,2 km,1.0,2024-02-01
+meteoswiss_icon_ch2,MeteoSwiss ICON-CH2,True,2 km,4.0,2025-07-01
+meteoswiss_icon_ch1,MeteoSwiss ICON-CH1,False,,,
+italia_meteo_arpae_icon_2i,ItaliaMeteo ICON-2I,True,2 km,2.0,2025-04-01
+meteofrance_seamless,Météo-France Seamless,True,1–25 km,3.0,2024-02-01
+meteofrance_arome_france_hd,Météo-France AROME HD,True,1.5 km,1.0,2024-02-01
+ukmo_seamless,UK Met Office Seamless,True,10 km,6.0,2024-08-01
+gfs_seamless,NOAA GFS Seamless,True,13–25 km,7.0,2024-02-01
+gem_seamless,GEM Canada Seamless,True,15 km,7.0,2024-02-01
+jma_seamless,JMA Seamless,True,55 km,7.0,2024-01-01
+cma_grapes_global,CMA GRAPES,True,15 km,4.0,2024-02-01
