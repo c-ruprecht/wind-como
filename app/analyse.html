@@ -30,7 +30,7 @@
 
 <main class="an">
   <nav class="subnav" aria-label="Abschnitte">
-    <a href="#breva">Der Breva</a><a href="#wo">Wo am stärksten</a><a href="#wann">Wann</a><a href="#warum">Was ihn macht</a>
+    <a href="#breva">Der Breva</a><a href="#entstehung">Wie er entsteht</a><a href="#wo">Wo am stärksten</a><a href="#wann">Wann</a><a href="#warum">Was ihn macht</a>
     <a href="#vorhersage">Vorhersage</a><a href="#pruefung">Modellprüfung</a><a href="#stationen">Messstationen</a><a href="#methode">Methode</a>
   </nav>
 
@@ -51,6 +51,57 @@
     <p class="hint"><b>Update 25.11.2026:</b> Das Modell sagt jetzt den Breva so vorher, wie ihn die Stationen messen –
       ohne Regentage aus dem Wettermodell auszuschließen. Gegen den Satelliten trifft es damit deutlich besser.
       Außerdem auf Leckage, Verfeinerung und Verkleinerung geprüft: <a href="#pruefung">Modellprüfung</a>.</p>
+  </section>
+
+  <section class="panel prose" id="entstehung">
+    <h2>Wie er entsteht – Karte und Wetterlage</h2>
+    <div class="karte-grid">
+      <figure class="karte"><img src="img/breva_karte.svg" alt="Schema: Die Täler nördlich des Sees heizen sich auf, über ihnen entsteht ein Hitzetief; Luft aus der Po-Ebene strömt über beide Seearme und den oberen See in Valchiavenna und Veltlin." loading="lazy">
+        <figcaption>Schema, geografisch maßstäblich. Gestrichelte Linien: Druck sinkt von der Po-Ebene zu den Tälern.</figcaption></figure>
+      <div>
+        <p><b>Der Motor:</b> Valchiavenna und Veltlin sind eng und von Bergen umgeben. Die Sonne heizt dort wenig Luft
+          über viel Hangfläche auf, die Ebene erwärmt sich langsamer. Über den Tälern sinkt der Druck (T), die
+          Po-Ebene bleibt relativ höher (H). Die Luft gleicht das aus und nimmt den kürzesten Weg: über die beiden
+          Seearme, den oberen See hinauf und am Nordende in die Täler.</p>
+        <p><b>Der Trichter:</b> Am oberen See bündeln steile Hänge die Strömung, im Nordbecken teilt sie sich nach
+          Chiavenna und Sondrio. Darum weht er zwischen Dervio und Colico am stärksten.</p>
+        <p><b>Der Tagesgang:</b> In Samolaco beginnt der Südwind gegen 11–12 Uhr, erreicht 15–17 Uhr sein Maximum
+          und schläft gegen 20–21 Uhr ein, wenn die Täler abkühlen. Morgens weht schwach der Tivano aus Norden zurück.</p>
+      </div>
+    </div>
+
+    <h3>Die Wetterlage an Breva-Tagen – in unseren Daten</h3>
+    <p>Typische Werte an Schönwettertagen mit Breva (≥ 14 kn) und ohne, aus den Wetterdaten 2014–2026 (ERA5),
+      innerhalb derselben Monate verglichen. In Klammern: Abende, an denen der Satellit den Wind auf dem See gemessen hat.</p>
+    <div class="tscroll"><table class="atab num">
+      <thead><tr><th style="text-align:left">Zutat</th><th>mit Breva</th><th>ohne</th><th style="text-align:left">was es bedeutet</th></tr></thead>
+      <tbody>
+        <tr><td style="text-align:left">Druckgefälle Mailand → Chiavenna, 15 Uhr</td><td>−1,6 hPa</td><td>−2,3 hPa</td><td style="text-align:left">0,7 hPa mehr Gefälle zum Tal (Satellit: 1,6 hPa) – der Antrieb. Die Absolutwerte sind durch die Höhenumrechnung verschoben; es zählt der Unterschied.</td></tr>
+        <tr><td style="text-align:left">Aufbau des Gefälles, 6 → 15 Uhr</td><td>+0,6 hPa</td><td>+0,4 hPa</td><td style="text-align:left">Das Hitzetief im Tal bildet sich tagsüber (Satellit: +0,7 gegen +0,2 hPa).</td></tr>
+        <tr><td style="text-align:left">Druckgefälle Bergamo → Sondrio, 15 Uhr</td><td>−0,8 hPa</td><td>−1,5 hPa</td><td style="text-align:left">Dasselbe ins Veltlin.</td></tr>
+        <tr><td style="text-align:left">Sonne im Tal (Chiavenna, 9–17 Uhr)</td><td>5,3 kWh/m²</td><td>4,7 kWh/m²</td><td style="text-align:left">Mehr Sonne, mehr Aufheizung.</td></tr>
+        <tr><td style="text-align:left">Wolken über Chiavenna</td><td>(42 %)</td><td>(62 %)</td><td style="text-align:left">Bewölkung bremst die Aufheizung.</td></tr>
+        <tr><td style="text-align:left">Trockene Luft in Mailand (Taupunktabstand)</td><td>13,1 K</td><td>10,8 K</td><td style="text-align:left">Trockene Luft heizt sich schneller auf, weniger Dunst und Quellwolken.</td></tr>
+        <tr><td style="text-align:left">Tageshöchstwert Sondrio</td><td>25,0 °C</td><td>27,1 °C</td><td style="text-align:left">Nicht die heißesten Tage: Bei großer Hitze ist die Ebene selbst aufgeheizt, der Unterschied kleiner.</td></tr>
+        <tr><td style="text-align:left">Heute wärmer als die letzten 30 Tage</td><td>+6,6 K</td><td>+4,5 K</td><td style="text-align:left">Warme Luft über noch kühlem See und Boden – typisch für Frühling und Frühsommer.</td></tr>
+        <tr><td style="text-align:left">Druckunterschied Zürich → Mailand, 12 Uhr</td><td>0,3 hPa</td><td>0,65 hPa</td><td style="text-align:left">Ruhige Lage über den Alpen. Ab etwa 4 hPa drückt Nordföhn durch – dann kein Breva.</td></tr>
+        <tr><td style="text-align:left">Regen am See</td><td>(0 mm)</td><td>(1 mm)</td><td style="text-align:left">Ein kurzer Schauer stört wenig, Regenlagen schon.</td></tr>
+      </tbody></table></div>
+
+    <h3>Kurz gesagt: Breva-Wetter</h3>
+    <ul class="tips">
+      <li><b>Hochdruck, schwacher Wind über den Alpen</b> – keine Nord- oder Föhnlage, keine Front. Großräumig
+        eher leichte Südströmung als Nordströmung.</li>
+      <li><b>Sonne von morgens an, trockene Luft</b> – je klarer der Vormittag, desto früher und kräftiger.</li>
+      <li><b>Frühling und Frühsommer</b> – April bis Juni haben die meisten Breva-Tage (8–10 im Monat), im Juli
+        weniger, ab September selten: Die Täler heizen dann nicht mehr genug gegenüber der Ebene.</li>
+      <li><b>Er kommt oft mehrere Tage hintereinander:</b> Nach einem Breva-Tag folgt in 36 % der Fälle wieder
+        einer, sonst nur in 9 % – die Wetterlage hält meist an.</li>
+      <li><b>Lang bis in den Abend</b> weht er, wenn das Gefälle zum Tal stark und die Nord-Süd-Lage über den Alpen
+        ganz ruhig ist (Zürich−Mailand 1,8 statt 3,9 hPa an Tagen, an denen er früh einschläft).</li>
+      <li><b>Störer:</b> Nordföhn (6–10 Tage im Monat, das ganze Jahr), Regen und Gewitter (Mai bis August am
+        häufigsten), dichte Bewölkung, Hitzewellen.</li>
+    </ul>
   </section>
 
   <section class="panel" id="wo">
