@@ -1,0 +1,39 @@
+# Archiviert mehrmals täglich, was die App vorhersagt (7-Tage- und Heute-Modell), im Branch „archiv“.
+# Zeiten in UTC: nach dem ECMWF-00-UTC-Lauf (7:20, 8:20), zu den Heute-Entscheidungen (10:20, 12:20 ≈ 11/13 Uhr
+# Winterzeit, 12/14 Uhr Sommerzeit) und nach dem 12-UTC-Lauf (19:20). GitHub startet geplante Läufe oft verspätet.
+name: Vorhersagen archivieren
+on:
+  schedule:
+    - cron: "20 7,8,10,12,19 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: archiv
+  cancel-in-progress: false
+jobs:
+  archiv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Archiv-Branch holen (beim ersten Mal anlegen)
+        run: |
+          git config user.name "breva-archiv"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin archiv; then
+            git fetch origin archiv:archiv
+            git worktree add archiv-wt archiv
+          else
+            git worktree add --orphan -b archiv archiv-wt
+          fi
+      - name: Vorhersage rechnen und anhängen
+        run: node tools/archiv.js archiv-wt
+      - name: Speichern
+        run: |
+          cd archiv-wt
+          git add -A
+          git commit -q -m "Archiv $(date -u +%Y-%m-%dT%H:%MZ) (App ${GITHUB_SHA::10})" || exit 0
+          git push origin archiv
