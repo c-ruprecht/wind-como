@@ -241,6 +241,18 @@ function weekProb(date, i, thr) {
   return BrevaModel.calibrate(cal[String(i)] ?? cal["7"], raw);
 }
 const pClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
+/* Breva-Call: Chance über der Schwelle, ab der das Modell in der Prüfung 2024–heute ≥ 80 % Präzision hatte */
+function weekCall(i, thr, p) {
+  const c = state.M?.man?.call?.[String(thr)]; const k = c && (c[String(i)] ?? c["7"]);
+  return k && p != null && p >= k.schwelle ? k : null;
+}
+function heuteCall(H, thr) {
+  if (!H || H.hour == null) return weekCall(0, thr, H?.p[thr]);
+  const k = state.M?.heute?.call?.[`${H.hour}_${thr}`];
+  return k && H.p[thr] != null && H.p[thr] >= k.schwelle ? k : null;
+}
+const callTip = c => `Breva-Call: Bei so hohen Werten gab es in der Prüfung 2024–heute in ${Math.round(c.praezision * 100)} % der Fälle wirklich Breva; erwischt werden so ${Math.round(c.trefferquote * 100)} % aller Breva-Tage.`;
+const callTag = c => c ? `<span class="call" title="${callTip(c)}">Call</span>` : "";
 function hourlyAll() {
   const h = {}; for (const st of STATIONS) if (state.obs[st.id]?.hourly) h[st.id] = state.obs[st.id].hourly; return h;
 }
@@ -357,7 +369,7 @@ function drawNow() {
   const cl = ds.length ? climateP(ds[0], state.thr) : null;
   const fmtObs = v => v == null || !Number.isFinite(v) ? "–" : `${v >= 0 ? "" : "−"}${de(Math.abs(v))} kn`;
   const heuteHtml = H ? `<div class="heute">
-      <div class="hcards">${THRESHOLDS.map(t => `<div class="hcard ${pClass(H.p[t])}"><span class="hp">${H.p[t] == null ? "–" : Math.round(H.p[t] * 100) + "\u00a0%"}</span>
+      <div class="hcards">${THRESHOLDS.map(t => `<div class="hcard ${pClass(H.p[t])}"><span class="hp">${H.p[t] == null ? "–" : Math.round(H.p[t] * 100) + "\u00a0%"}${callTag(heuteCall(H, t))}</span>
         <span class="hl">Breva ≥ ${t} kn heute<br><small>mind. 2 h am Stück</small></span></div>`).join("")}</div>
       <p class="hint">${H.hour == null ? "Nur Vorhersage – Messungen fließen ab 9 Uhr ein (Modell 9, 11 und 13 Uhr)."
         : `Stand ${H.hour} Uhr: Vorhersage für heute + Messungen bis ${H.hour} Uhr + gestern. ${state.M.heute.hours.some(h => h > H.hour) ? `Neu um ${state.M.heute.hours.filter(h => h > H.hour).join(" und ")} Uhr.` : "Letzter Stand des Tages – ab jetzt zählt „Jetzt am Spot“."}`}</p>
@@ -401,7 +413,7 @@ function drawWeek() {
   const rainRow = S.map(({ sig }, i) => `<td data-day="${i}" class="rain">${sig == null ? "" : sig.rain >= 2 ? "🌧" : sig.rain >= 0.5 ? "🌦" : ""}</td>`).join("");
   const modelRow = state.M && features7() ? `<tr><th scope="row">Chance ≥ ${state.thr} kn<br><small>Breva-Modell, mind. 2 h</small></th>${S.map(({ d, season }, i) => {
       const p = weekProb(d, i, state.thr);
-      return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span></td>`; }).join("")}</tr>` : "";
+      return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span>${season ? callTag(weekCall(i, state.thr, p)) : ""}</td>`; }).join("")}</tr>` : "";
   t.innerHTML = `<thead><tr><th scope="col" class="spotcol"></th>${head}</tr></thead><tbody>
     ${modelRow}
     <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva-Zeichen<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
@@ -429,7 +441,7 @@ function drawDetail() {
       <span class="meta">${sp.shore}${ratio ? ` · bei Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % gegenüber dem Mittel des oberen Sees` : ""}</span></div>
     <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
     ${state.M && features7() ? `<p class="sigline"><b>Breva-Modell:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
-      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> ≥ ${t} kn`; }).join(" · ")}${
+      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> ≥ ${t} kn${callTag(weekCall(ds.indexOf(date), t, p))}`; }).join(" · ")}${
       sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
         ? `<br><small>🌧 Südwind mit Regen: eher Wind vor einer Front als thermischer Breva – meist gleichmäßig, aber nass; auf Gewitter achten.</small>` : ""}</p>` : ""}
     ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>

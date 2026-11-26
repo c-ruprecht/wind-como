@@ -71,6 +71,22 @@ def compact(m):
     return {"base": float(np.log(base / (1 - base))), "trees": trees}
 
 
+def precision_cut(pc, y, target=0.8, min_calls=8):
+    """Kleinste Schwelle auf der geeichten Chance, ab der die Calls (pc ≥ Schwelle) mindestens `target` Präzision haben.
+    Gibt Schwelle, Präzision, Trefferquote (Anteil aller Breva-Tage, die gecallt wurden) und Zahl der Calls zurück."""
+    pc = np.asarray(pc, float); y = np.asarray(y, int)
+    best = None
+    for c in sorted(set(np.round(pc, 4)), reverse=True):
+        sel = pc >= c
+        if sel.sum() < min_calls:
+            continue
+        prec = y[sel].mean()
+        if prec >= target:
+            best = dict(schwelle=round(float(c), 4), praezision=round(float(prec), 3),
+                        trefferquote=round(float(y[sel].sum() / max(y.sum(), 1)), 3), calls=int(sel.sum()))
+    return best
+
+
 def iso_curve(p, y):
     from sklearn.isotonic import IsotonicRegression
     ir = IsotonicRegression(out_of_bounds="clip", y_min=0.0, y_max=1.0).fit(p, y)
@@ -117,7 +133,7 @@ def main():
                 good = Xt.notna().mean(axis=1) > 0.7
                 if good.sum():
                     oof.setdefault(L, []).append(pd.Series(m.predict_proba(Xt[good])[:, 1], index=d[good.values]))
-        cal, skill = {}, []
+        cal, skill, calls = {}, [], {}
         for grp in LEAD_GROUPS[thr]:
             ps, ys = [], []
             for L in grp:
@@ -133,6 +149,12 @@ def main():
                 cal[str(L)] = curve
             from sklearn.isotonic import IsotonicRegression
             pc = np.interp(p, curve[0], curve[1])
+            cut = precision_cut(pc, yy)
+            for L in grp:
+                calls[str(L)] = cut
+            print(f"   Breva-Call ≥ {thr} kn, Vorlauf {'+'.join(map(str, grp))}: " +
+                  (f"ab {100 * cut['schwelle']:.0f} % – Präzision {100 * cut['praezision']:.0f} %, "
+                   f"erwischt {100 * cut['trefferquote']:.0f} % der Breva-Tage ({cut['calls']} Calls)" if cut else "80 % Präzision nie erreicht"))
             mon = np.concatenate([pd.concat(oof[L]).index.month for L in grp if L in oof])
             sa = (mon >= 3) & (mon <= 10)
             skill.append(dict(vorlauf="+".join(map(str, grp)), tage=len(yy), breva=int(yy.sum()),
@@ -140,8 +162,9 @@ def main():
                               auc_saison=round(roc_auc_score(yy[sa], p[sa]), 3), brier_roh=round(brier_score_loss(yy, p), 3),
                               brier_geeicht=round(brier_score_loss(yy, pc), 3), mittel_roh=round(float(p.mean()), 3),
                               mittel_geeicht=round(float(pc.mean()), 3), anteil_echt=round(float(yy.mean()), 3)))
-        cal["0"] = cal.get("1")
+        cal["0"] = cal.get("1"); calls["0"] = calls.get("1")
         man["calib"][str(thr)] = cal
+        man.setdefault("call", {})[str(thr)] = calls
         man["skill"][str(thr)] = skill
         print(f"\n≥ {thr} kn: {int(y[ok].sum())} Breva-Tage von {int(ok.sum())} (ERA5); Prüfung {TRAIN_UNTIL + 1}–heute mit {MODEL}, je Jahr out-of-fold:")
         print(pd.DataFrame(skill).to_string(index=False))

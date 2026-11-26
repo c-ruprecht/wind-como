@@ -126,6 +126,11 @@ def main():
             p = P[good].values; yy = y[good].values
             curve = T.iso_curve(p, yy)
             out["calib"][f"{hour}_{thr}"] = curve
+            cut = T.precision_cut(np.interp(p, *curve), yy)
+            out.setdefault("call", {})[f"{hour}_{thr}"] = cut
+            print(f"   Breva-Call {hour} Uhr ≥ {thr} kn: " +
+                  (f"ab {100 * cut['schwelle']:.0f} % – Präzision {100 * cut['praezision']:.0f} %, "
+                   f"erwischt {100 * cut['trefferquote']:.0f} % der Breva-Tage ({cut['calls']} Calls)" if cut else "80 % Präzision nie erreicht"))
             saison = (D.index.month >= 3) & (D.index.month <= 10)        # nur Tage, an denen Breva überhaupt üblich ist
             gs = good & saison
             ys = y[gs].values

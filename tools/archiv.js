@@ -137,7 +137,9 @@ async function main() {
       const cal = man.calib[String(thr)] || {};
       const p = BrevaModel.calibrate(cal[String(i)] ?? cal["7"], raw);
       p7[`${d}_${thr}`] = p;
-      rows.push({ ...base, art: "7tage", modell_id: ids[thr], zieldatum: d, vorlauf: i, schwelle: thr, stunde: "", p, p_roh: raw });
+      const cc = (man.call || {})[String(thr)] || {}, k = cc[String(i)] ?? cc["7"];
+      rows.push({ ...base, art: "7tage", modell_id: ids[thr], zieldatum: d, vorlauf: i, schwelle: thr, stunde: "", p, p_roh: raw,
+        call_ab: k ? k.schwelle : "", call: k ? Number(p >= k.schwelle) : "" });
     }
   });
   // Heute-Modell (wie app.js heute()); ohne Messungen nur Vorhersage
@@ -153,7 +155,9 @@ async function main() {
     const hid = `heute-${heuteMan.ziel || "A"}-${key}-` + (m ? sha(JSON.stringify(m) + JSON.stringify(heuteMan.calib[key])) : "nurvorhersage");
     const raw = m ? BrevaModel.predictProba(m, BrevaModel.vec(hx, heuteMan.features)) : null;
     const p = m ? BrevaModel.calibrate(heuteMan.calib[key], raw) : p7[`${today}_${thr}`];
-    rows.push({ ...base, art: "heute", modell_id: hid, zieldatum: today, vorlauf: 0, schwelle: thr, stunde: hour ?? "", p, p_roh: raw });
+    const k = m ? (heuteMan.call || {})[key] : (((man.call || {})[String(thr)] || {})["0"]);
+    rows.push({ ...base, art: "heute", modell_id: hid, zieldatum: today, vorlauf: 0, schwelle: thr, stunde: hour ?? "", p, p_roh: raw,
+      call_ab: k ? k.schwelle : "", call: k && p != null ? Number(p >= k.schwelle) : "" });
   }
   // schreiben
   fs.mkdirSync(path.join(OUT, "merkmale"), { recursive: true });
@@ -171,10 +175,11 @@ Jeder Lauf rechnet genau, was die App in dem Moment anzeigt.
 - \`app_commit\`: Git-Commit des App-Codes
 - \`zieldatum\`, \`vorlauf\` (Tage), \`schwelle\` (kn), \`stunde\` (Entscheidungsstunde des Heute-Modells, leer = nur Vorhersage)
 - \`p\`: geeichte Chance (wie in der App), \`p_roh\`: Modellausgabe vor der Eichung
+- \`call_ab\`: Schwelle für einen Breva-Call (≥ 80 % Präzision in der Prüfung; leer = nie erreicht), \`call\`: 1 = Call
 
 **merkmale/JJJJ-MM.jsonl** – je Lauf die Eingangsgrößen (zum Nachrechnen und für Modellvergleiche)
 `);
-  const cols = ["lauf_id", "art", "modell_id", "wettermodell", "ecmwf_init", "app_commit", "zieldatum", "vorlauf", "schwelle", "stunde", "p", "p_roh"];
+  const cols = ["lauf_id", "art", "modell_id", "wettermodell", "ecmwf_init", "app_commit", "zieldatum", "vorlauf", "schwelle", "stunde", "p", "p_roh", "call_ab", "call"];
   const f = path.join(OUT, "vorhersagen.csv");
   if (!fs.existsSync(f)) fs.writeFileSync(f, cols.join(",") + "\n");
   fs.appendFileSync(f, rows.map(r => csvLine(cols.map(c => r[c]))).join("\n") + "\n");
