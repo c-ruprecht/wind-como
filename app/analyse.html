@@ -173,10 +173,27 @@
     <p class="hint">≥ 14 kn, tested 2024–2026 with real ECMWF runs. Only 126 evenings with 19 Breva cases are available
       against the satellite, hence the wide ranges; but the improvement shows up in all variants. The lower AUC on its
       own target is more honest: the convenient shortcut via the rain forecast is gone.</p>
-    <p>A third of the additional days from 18 kn had been classed as foehn days by the weather model although the lake
-      was calm in the morning and had steady south wind in the afternoon – real Breva days. The other two thirds are south
-      wind with rain ahead of a front: in the satellite image almost as strong as a Breva (median 15.6 vs 16.8 kn) but
-      harder to predict. That is why the chance from 18 kn several days ahead is less certain (AUC around 0.74) than from 14 kn.</p>
+    <h3>Simplified: Breva day and long Breva (November 2026)</h3>
+    <p>The targets are now simpler and closer to the satellite. A <b>Breva day</b> is a day on which <b>Samolaco or Colico</b>
+      – each scaled to the lake with its own satellite factor (× 1.37 and × 2.5) and only with wind from the Breva
+      direction – shows at least 2 hours in a row of 14+ kn. In the morning only wind from another direction counts against
+      it. Of all target variants this one agrees best with the satellite. The 18 kn target is gone: neither the satellite
+      nor the weather models could tell a strong from a normal Breva.</p>
+    <p>Instead the today model now asks for a <b>long Breva</b> (at least 5 hours with 14+ kn). The stations show that
+      short Breva days are real, not false alarms: a third of all Breva days last only 2–3 hours and mostly end by 16–17:00.
+      The satellite confirms it – when the stations say the Breva ended early, the lake is already calmer at 19:15.</p>
+    <div class="tscroll"><table class="atab num"><thead><tr><th style="text-align:left">Model (tested 2024–2026, March–October)</th><th>AUC</th><th>Call ≥ 80 % precision catches</th></tr></thead><tbody>
+      <tr><td style="text-align:left">7 days, Breva day, tomorrow</td><td>0.84</td><td>34 % of Breva days</td></tr>
+      <tr><td style="text-align:left">7 days, Breva day, in 3 days</td><td>0.82</td><td>15 %</td></tr>
+      <tr><td style="text-align:left">7 days, Breva day, in 4 days</td><td>0.78</td><td>7 %</td></tr>
+      <tr><td style="text-align:left">today 9:00, Breva day</td><td>0.86</td><td>33 %</td></tr>
+      <tr><td style="text-align:left">today 13:00, Breva day</td><td>0.92</td><td>68 %</td></tr>
+      <tr><td style="text-align:left">today 13:00, long Breva</td><td>0.91</td><td>38 % of long Breva days</td></tr>
+      <tr><td style="text-align:left">today 15:00, long Breva</td><td>0.95</td><td>71 %</td></tr>
+    </tbody></table></div>
+    <p class="hint">Until about 9:00 the today model rests mainly on the forecast (sun in the valley, south wind over the
+      lake); from 11:00 Vercana turns south-west first, from 13:00 the measured wind on the lake decides. Whether a Breva
+      will last long is hard to tell in the morning and becomes clear in the early afternoon.</p>
 
     <h3>Leakage: does the model predict or copy?</h3>
     <ul class="tips">
@@ -220,17 +237,17 @@
     <h2>Method and limits</h2>
     <ul class="tips">
       <li><b>Whole year</b>, the season is a model input (in winter there is only the odd Breva).
-        <b>Breva day</b> (what the model predicts): Samolaco calm in the morning (&lt; 6 kn), no north wind, afternoon
-        wind from SSE–S; on the lake (Samolaco × satellite factor) at least 2 h in a row from 14 or 18 kn. Defined by the
-        measurements alone – a short shower does not invalidate a Breva day. Against the satellite this definition scores
-        better than one that excludes rain days from the weather model (AUC 0.81 vs 0.72).</li>
-      <li><b>South wind with rain</b>: roughly every fifth Breva day from 18 kn is wet (8 mm on average). Mostly this is
-        south wind ahead of a front, not a thermal Breva – but according to the satellite it blows similarly strong on the
-        lake (median 15.6 vs 16.8 kn in the evening) and steady. These days are harder to predict; the app then shows a rain note.</li>
+        <b>Breva day</b> (what the model predicts): Samolaco or Colico, scaled to the lake with the satellite factor and
+        only with wind from the Breva direction, at least 2 h in a row from 14 kn (11–20:00); no wind from another direction
+        in the morning (&lt; 6 kn), no north wind. <b>Long Breva</b>: at least 5 hours from 14 kn. Defined by the measurements
+        alone – a short shower does not invalidate a Breva day.</li>
+      <li><b>South wind with rain</b>: some Breva days are wet. Mostly this is south wind ahead of a front, not a thermal
+        Breva – but according to the satellite it blows similarly strong on the lake. The app then shows a rain note.</li>
       <li><b>Leakage check</b>: previous-day variables, random vs year-wise split, ERA5 vs forecast and measurements vs
         satellite – no sign that the model “sees” the answer instead of predicting it.</li>
-      <li><b>Satellite</b>: Sentinel-1 (since 2014), wind from the radar signal with CMOD5.N, wind direction from the
-        measurements at Samolaco and Colico. Only one image every few days, always around 7:30 and 19:15.</li>
+      <li><b>Satellite</b>: Sentinel-1 (since 2014), one image every few days, always around 7:30 and 19:15. Used to scale
+        the stations and to check the target. Wind speeds from the radar (CMOD5.N) are made for the sea and only a rough
+        guide on a lake; for yes/no the water roughness compared with a calm image of the same overpass works as well.</li>
       <li><b>Weather variables</b>: ERA5 (training) and ECMWF forecasts (app) at 11 points from Lyon to Venice.</li>
       <li><b>Limits</b>: no station measures directly on the water at Dervio, Cremia or Domaso – the daily course on the
         lake is estimated. Private stations (Domaso, Gravedona, Cremia) would improve this.</li>

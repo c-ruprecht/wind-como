@@ -117,9 +117,9 @@ function vorhersage(A) {
   const V = A.vorlauf || {};
   const labs = ["perfect", "1", "2", "3", "4", "5", "6", "7"];
   const pick = thr => (V[thr] || []).map(r => r.auc);
-  $("#lead").innerHTML = line([{ n: "≥ 14 kn", c: "#0b6e8a", v: pick("14"), dots: true }, { n: "≥ 18 kn", c: "#e08a1e", v: pick("18"), dots: true }],
-    labs, { ymin: 0.5, ymax: 1, fmt: v => de(v, 2) });
-  $("#leadLeg").innerHTML = legend([["≥ 14 kn", "#0b6e8a"], ["≥ 18 kn", "#e08a1e"]]) + "<span>x: days ahead (“perfect” = with the weather as it was)</span>";
+  const ser = [{ n: "≥ 14 kn", c: "#0b6e8a", v: pick("14"), dots: true }, { n: "≥ 18 kn", c: "#e08a1e", v: pick("18"), dots: true }].filter(x => x.v.length);
+  $("#lead").innerHTML = line(ser, labs, { ymin: 0.5, ymax: 1, fmt: v => de(v, 2) });
+  $("#leadLeg").innerHTML = legend(ser.map(x => [x.n, x.c])) + "<span>x: days ahead (“perfect” = with the weather as it was)</span>";
   const T = A.timing || {}, hrs = Object.keys(Object.values(T)[0] || {});
   const q = v => v == null ? "" : v >= 0.8 ? "q3" : v >= 0.7 ? "q2" : v >= 0.6 ? "q1" : "q0";
   const nm = { samolaco: "Samolaco*", vercana: "Vercana", colico: "Colico", morbegno: "Morbegno" };
