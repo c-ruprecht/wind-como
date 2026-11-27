@@ -247,6 +247,13 @@ function weekProb(date, i, thr) {
   const cal = M.man.calib[String(thr)] || {};
   return BrevaModel.calibrate(cal[String(i)] ?? cal["7"], raw);
 }
+/* Chance auf einen langen Breva (≥ 5 h): dieselbe Modellausgabe, auf „lang“ geeicht; nie über der Breva-Chance */
+function weekProbLang(date, i) {
+  const F = features7(), M = state.M, cl = M?.man?.calib_lang; if (!F || !cl || !M.m14 || !F[date]) return null;
+  const raw = BrevaModel.predictProba(M.m14, BrevaModel.vec(F[date], M.man.features));
+  const pl = BrevaModel.calibrate(cl[String(i)] ?? cl["7"], raw), pb = weekProb(date, i, 14);
+  return pl == null ? null : pb == null ? pl : Math.min(pl, pb);
+}
 const pClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
 const PCT_HINT = "How to read the %: the chances are calibrated on 2024–2026. 55 % means that on 55 of 100 days with such a forecast there really was a Breva.";
 function hourlyAll() {
@@ -401,8 +408,12 @@ function drawWeek() {
   const modelRow = state.M && features7() ? `<tr><th scope="row">Breva chance<br><small>14+ kn for at least 2 h</small></th>${S.map(({ d, season }, i) => {
       const p = weekProb(d, i, state.thr);
       return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span></td>`; }).join("")}</tr>` : "";
+  const langRow = state.M?.man?.calib_lang && features7() ? `<tr class="langrow"><th scope="row">Long Breva<br><small>14+ kn for at least 5 h</small></th>${S.map(({ d, season }, i) => {
+      const p = weekProbLang(d, i);
+      return `<td class="cell small ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span></td>`; }).join("")}</tr>` : "";
   t.innerHTML = `<thead><tr><th scope="col" class="spotcol"></th>${head}</tr></thead><tbody>
     ${modelRow}
+    ${langRow}
     <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva signs<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
     <tr><th scope="row">Usual<br><small>share of Breva days in month</small></th>${clRow}</tr>
     ${partRows}
@@ -428,7 +439,7 @@ function drawDetail() {
       <span class="meta">${sp.shore}${ratio ? ` · in Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % vs. the upper-lake average` : ""}</span></div>
     <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
     ${state.M && features7() ? `<p class="sigline"><b>Breva model:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
-      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> chance of a Breva day`; }).join(" · ")}${
+      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> chance of a Breva day${(() => { const pl = weekProbLang(date, ds.indexOf(date)); return pl == null ? "" : ` · <span class="badge ${pClass(pl)}">${Math.round(pl * 100)}%</span> long Breva (5+ h)`; })()}`; }).join(" · ")}${
       sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
         ? `<br><small>🌧 South wind with rain: more likely pre-frontal wind than a thermal Breva – usually steady but wet; watch for thunderstorms.</small>` : ""}</p>` : ""}
     ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>

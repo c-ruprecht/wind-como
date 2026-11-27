@@ -226,6 +226,12 @@ async function main() {
       const cc = (man.call || {})[String(thr)] || {}, k = cc[String(i)] ?? cc["7"];
       rows.push({ ...base, art: "7tage", modell_id: ids[thr], zieldatum: d, vorlauf: i, schwelle: thr, stunde: "", p, p_roh: raw,
         call_ab: k ? k.schwelle : "", call: k ? Number(p >= k.schwelle) : "" });
+      const cl = man.calib_lang;
+      if (cl && String(thr) === "14") {
+        const pl = Math.min(BrevaModel.calibrate(cl[String(i)] ?? cl["7"], raw), p);
+        rows.push({ ...base, art: "7tage", modell_id: ids[thr], zieldatum: d, vorlauf: i, schwelle: "lang", stunde: "", p: pl, p_roh: raw,
+          call_ab: "", call: "" });
+      }
     }
   });
   // Heute-Modell (wie app.js heute()); ohne Messungen nur Vorhersage

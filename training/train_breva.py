@@ -112,6 +112,18 @@ def iso_curve(p, y):
     return [np.round(xs, 4).tolist(), np.round(ys, 4).tolist()]
 
 
+def lang_calib(oof, D):
+    """Chance auf einen langen Breva (≥ 5 h ≥ 14 kn) aus derselben Modellausgabe, je Vorlauf geeicht (out-of-fold).
+    Das Breva-Modell sortiert lange Tage besser als ein eigenes Lang-Modell (breva_klassen.py)."""
+    yl = D.breva_lang.fillna(0).astype(int)
+    out = {}
+    for L, parts in oof.items():
+        pr = pd.concat(parts)
+        out[str(L)] = iso_curve(pr.values, yl[pr.index].values)
+    out["0"] = out.get("1")
+    return out
+
+
 def main():
     from sklearn.metrics import roc_auc_score, brier_score_loss
     D = pd.read_csv(f"{B.RES}/breva_tage.csv", index_col=0, parse_dates=True)
@@ -198,6 +210,8 @@ def main():
                 OOF.append(pd.DataFrame({"tag": pr.index, "schwelle": thr, "vorlauf": L, "p_roh": pr.values,
                                          "p": np.interp(pr.values, *cal[str(L)]), "y": y[pr.index].values}))
         man["calib"][str(thr)] = cal
+        if OPT["ziel"] == "C" and "breva_lang" in D:
+            man["calib_lang"] = lang_calib(oof, D)
         man.setdefault("call", {})[str(thr)] = calls
         man["skill"][str(thr)] = skill
         print(f"\n≥ {thr} kn: {int(y[ok].sum())} Breva-Tage von {int(ok.sum())} (ERA5); Prüfung {TRAIN_UNTIL + 1}–heute mit {MODEL}, je Jahr out-of-fold:")

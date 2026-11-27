@@ -433,3 +433,7 @@ td.cell
 .karte-grid figure.karte img { width: 100%; height: auto; border-radius: 12px; display: block; border: 1px solid #dfe5e1; }
 .karte-grid figcaption { font-size: 12px; color: #5f6b64; margin-top: 6px; }
 @media (max-width: 820px) { .karte-grid { grid-template-columns: 1fr; } }
+
+/* Zeile „Long Breva“ in der 7-Tage-Tabelle: kleiner als die Breva-Zeile */
+tr.langrow td.cell .v { font-size: 0.85em; }
+tr.langrow th small { opacity: 0.8; }
