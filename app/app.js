@@ -3,8 +3,8 @@
 "use strict";
 
 const DEMO = new URLSearchParams(location.search).has("demo");
-const MODELS = { icon: "icon_seamless", ecmwf: "ecmwf_ifs025" };
-const MODEL_LABEL = { icon: "ICON", ecmwf: "ECMWF" };
+const MODELS = { ecmwf: "ecmwf_ifs025" };          // dasselbe Wettermodell wie das Breva-Modell
+const MODEL_LABEL = { ecmwf: "ECMWF" };
 const VARS = ["wind_speed_10m", "wind_direction_10m", "wind_gusts_10m", "temperature_2m", "dew_point_2m", "pressure_msl",
   "shortwave_radiation", "cloud_cover", "precipitation"];
 const MS2KN = 1 / 0.514444;
@@ -13,7 +13,7 @@ const CACHE_KEY = "breva-cache-v1";
 
 const state = {
   fc: null, obs: {}, info: null,
-  model: load("model", "icon"), thr: 14,
+  model: "ecmwf", thr: 14,
   spot: load("spot", "gera_lario"), day: 0, map: null, markers: [], layer: load("layer", "map"),
   mfc: null,        // Modellpunkte (ECMWF, mit 31 Tagen Vergangenheit)
   M: null,          // { man, m14, m18, heute, h: {"9_14": Modell, …} }
@@ -228,7 +228,6 @@ function brevaSigns(date, m) {
   return { score: base * rainF, parts, rain, rainF };
 }
 const signalClass = s => s == null ? "r0" : s >= 0.65 ? "r4" : s >= 0.5 ? "r2" : s >= 0.35 ? "r1" : "r0";
-const signalWord = s => s == null ? "–" : s >= 0.65 ? "good signs" : s >= 0.5 ? "possible" : s >= 0.35 ? "weak" : "unlikely";
 function climateP(date, thr) {
   const m = String(Number(date.slice(5, 7)));
   return state.info?.klima?.[String(thr)]?.[m] ?? null;
@@ -369,7 +368,7 @@ function drawMarkers() {
     const el = document.createElement("button");
     el.type = "button";
     const pt = state.M && features7() && today ? weekProb(today, 0, state.thr) : null;
-    el.className = `spot-mk mk-${pt != null ? pClass(pt) : signalClass(sig?.score)}${sp.id === state.spot ? " cur" : ""}`;
+    el.className = `spot-mk mk-${pt != null ? pClass(pt) : "r0"}${sp.id === state.spot ? " cur" : ""}`;
     el.innerHTML = `<span class="dot"></span><span class="lab"><b>${sp.short}</b></span>`;
     el.setAttribute("aria-label", sp.name);
     el.addEventListener("click", ev => { ev.stopPropagation(); selectSpot(sp.id); });
@@ -438,8 +437,6 @@ function drawWeek() {
   if (!ds.length) { t.innerHTML = ""; return; }
   const head = ds.map((d, i) => `<th scope="col" class="${isWeekend(d) ? "we" : ""}">${i === 0 ? "Today" : new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" })}<br><small>${+d.slice(8)}/${+d.slice(5, 7)}</small></th>`).join("");
   const S = ds.map(d => ({ d, sig: brevaSigns(d, state.model), cl: climateP(d, state.thr), season: SEASON.includes(Number(d.slice(5, 7))) }));
-  const sigRow = S.map(({ d, sig, season }, i) => `<td class="cell ${season ? signalClass(sig?.score) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"
-      title="${sig ? signalWord(sig.score) : ""}"><span class="v">${sig ? Math.round(sig.score * 100) : "–"}</span><span class="pd">${season ? signalWord(sig?.score) : "off season"}</span></td>`).join("");
   const clRow = S.map(({ d, cl }, i) => `<td class="climc${isWeekend(d) ? " we" : ""}" data-day="${i}">${cl ? pct(cl.p) : "–"}</td>`).join("");
   const partRows = ["sued", "dp", "sonne", "foehn", "trocken"].map(k => {
     const lab = S[0].sig?.parts.find(p => p.key === k)?.label ?? k;
@@ -457,8 +454,8 @@ function drawWeek() {
   t.innerHTML = `<thead><tr><th scope="col" class="spotcol"></th>${head}</tr></thead><tbody>
     ${modelRow}
     ${langRow}
-    <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva signs<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
     <tr><th scope="row">Usual<br><small>share of Breva days in month</small></th>${clRow}</tr>
+    <tr class="parthead"><th scope="row" colspan="${ds.length + 1}">What the ECMWF forecast shows <small>– the drivers behind the chance, not a separate verdict</small></th></tr>
     ${partRows}
     <tr class="part"><th scope="row">Rain 11–19:00</th>${rainRow}</tr></tbody>`;
   t.querySelectorAll("[data-day]").forEach(e => e.addEventListener("click", () => { state.day = Number(e.dataset.day); drawWeek(); drawDetail(); }));
@@ -485,8 +482,7 @@ function drawDetail() {
       return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> chance of a Breva day${(() => { const pl = weekProbLang(date, ds.indexOf(date)); return pl == null ? "" : ` · <span class="badge ${pClass(pl)}">${Math.round(pl * 100)}%</span> long Breva (5+ h)`; })()}`; }).join(" · ")}${
       sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
         ? `<br><small>🌧 South wind with rain: more likely pre-frontal wind than a thermal Breva – usually steady but wet; watch for thunderstorms.</small>` : ""}</p>` : ""}
-    ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>
-      ${cl ? ` · usual: Breva on ${pct(cl.p)} of days in the month` : ""}${sig.rainF < 1 ? ` · rain ${de(sig.rain)} mm dampens` : ""}</p>
+    ${sig ? `<p class="sigline"><b>What the forecast shows</b>${cl ? ` · usual: Breva on ${pct(cl.p)} of days in the month` : ""}${sig.rain >= 0.5 ? ` · rain ${de(sig.rain)} mm on the lake/valley` : ""}</p>
       <ul class="parts">${sig.parts.map(p => `<li><span class="bar"><i style="width:${p.s == null ? 0 : Math.round(p.s * 100)}%"></i></span> ${p.label}: ${p.txt}</li>`).join("")}</ul>` : ""}
     <div class="ftable-wrap"><table class="ftable"><tbody>
       ${row("Hour", i => `<td>${o.time[i].slice(11, 13)}</td>`, "hrow")}
@@ -540,8 +536,6 @@ async function refresh() {
   renderAll();
 }
 function init() {
-  $("#modelSel").value = state.model;
-  $("#modelSel").addEventListener("change", e => { state.model = e.target.value; save("model", state.model); renderAll(); });
   $("#refreshBtn").addEventListener("click", refresh);
   $("#btnMap").addEventListener("click", () => setLayer("map"));
   $("#btnSat").addEventListener("click", () => setLayer("sat"));

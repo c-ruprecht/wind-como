@@ -472,3 +472,6 @@ tr.langrow th small { opacity: 0.8; }
 .tip small { color: var(--muted); }
 .heute .livehead { margin: 6px 0 2px; font-size: 15px; }
 .heute .livehead small { font: 400 12px var(--font-body); color: var(--muted); margin-left: 4px; }
+
+.week tr.parthead th { text-align: left; font-size: 12px; font-weight: 600; padding-top: 10px; color: var(--muted); }
+.week tr.parthead th small { font-weight: 400; }

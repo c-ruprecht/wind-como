@@ -28,12 +28,6 @@
     <a href="modell.html">Model</a>
   </nav>
   <div class="controls">
-    <label class="sel" for="modelSel">Model
-      <select id="modelSel">
-        <option value="icon">ICON</option>
-        <option value="ecmwf">ECMWF</option>
-      </select>
-    </label>
     <button type="button" id="refreshBtn" class="btn">Refresh</button>
   </div>
 </header>
@@ -61,8 +55,9 @@
     <div class="weekwrap"><table class="week sig" id="week"></table></div>
     <p class="hint">Model rows: chance of a Breva day (at least 2 h in a row with 14+ kn on the upper lake) and of a long
       Breva (at least 5 h – typically stable high pressure with a strong gradient from the plain into the valleys),
-      from the Breva model fed with the ECMWF forecast. Breva signs: south wind over the lake in the model, pressure
-      gradient from the Po plain into the valleys, sun in the valleys, no north foehn, dry air; rain dampens.
+      from the Breva model fed with the ECMWF forecast. Below, the main drivers in the forecast as bars (south wind over
+      the lake, pressure gradient from the Po plain into the valleys, sun in the valleys, no north foehn, dry air) – they
+      explain the chance but are not a forecast of their own; the model weighs 37 variables.
       “Usual”: share of Breva days in the same month. <b>How to read the %:</b> the chances are calibrated on real forecasts 2024–2026 – 55 % means that on 55 of
       100 days with such a forecast there really was a Breva. Click a day for the hours.</p>
   </section>
@@ -70,7 +65,7 @@
   <section class="panel" id="detail" aria-live="polite"></section>
 
   <section class="notes">
-    <p>Weather models: Open-Meteo (ICON, ECMWF). Measurements: ARPA Lombardia (dati.lombardia.it), 10-minute values.
+    <p>Weather model: ECMWF IFS 0.25° via Open-Meteo (the same model the Breva model is calibrated on). Measurements: ARPA Lombardia (dati.lombardia.it), 10-minute values.
       Breva map: Copernicus Sentinel-1, own processing (100 m, CMOD5.N).</p>
     <p>Map © OpenStreetMap contributors, OpenFreeMap. Satellite: Sentinel-2 cloudless, EOX (contains modified Copernicus Sentinel data 2020).</p>
     <p>No guarantee. Wind and weather on the lake change quickly – decide on site. Mind shipping lanes and swimming zones.</p>
