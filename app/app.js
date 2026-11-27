@@ -261,6 +261,49 @@ function hourlyAll() {
 }
 function shiftDate(d, n) { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
 const HEUTE_ZIELE = ["14", "lang"];
+/* ---------- Breva-Zeichen live (nur Messungen der letzten Stunde, wie die Zeichen der Wettervorhersage) ---------- */
+function utcOffset(date) {                       // Europe/Rome: 1 (Winter) oder 2 (Sommer)
+  const h = Number(new Date(`${date}T12:00:00Z`).toLocaleString("en-GB", { timeZone: "Europe/Rome", hour: "2-digit", hour12: false }));
+  return h - 12;
+}
+/* klarer Himmel (Haurwitz), mittlere Einstrahlung der Stunden 7..h1 (Stunde endet zur vollen Stunde), 46.2° N, 9.4° O */
+function clearSkyMean(date, h1) {
+  const doy = Math.round((new Date(date + "T12:00:00Z") - new Date(date.slice(0, 4) + "-01-01T00:00:00Z")) / 864e5) + 1;
+  const dec = 23.44 * Math.sin(2 * Math.PI * (284 + doy) / 365) * Math.PI / 180, lat = 46.2 * Math.PI / 180, off = utcOffset(date);
+  const v = [];
+  for (let h = 7; h <= h1; h++) {
+    const solar = (h - 0.5 - off) + 9.4 / 15;                        // wahre Ortszeit (ohne Zeitgleichung)
+    const ha = (solar - 12) * 15 * Math.PI / 180;
+    const cz = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(ha);
+    v.push(cz > 0.02 ? 1098 * cz * Math.exp(-0.057 / cz) : 0);
+  }
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+function liveSigns(today) {
+  const hourly = hourlyAll(), H = state.M?.heute;
+  const has = h => ["samolaco", "colico", "vercana"].some(st => hourly[st]?.[`${today}T${String(h).padStart(2, "0")}`]);
+  let hour = null; for (let h = 23; h >= 6; h--) if (has(h)) { hour = h; break; }
+  if (hour == null) return null;
+  const fs = H?.faktor ?? 1.37, fc = H?.faktor_col ?? 2.5, ax = H?.arpa_extra;
+  const o = { ...BrevaModel.obsFeatures(hourly, today, hour, fs, fc),
+    ...(ax ? BrevaModel.arpaFeatures(state.extra, today, hour, ax.tal, ax.ebene) : BrevaModel.arpaFeatures(state.extra, today, hour)) };
+  const fin = Number.isFinite, kn = v => `${v >= 0 ? "" : "−"}${de(Math.abs(v))} kn`;
+  const cs = clearSkyMean(today, hour), ratio = fin(o.rad_gem_tal) && cs ? o.rad_gem_tal / cs : null;
+  const parts = [
+    { label: "Vercana turns south-west", s: fin(o.vercana_jetzt) ? clamp(o.vercana_jetzt / 6) : null,
+      txt: fin(o.vercana_jetzt) ? `${kn(o.vercana_jetzt)} in Breva direction` : "no data" },
+    { label: "Wind on the upper lake", s: fin(o.see_jetzt) ? clamp(o.see_jetzt / 14) : null,
+      txt: fin(o.see_jetzt) ? `~${Math.round(o.see_jetzt)} kn from the south (estimate)${hour >= 11 && fin(o.see_stunden) ? ` · ${o.see_stunden} h at 14+ so far` : ""}` : "no data" },
+    { label: "Sun in the valleys", s: ratio != null ? clamp((ratio - 0.35) / 0.5) : null,
+      txt: ratio != null ? `${Math.round(ratio * 100)} % of clear sky since 7:00 (ARPA Chiavenna/Sondrio)` : "no data yet" },
+    { label: "Valleys warming vs. plain", s: fin(o.dt_gem_tal_ebene) ? clamp((o.dt_gem_tal_ebene + 1.5) / 3) : null,
+      txt: fin(o.dt_gem_tal_ebene) ? `valleys ${o.dt_gem_tal_ebene >= 0 ? "+" : "−"}${de(Math.abs(o.dt_gem_tal_ebene))} °C vs. Milan/Bergamo` : "no data" },
+    { label: "No wind from elsewhere this morning", s: fin(o.morgen_nicht_breva) ? clamp((6 - o.morgen_nicht_breva) / 5) : null,
+      txt: fin(o.morgen_nicht_breva) ? `Samolaco ${de(o.morgen_nicht_breva)} kn not from the south (6–10:00)` : "no data" }
+  ];
+  return { hour, parts };
+}
+
 function heute() {
   const M = state.M, H = M?.heute, F = features7(); const ds = days();
   if (!H || !F || !ds.length) return null;
@@ -370,12 +413,12 @@ function drawNow() {
       <p class="hint">${H.hour == null ? `Forecast only – measurements are added from ${state.M.heute.hours[0]}:00 (model at ${state.M.heute.hours.map(h => h + ":00").join(", ")}).`
         : `As of ${H.hour}:00: forecast for today + measurements until ${H.hour}:00 + yesterday. ${state.M.heute.hours.some(h => h > H.hour) ? `Next update at ${state.M.heute.hours.filter(h => h > H.hour).map(h => h + ":00").join(", ")}.` : "Last update of the day – from now on the stations show how it develops."}`}</p>
       <p class="hint">${PCT_HINT}</p>
+      ${(() => { const L = liveSigns(H.today); return L ? `<h3 class="livehead">Breva signs now <small>measured at ${L.hour}:00</small></h3>
+        <ul class="parts">${L.parts.map(p => `<li><span class="bar"><i style="width:${p.s == null ? 0 : Math.round(p.s * 100)}%"></i></span> ${p.label}: ${p.txt}</li>`).join("")}</ul>` : ""; })()}
       <ul class="hfak">
         <li><b>Forecast alone</b> (ECMWF, 7-day model): ${pct(H.pForecast)}</li>
         <li><b>Breva yesterday</b>: ${H.gestern == null ? "unknown" : H.gestern.breva ? `yes, ${H.gestern.stunden} h at 14+ kn (up to ~${Math.round(H.gestern.max)} kn on the lake)` : `no (max ~${Math.round(H.gestern.max)} kn)`}
           <small>– after a Breva day another one follows in ${pct(state.M.heute.vortag_stat?.["1"])} of cases, otherwise in ${pct(state.M.heute.vortag_stat?.["0"])}</small></li>
-        ${H.obs && Number.isFinite(H.obs.rad_gem_tal) ? `<li><b>Sun so far</b> (ARPA, 7:00–${H.hour}:00): valleys ${Math.round(H.obs.rad_gem_tal)} W/m², plain ${Number.isFinite(H.obs.rad_gem_ebene) ? Math.round(H.obs.rad_gem_ebene) : "–"} W/m²${Number.isFinite(H.obs.dt_gem_tal_ebene) ? ` · valley ${H.obs.dt_gem_tal_ebene >= 0 ? "+" : "−"}${de(Math.abs(H.obs.dt_gem_tal_ebene))} °C vs plain` : ""}</li>` : ""}
-        ${H.obs && Number.isFinite(H.obs.see_stunden) ? `<li><b>Breva so far today</b>: ${H.obs.see_stunden} h at 14+ kn on the lake (estimate from Samolaco/Colico), now ~${Math.round(H.obs.see_jetzt)} kn</li>` : ""}
         ${H.obs ? `<li><b>Breva direction now</b>: Vercana ${fmtObs(H.obs.vercana_jetzt)}, Samolaco ${fmtObs(H.obs.samolaco_jetzt)}, Colico ${fmtObs(H.obs.colico_jetzt)}, Morbegno ${fmtObs(H.obs.morbegno_jetzt)}
           <small>– wind component in Breva direction, negative = opposite. Vercana turns south-west first.</small></li>
         <li><b>Tivano this morning</b> (Samolaco from north, 5–9:00): ${fmtObs(H.obs.tivano_samolaco)}</li>` : ""}

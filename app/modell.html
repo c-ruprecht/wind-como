@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07222e">
+<title>The Breva model – upper Lake Como</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-32.png" sizes="32x32">
+<link rel="icon" href="icons/icon-64.png" sizes="64x64">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="style.css" rel="stylesheet">
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="./" aria-label="Breva – home"><img src="icons/icon-96.png" width="44" height="44" alt=""></a>
+  <div class="brand">
+    <h1>Breva</h1>
+    <span class="sub">How the forecast works</span>
+  </div>
+  <nav class="nav" aria-label="Main menu">
+    <a href="./">Forecast</a>
+    <a href="analyse.html">Wind analysis &amp; Breva</a>
+    <a href="modell.html" aria-current="page">Model</a>
+  </nav>
+</header>
+
+<main class="an mo">
+  <nav class="subnav" aria-label="Sections">
+    <a href="#ueberblick">Overview</a><a href="#ablauf">How it works</a><a href="#ziel">What is predicted</a>
+    <a href="#faktoren">Factors</a><a href="#vorlauf">7 days</a><a href="#pr">Precision &amp; recall</a>
+    <a href="#eichung">Calibration</a><a href="#heute">Today model</a><a href="#grenzen">Limits</a>
+  </nav>
+
+  <section class="panel prose" id="ueberblick">
+    <h2>The Breva model</h2>
+    <p class="lead">Two small machine-learning models answer two questions: <b>will there be a Breva</b> (14+ kn on the
+      upper lake for at least 2 hours) and <b>will it be a long one</b> (at least 5 hours)? The 7-day model looks only at
+      the weather forecast. The today model adds what the stations have measured so far.</p>
+    <div class="kpis" id="kpis"></div>
+    <p class="hint">Breva days and long Breva days per year are counted from March to October. Skill is the AUC on real
+      forecasts 2024–2026 that the model had not seen in training: 0.5 is guessing, 1.0 would be perfect.</p>
+  </section>
+
+  <section class="panel prose" id="ablauf">
+    <h2>How it works</h2>
+    <figure class="flow" aria-label="Flow from inputs to forecast">
+      <svg viewBox="0 0 760 330" class="chart flowsvg" role="img">
+        <title>Inputs, models and outputs of the Breva forecast</title>
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="fl-ar"/></marker></defs>
+        <!-- 7 Tage -->
+        <text x="10" y="18" class="fl-h">7-day forecast</text>
+        <rect x="10" y="28" width="210" height="96" rx="8" class="fl-in"/>
+        <text x="22" y="50" class="fl-t">ECMWF forecast, 7 days</text>
+        <text x="22" y="68" class="fl-s">11 points from Lyon to Venice</text>
+        <text x="22" y="84" class="fl-s">pressure, wind, sun, clouds,</text>
+        <text x="22" y="100" class="fl-s">temperature, humidity, rain</text>
+        <text x="22" y="116" class="fl-s">→ 37 weather variables per day</text>
+        <rect x="270" y="40" width="200" height="72" rx="8" class="fl-m"/>
+        <text x="284" y="62" class="fl-t">Breva model</text>
+        <text x="284" y="80" class="fl-s">gradient-boosted trees</text>
+        <text x="284" y="96" class="fl-s">trained on ERA5 2014–2026</text>
+        <rect x="520" y="28" width="230" height="44" rx="8" class="fl-o"/>
+        <text x="534" y="47" class="fl-t">Breva chance</text>
+        <text x="534" y="63" class="fl-s">calibrated per day ahead</text>
+        <rect x="520" y="80" width="230" height="44" rx="8" class="fl-o"/>
+        <text x="534" y="99" class="fl-t">Long Breva chance</text>
+        <text x="534" y="115" class="fl-s">same score, calibrated on long days</text>
+        <path d="M220,76 L268,76" class="fl-l" marker-end="url(#ar)"/>
+        <path d="M470,70 L518,52" class="fl-l" marker-end="url(#ar)"/>
+        <path d="M470,82 L518,100" class="fl-l" marker-end="url(#ar)"/>
+        <!-- Heute -->
+        <text x="10" y="168" class="fl-h">Today (7, 9, 11, 13, 15:00)</text>
+        <rect x="10" y="178" width="210" height="44" rx="8" class="fl-in"/>
+        <text x="22" y="197" class="fl-t">Forecast for today</text>
+        <text x="22" y="213" class="fl-s">the same 37 variables</text>
+        <rect x="10" y="228" width="210" height="44" rx="8" class="fl-in"/>
+        <text x="22" y="247" class="fl-t">Wind measured so far</text>
+        <text x="22" y="263" class="fl-s">4 stations on the lake and in the valleys</text>
+        <rect x="10" y="278" width="210" height="44" rx="8" class="fl-in"/>
+        <text x="22" y="297" class="fl-t">Sun &amp; temperature, yesterday</text>
+        <text x="22" y="313" class="fl-s">ARPA sun · Breva yesterday</text>
+        <rect x="270" y="214" width="200" height="72" rx="8" class="fl-m"/>
+        <text x="284" y="236" class="fl-t">Today model</text>
+        <text x="284" y="254" class="fl-s">one model per hour</text>
+        <text x="284" y="270" class="fl-s">and per question</text>
+        <rect x="520" y="202" width="230" height="44" rx="8" class="fl-o"/>
+        <text x="534" y="221" class="fl-t">Breva today</text>
+        <text x="534" y="237" class="fl-s">chance, updated every 2 hours</text>
+        <rect x="520" y="254" width="230" height="44" rx="8" class="fl-o"/>
+        <text x="534" y="273" class="fl-t">Long Breva today</text>
+        <text x="534" y="289" class="fl-s">does it last 5 hours or more?</text>
+        <path d="M220,200 L268,236" class="fl-l" marker-end="url(#ar)"/>
+        <path d="M220,250 L268,250" class="fl-l" marker-end="url(#ar)"/>
+        <path d="M220,300 L268,264" class="fl-l" marker-end="url(#ar)"/>
+        <path d="M470,244 L518,226" class="fl-l" marker-end="url(#ar)"/>
+        <path d="M470,256 L518,274" class="fl-l" marker-end="url(#ar)"/>
+      </svg>
+    </figure>
+    <ul class="tips">
+      <li><b>Training</b> uses ERA5, the weather as it actually was (a reanalysis, 25 km), for every day since 2014 – about
+        4,700 days with a known outcome. A trained model only needs the 37 variables, which the ECMWF forecast provides for the
+        next 7 days.</li>
+      <li><b>Calibration</b> is what makes the percentage honest. For each year since 2024 a model is trained on all other
+        years and then fed the real ECMWF forecasts of that year, 1 to 7 days ahead. From these predictions a curve per
+        day-ahead translates the model score into “on how many such days was there really a Breva”. Forecast errors are
+        therefore already included: the further ahead, the more cautious the chance.</li>
+      <li><b>Why the model and not a weather model's wind directly?</b> A 25 km weather model does not resolve the lake:
+        it shows 2–3 kn of south wind on a 20 kn Breva day. What it does get right are the drivers – sun, pressure
+        gradient, dry air, large-scale flow – and the model learns how they add up to a Breva.</li>
+    </ul>
+  </section>
+
+  <section class="panel prose" id="ziel">
+    <h2>What is predicted</h2>
+    <p>The truth the model learns from comes from the stations, scaled to the lake with the Sentinel-1 satellite:</p>
+    <ul class="tips">
+      <li><b>Breva day</b>: Samolaco <i>or</i> Colico – multiplied by the satellite factor (<span id="fsam"></span> and
+        <span id="fcol"></span>, wind on the lake vs. at the station on Breva evenings) and only counting wind from the
+        Breva direction – shows 14+ kn for at least 2 hours in a row between 11 and 20:00. No wind from another direction
+        in the morning, no north wind.</li>
+      <li><b>Long Breva</b>: a Breva day with at least <span id="langh">5</span> hours of 14+ kn.</li>
+      <li><b>Checked against the satellite</b>: on calm days the lake is smooth at 19:15 (5 % rough), on long Breva days
+        73 % rough. Short Breva days and near misses (only 1 hour, or 10–14 kn) look the same on the satellite – the line
+        between them is fluid, which is why a 50 % day is often a weak Breva.</li>
+    </ul>
+  </section>
+
+  <section class="panel prose" id="faktoren">
+    <h2>What makes a Breva – and what makes it last</h2>
+    <p class="lead">For each weather variable: how clearly does it separate calm days from short Breva days, and short
+      from long ones? Right of zero = higher on the Breva (or long) days. Measured with ERA5 on all days March–October
+      2014–2026.</p>
+    <figure>
+      <div id="faktorChart"></div>
+      <div class="legend chartlegend" id="faktorLeg"></div>
+    </figure>
+    <ul class="tips">
+      <li><b>Breva or not</b>: south wind over the lake in the weather model, sun in the valley and in the plain, warm air
+        over a cool lake, dry air, season. Rain, north foehn and wet soil work against it.</li>
+      <li><b>Long or short</b>: partly the same drivers, only stronger – more south wind, more late-afternoon sun, drier
+        air. But three variables matter <i>only</i> for the duration (marked ◆): a stronger pressure gradient from the
+        plain into the valleys at 15:00 (Bergamo → Sondrio, Milan → Chiavenna) and rising pressure over the previous 24 hours,
+        i.e. a building high.</li>
+      <li><b>Heat alone does not help</b>: maximum temperatures are as high on short as on long Breva days. Short days are
+        often hot days with a weaker gradient or afternoon showers.</li>
+    </ul>
+    <details><summary>All 37 weather variables of the model</summary><div class="tscroll"><table class="atab" id="featTab"></table></div></details>
+  </section>
+
+  <section class="panel prose" id="vorlauf">
+    <h2>How far ahead does it work?</h2>
+    <figure>
+      <div id="aucChart"></div>
+      <div class="legend chartlegend" id="aucLeg"></div>
+    </figure>
+    <p class="hint">AUC = how well the chance sorts Breva days above other days, on real ECMWF forecasts 2024–2026,
+      March–October. Tomorrow is clearly better than guessing; after day 5 the forecast itself gets too uncertain and the chance relies more and more on the season.</p>
+    <details><summary>Table</summary><div class="tscroll"><table class="atab num" id="aucTab"></table></div></details>
+  </section>
+
+  <section class="panel prose" id="pr">
+    <h2>Precision and recall</h2>
+    <p class="lead">If you only go on days above a certain chance: how often is there really a Breva (precision), and
+      how many of all Breva days do you catch (recall)? Each line is one day-ahead; moving along it means lowering the
+      threshold. The dotted line is the share of Breva days – what guessing would achieve.</p>
+    <div class="charts">
+      <figure><figcaption>Breva day</figcaption><div id="pr7b"></div></figure>
+      <figure><figcaption>Long Breva</figcaption><div id="pr7l"></div></figure>
+    </div>
+    <div class="legend chartlegend" id="pr7Leg"></div>
+    <details><summary>Table</summary><div class="tscroll"><table class="atab num" id="prTab"></table></div></details>
+  </section>
+
+  <section class="panel prose" id="eichung">
+    <h2>Does 60 % mean 60 %?</h2>
+    <p class="lead">Days grouped by the chance the app showed, against how often there really was a Breva. On the
+      diagonal, the chance is honest. Point size = number of days.</p>
+    <div class="charts">
+      <figure><figcaption>Breva day</figcaption><div id="calB"></div></figure>
+      <figure><figcaption>Long Breva</figcaption><div id="calL"></div></figure>
+    </div>
+    <div class="legend chartlegend" id="calLeg"></div>
+    <p class="hint">The chance comes in steps because the calibration curve is fitted as a staircase (isotonic regression)
+      on about 700 test days per day-ahead.</p>
+  </section>
+
+  <section class="panel prose" id="heute">
+    <h2>The today model</h2>
+    <p class="lead">Every two hours the today model combines the forecast for today with what has been measured so far.
+      Until about 9:00 it mostly relies on the forecast; from 11:00 the stations take over – Vercana above Domaso turns
+      south-west first, from 13:00 the measured wind on the lake decides. Whether a Breva will be long becomes clear in
+      the early afternoon.</p>
+    <div class="charts">
+      <figure><figcaption>Breva day: where the skill comes from</figcaption><div id="hQuelle"></div><div class="legend chartlegend" id="hQuelleLeg"></div></figure>
+      <figure><figcaption>Long Breva: where the skill comes from</figcaption><div id="hQuelleL"></div></figure>
+    </div>
+    <div class="charts">
+      <figure><figcaption>Precision &amp; recall, Breva day</figcaption><div id="prHb"></div></figure>
+      <figure><figcaption>Precision &amp; recall, long Breva</figcaption><div id="prHl"></div></figure>
+    </div>
+    <div class="legend chartlegend" id="prHLeg"></div>
+    <details><summary>What goes into the today model</summary><div class="tscroll"><table class="atab" id="hFeatTab"></table></div></details>
+  </section>
+
+  <section class="panel prose" id="grenzen">
+    <h2>Limits</h2>
+    <ul class="tips">
+      <li><b>About half of all Breva days stay uncertain the day before.</b> Most of them are borderline: a weak Breva came,
+        and whether it reached 14 kn for 2 hours was a matter of one hour. Sun is the biggest unknown – the measured sun on
+        the day separates these days better than any forecast variable.</li>
+      <li><b>No station on the water.</b> The wind on the lake is estimated from Samolaco and Colico with a factor from the
+        satellite. A station at Domaso, Gravedona or Dervio would sharpen both the target and the today model.</li>
+      <li><b>One forecast run.</b> The ECMWF ensemble (51 runs) would show how certain a day is; it is now being archived and
+        can be tested after one season.</li>
+      <li><b>Test period 2024–2026</b>: about 700 days March–October per day-ahead. Differences of ±0.02 AUC are within the
+        noise.</li>
+    </ul>
+    <p class="hint" id="stand"></p>
+  </section>
+</main>
+<div class="tip" id="tip" role="status" hidden></div>
+<script src="modell.js"></script>
+</body>
+</html>

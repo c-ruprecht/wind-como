@@ -437,3 +437,38 @@ td.cell
 /* Zeile „Long Breva“ in der 7-Tage-Tabelle: kleiner als die Breva-Zeile */
 tr.langrow td.cell .v { font-size: 0.85em; }
 tr.langrow th small { opacity: 0.8; }
+
+/* Modell-Seite (modell.html): Reihenfarben geprüft mit dem Palette-Validator (hell/dunkel), Vorlauf-Rampe hell→dunkel */
+:root { --c1: #00829b; --c2: #d9711c; --c3: #8a49c2;
+  --s1: #0b4f61; --s2: #0e6a80; --s3: #16849c; --s4: #3a9db3; --s5: #62b4c6; --s6: #8ccad8; --s7: #b6dfe8; }
+@media (prefers-color-scheme: dark) {
+  :root { --c1: #2ba3c0; --c2: #e0823a; --c3: #a578d8;
+    --s1: #cdeef6; --s2: #9edbe9; --s3: #6fc6da; --s4: #45adc5; --s5: #2e8ea6; --s6: #236f83; --s7: #1b5463; }
+}
+.mo svg.chart .ref { stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 3 4; }
+.mo svg.chart .zero { stroke: var(--muted); stroke-width: 1.2; }
+.mo svg.chart .conn { stroke: var(--line); stroke-width: 2; }
+.mo svg.chart .dot { stroke: var(--card); stroke-width: 2; }
+.mo svg.chart .hov { fill: none; stroke: var(--ink); stroke-width: 1.5; pointer-events: none; }
+.mo svg.chart .lab { font-size: 11px; }
+.mo svg.chart .fl-t2 { fill: var(--ink); font-size: 12px; font-family: var(--font-body); }
+.mo figure { max-width: 900px; }
+.mo svg.chart { max-width: none; }
+.mo #aucChart svg.chart { max-width: 640px; }
+.mo #faktorChart svg .ax { font-size: 11px; }
+.mo #faktorChart svg .fl-t2 { font-size: 13.5px; }
+.mo .charts figure { max-width: none; }
+.mo details summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.flowsvg .fl-h { fill: var(--ink); font: 700 15px var(--font-display); letter-spacing: .02em; }
+.flowsvg .fl-t { fill: var(--ink); font: 600 12.5px var(--font-body); }
+.flowsvg .fl-s { fill: var(--muted); font: 11px var(--font-body); }
+.flowsvg .fl-in { fill: var(--paper); stroke: var(--line); }
+.flowsvg .fl-m { fill: var(--card); stroke: var(--c1); stroke-width: 2; }
+.flowsvg .fl-o { fill: var(--card); stroke: var(--c2); stroke-width: 1.5; }
+.flowsvg .fl-l { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+.flowsvg .fl-ar { fill: var(--muted); }
+.tip { position: fixed; z-index: 50; max-width: 260px; padding: 7px 9px; border-radius: 6px; font-size: 12.5px; line-height: 1.35;
+  background: var(--card); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 4px 14px rgba(0,0,0,.18); pointer-events: none; }
+.tip small { color: var(--muted); }
+.heute .livehead { margin: 6px 0 2px; font-size: 15px; }
+.heute .livehead small { font: 400 12px var(--font-body); color: var(--muted); margin-left: 4px; }
