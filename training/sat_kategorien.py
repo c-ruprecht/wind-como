@@ -1,30 +1,33 @@
-"""Kategorien aus den Satellitenbildern: das räumliche Muster entlang des Sees statt nur ein Wert.
+"""Kategorien aus den Satellitenbildern – aus der Wasserrauigkeit (σ⁰), nicht aus Meeres-Windgeschwindigkeiten.
 
-Breva hat eine Signatur: schwächer im Süden (Bellagio/Menaggio), mittel bei Dervio/Cremia, am stärksten im
-Nordbecken (Domaso/Colico/Gera/Sorico). Ein Gewitter- oder Sturmbild ist auf dem ganzen See stark, Südströmung vor
-einer Front eher gleichmäßig, ruhige Abende überall schwach.
+CMOD5.N ist für den offenen Ozean geeicht; auf dem See (kurzer Fetch, Abschattung, Filme) sind die Knoten unsicher.
+Für Klassen reicht die Rauigkeit selbst: Bei gleicher Geometrie bedeutet mehr σ⁰ mehr Wind.
 
+Rauigkeit-Anomalie r (dB) je Pixel:
+  σ⁰ in dB minus Referenz der „Spur“ (Orbitrichtung + Einfallswinkel am See, auf 1° gerundet).
+  Referenz = 20 %-Quantil je Pixel über alle Bilder dieser Spur ≈ ruhiger See bei genau dieser Geometrie.
+  Damit fallen Einfallswinkel, Uferabschattung und ortsfeste Störungen heraus; r = 0 heißt „wie an ruhigen Tagen“.
 Je Abendbild (Ortszeit ≥ 12 Uhr):
-  Profil   Median-Wind in 0,01°-Breitenstreifen (≈ 1,1 km) von Süd nach Nord
-  sued     45,96–46,03 (Bellagio–Menaggio)   mitte 46,03–46,10 (Cremia/Dervio)   nord 46,10–46,18 (Domaso–Sorico)
-  anstieg  nord − sued (kn)          gleichm  Streuung der Pixel / Mittel        p_stark Anteil Pixel ≥ 20 kn
-  richtung aus der Windbild-Datei (Station/Modell, nicht vom Satelliten gemessen)
-Kategorien (Regeln, an den Bildtafeln zu prüfen und anzupassen):
-  ruhig              nord < 8 kn
-  nordwind           Richtung 20° (Tivano/Föhn/Nordlage)
-  gewitter_sturm     sued ≥ 16 und mitte ≥ 16 kn (ganzer See stark) oder p_stark ≥ 0,5 mit Regen ≥ 2 mm
-  breva_typisch      Süd, nord ≥ 8 kn, anstieg ≥ 2 kn (nach Norden zunehmend)
-  sued_gleichmaessig Süd, nord ≥ 8 kn, anstieg < 2 kn
-Ausgabe results/sat_kategorien/:
-  abende.csv                 je Abend alle Werte + Kategorie + Stationswerte (Samolaco, Colico Nachmittagsmax)
-  profile.png                mittleres Profil je Kategorie
-  <kategorie>.png            Bildtafel (bis 24 Abende, nach Nordbecken-Wind sortiert)
-  breva_stufen.png           typische Breva-Abende nach Stärke im Nordbecken (10–12, 12–14, 14–16, 16–18, ≥ 18 kn)
-  stationen.png              Nordbecken-Wind (Satellit) gegen Samolaco-/Colico-Maximum, je Kategorie
+  sued / mitte / nord   Median-r in 45,96–46,03 / 46,03–46,10 / 46,10–46,18 (Bellagio–Menaggio / Cremia–Dervio / Domaso–Sorico)
+  rau_nord              Anteil Nordbecken-Pixel mit r ≥ RAU dB
+  anstieg               nord − sued (dB)        flecken  Streuung der 1-km-Kachelmittel im ganzen See (dB)
+  profil                Median-r in 0,01°-Streifen von Süd nach Nord
+  kn_richtwert          CMOD5.N-Wind im Nordbecken (nur zur Orientierung)
+Fetch-Prüfung: Beim Breva wächst der Anlauf nach Norden, das allein macht den Nordteil rauer. Verglichen wird der
+  Anstieg bei Breva-Tagen (thermischer Ablauf an den Stationen) mit Südwind-Tagen ohne Ablauf (synoptisch/Regen/ruhig)
+  bei ähnlicher Gesamtrauigkeit – nur ein Anstieg darüber hinaus ist ein Breva-Zeichen.
+Kategorien (Regeln, an den Bildtafeln zu prüfen):
+  ruhig              nord < RUHIG dB
+  nordwind           Richtung 20° (Station/Modell – nicht vom Satelliten gemessen)
+  gewitter_sturm     ganzer See rau (sued und mitte ≥ STURM dB) oder fleckig (flecken ≥ FLECK) bei Regen
+  breva_typisch      Süd, nord ≥ RUHIG, anstieg ≥ ANSTIEG
+  sued_gleichmaessig Süd, nord ≥ RUHIG, anstieg < ANSTIEG
+Ausgabe results/sat_kategorien/: abende.csv, profile.png, fetch.png, <kategorie>.png (Bildtafeln der Rauigkeit),
+  breva_stufen.png (nach Rauigkeit im Nordbecken), stationen.png (Rauigkeit Nordbecken gegen Samolaco/Colico)
 
   python training/sat_kategorien.py
 """
-import glob, os, sys
+import os, sys
 import numpy as np
 import pandas as pd
 
@@ -35,52 +38,29 @@ import sar_lake as SL  # noqa: E402
 OUT = os.path.join(B.RES, "sat_kategorien")
 SEG = {"sued": (45.96, 46.03), "mitte": (46.03, 46.10), "nord": (46.10, 46.18)}
 LAT_BINS = np.round(np.arange(45.96, 46.19, 0.01), 3)
+RUHIG, RAU, ANSTIEG, STURM, FLECK = 2.0, 4.0, 2.0, 6.0, 2.5      # dB, vorläufig – an den Tafeln anpassen
 
 
-def scene_stats(v, water, lat):
-    ok = water & np.isfinite(v)
-    r = {}
-    for k, (a, b) in SEG.items():
-        m = ok & (lat >= a) & (lat < b)
-        r[k] = float(np.nanmedian(v[m])) if m.sum() >= 30 else np.nan
-    allv = v[ok]
-    r["gleichm"] = float(np.nanstd(allv) / max(np.nanmean(allv), 1)) if allv.size else np.nan
-    r["p_stark"] = float((allv >= 20).mean()) if allv.size else np.nan
-    prof = []
-    for a in LAT_BINS[:-1]:
-        m = ok & (lat >= a) & (lat < a + 0.01)
-        prof.append(float(np.nanmedian(v[m])) if m.sum() >= 10 else np.nan)
-    return r, prof
+def read_raw(f):
+    import rasterio
+    with rasterio.open(f) as r:
+        vv, inc, m = r.read(1), r.read(2), r.read(3)
+    db = np.where((m > 0) & (vv > 0), 10 * np.log10(np.clip(vv, 1e-6, None)), np.nan)
+    return db, inc
 
 
-def category(r):
-    if not np.isfinite(r["nord"]) or r["nord"] < 8:
-        return "ruhig"
-    if r["richtung"] != 200:
-        return "nordwind"
-    if (r["sued"] >= 16 and r["mitte"] >= 16) or (r["p_stark"] >= 0.5 and r.get("regen", 0) >= 2):
-        return "gewitter_sturm"
-    return "breva_typisch" if r["nord"] - r["sued"] >= 2 else "sued_gleichmaessig"
-
-
-def sheet(path, rows, water, title):
-    import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
-    rows = rows[:24]
-    if not len(rows):
-        return
-    nc = 6; nr = int(np.ceil(len(rows) / nc))
-    fig, axs = plt.subplots(nr, nc, figsize=(2.3 * nc, 2.9 * nr), squeeze=False)
-    for ax, (_, r) in zip(axs.flat, rows.iterrows()):
-        v = np.load(r.file)["v"] * SL.KN
-        ax.imshow(np.where(water, v, np.nan), extent=(SL.BBOX[0], SL.BBOX[2], SL.BBOX[1], SL.BBOX[3]),
-                  cmap="turbo", vmin=0, vmax=24)
-        ax.set_aspect(1 / np.cos(np.radians(46))); ax.set_xticks([]); ax.set_yticks([])
-        ax.set_title(f"{r.name:%d.%m.%y}  N{r.nord:.0f}/M{r.mitte:.0f}/S{r.sued:.0f}\n"
-                     f"Sam {r.sam_max:.0f} · Col {r.col_max:.0f} kn", fontsize=7)
-    for ax in list(axs.flat)[len(rows):]:
-        ax.axis("off")
-    fig.suptitle(title + "   (N/M/S = Nordbecken/Mitte/Süd, Satellit; Sam/Col = Stationsmaximum 11–20 Uhr)", fontsize=9)
-    fig.tight_layout(); fig.savefig(path, dpi=75); plt.close(fig)
+def scenes():
+    sc = pd.read_csv(f"{SL.OUT}/scenes.csv")
+    rows = []
+    for _, s in sc.iterrows():
+        p = f"{SL.OUT}/raw/{s.file}"
+        if os.path.exists(p):
+            rows.append(dict(file=p, wind=f"{SL.OUT}/wind/{s.file[:-4]}.npz", te=pd.Timestamp(s.file[:15], tz="UTC"),
+                             orbit=str(s.orbit)[:3]))
+    if not rows:
+        sys.exit(f"keine Rohbilder in {SL.OUT}/raw – erst sar_lake.py download")
+    S = pd.DataFrame(rows).sort_values("te")
+    return S[S.te.diff().fillna(pd.Timedelta(hours=1)) > pd.Timedelta(minutes=5)].reset_index(drop=True)   # Kacheln nur einmal
 
 
 def main():
@@ -88,74 +68,151 @@ def main():
     water = SL.clean_mask(np.load(f"{SL.OUT}/water_mask.npy"))
     H, W = water.shape
     lat = (SL.BBOX[3] - (np.arange(H) + 0.5) * (SL.BBOX[3] - SL.BBOX[1]) / H)[:, None] * np.ones((1, W))
+    S = scenes()
+    print(f"{len(S)} Überflüge mit Rohbild; lese σ⁰ …", flush=True)
+    DB, track = [], []
+    for _, s in S.iterrows():
+        try:
+            db, inc = read_raw(s.file)
+        except Exception as e:
+            print("  ", os.path.basename(s.file), e); DB.append(None); track.append(None); continue
+        if db.shape != water.shape:
+            DB.append(None); track.append(None); continue
+        DB.append(np.where(water, db, np.nan).astype("float32"))
+        track.append(f"{s.orbit}{int(round(float(np.nanmedian(inc[water]))))}")
+    S["spur"] = track
+    ok = S.spur.notna().values
+    S = S[ok].reset_index(drop=True); DB = [d for d, k in zip(DB, ok) if k]
+    ref = {}
+    for t, idx in S.groupby("spur").groups.items():                 # Referenz je Spur: 20 %-Quantil je Pixel
+        if len(idx) >= 8:
+            ref[t] = np.nanpercentile(np.stack([DB[i] for i in idx]), 20, axis=0)
+    print("Bilder je Spur (Referenz ab 8):", S.spur.value_counts().to_dict())
     D = pd.read_csv(f"{B.RES}/breva_tage.csv", index_col=0, parse_dates=True)
-    rows, profs = [], []
-    files = sorted(glob.glob(f"{SL.OUT}/wind/*.npz"))
-    last = None
-    for f in files:
-        te = pd.Timestamp(os.path.basename(f)[:15], tz="UTC"); lt = te.tz_convert("Europe/Rome")
-        if lt.hour < 12 or (last is not None and te - last < pd.Timedelta(minutes=5)):
+    north_px = water & (lat >= SEG["nord"][0]) & (lat < SEG["nord"][1])
+    rows, profs, R = [], [], {}
+    for i, s in S.iterrows():
+        lt = s.te.tz_convert("Europe/Rome")
+        if lt.hour < 12 or s.spur not in ref:
             continue
-        last = te
-        z = np.load(f); v = z["v"] * SL.KN
-        r, prof = scene_stats(v, water, lat)
+        r = DB[i] - ref[s.spur]
+        rec = {k: float(np.nanmedian(r[water & (lat >= a) & (lat < b)])) for k, (a, b) in SEG.items()}
+        nr = r[north_px]; nr = nr[np.isfinite(nr)]
+        rec["rau_nord"] = float((nr >= RAU).mean()) if nr.size else np.nan
+        tiles = [np.nanmean(r[y:y + 10, x:x + 10][water[y:y + 10, x:x + 10]]) for y in range(0, H, 10) for x in range(0, W, 10)
+                 if water[y:y + 10, x:x + 10].sum() >= 30]
+        rec["flecken"] = float(np.nanstd(tiles)) if tiles else np.nan
+        prof = []
+        for a in LAT_BINS[:-1]:
+            m = water & (lat >= a) & (lat < a + 0.01)
+            prof.append(float(np.nanmedian(r[m])) if m.sum() >= 10 else np.nan)
         d = lt.normalize().tz_localize(None)
-        r.update(tag=d, zeit=lt.strftime("%H:%M"), file=f, richtung=float(z["dir"]),
-                 richtung_quelle=str(z["dir_quelle"]) if "dir_quelle" in z else "modell")
-        for c in ("sam_max", "col_max", "regen", "klasse", "breva14", "breva18", "sam_morgen"):
-            r[c] = D[c].get(d, np.nan) if c in D else np.nan
-        rows.append(r); profs.append(prof)
+        rec.update(tag=d, zeit=lt.strftime("%H:%M"), spur=s.spur)
+        try:
+            z = np.load(s.wind)
+            rec["richtung"] = float(z["dir"]); rec["richtung_quelle"] = str(z["dir_quelle"]) if "dir_quelle" in z else "modell"
+            rec["kn_richtwert"] = float(np.nanmedian((z["v"] * SL.KN)[north_px]))
+        except Exception:
+            rec.update(richtung=np.nan, richtung_quelle="", kn_richtwert=np.nan)
+        for c in ("sam_max", "col_max", "regen", "klasse", "breva14", "breva18", "sam_morgen", "sam_nord_std"):
+            rec[c] = D[c].get(d, np.nan) if c in D else np.nan
+        rows.append(rec); profs.append(prof); R[d] = r
     if not rows:
-        sys.exit("keine Abend-Windbilder – erst sar_lake.py download/wind")
+        sys.exit("keine Abendbilder mit Referenz")
     A = pd.DataFrame(rows).set_index("tag")
-    A = A[~A.index.duplicated(keep="last")]
-    P = pd.DataFrame(profs, columns=[f"{a:.2f}" for a in LAT_BINS[:-1]])
-    P.index = pd.DataFrame(rows).tag
-    P = P[~P.index.duplicated(keep="last")]
+    keep = ~A.index.duplicated(keep="last")
+    P = pd.DataFrame(profs, index=A.index, columns=[f"{a:.2f}" for a in LAT_BINS[:-1]])[keep]
+    A = A[keep]
     A["regen"] = A.regen.fillna(0)
     A["anstieg"] = A.nord - A.sued
-    A["kategorie"] = [category(r) for _, r in A.iterrows()]
+    A["gesamt"] = A[["sued", "mitte", "nord"]].mean(axis=1)
+
+    def cat(r):
+        if not np.isfinite(r.nord) or r.nord < RUHIG:
+            return "ruhig"
+        if r.richtung == 20:
+            return "nordwind"
+        if (r.sued >= STURM and r.mitte >= STURM) or (r.flecken >= FLECK and r.regen >= 2):
+            return "gewitter_sturm"
+        return "breva_typisch" if r.anstieg >= ANSTIEG else "sued_gleichmaessig"
+    A["kategorie"] = [cat(r) for _, r in A.iterrows()]
     os.makedirs(OUT, exist_ok=True)
-    A.drop(columns="file").round(3).to_csv(f"{OUT}/abende.csv")
-    S = A[A.index.month.isin(range(3, 11))]
-    print(f"{len(A)} Abendbilder, davon März–Oktober {len(S)}")
-    print(S.kategorie.value_counts().to_string())
-    print("\nMedian je Kategorie (März–Oktober):")
-    print(S.groupby("kategorie")[["sued", "mitte", "nord", "anstieg", "gleichm", "p_stark", "sam_max", "col_max", "regen"]]
+    for f in os.listdir(OUT):
+        if f.endswith(".png"):
+            os.remove(os.path.join(OUT, f))
+    A.round(3).to_csv(f"{OUT}/abende.csv")
+    P.round(2).to_csv(f"{OUT}/profile.csv")
+    M = A[A.index.month.isin(range(3, 11))]
+    print(f"\n{len(A)} Abendbilder mit Referenz, März–Oktober {len(M)}")
+    print(M.kategorie.value_counts().to_string())
+    print("\nMedian je Kategorie (März–Oktober; dB über ruhig, kn nur Richtwert):")
+    print(M.groupby("kategorie")[["sued", "mitte", "nord", "anstieg", "rau_nord", "flecken", "kn_richtwert", "sam_max", "col_max", "regen"]]
           .median().round(2).to_string())
-    print("\nStationsziel (breva14) je Kategorie, Anteil:")
-    print(S.groupby("kategorie").breva14.mean().round(2).to_string())
-    # Profile
+    print("\nStationsziel breva14 je Kategorie (Anteil):")
+    print(M.groupby("kategorie").breva14.mean().round(2).to_string())
+    # Fetch-Prüfung
+    sued = M[M.richtung == 200]
+    therm = sued.klasse.isin(["Breva", "Breva schwach"]); syn = sued.klasse.isin(["synoptisch", "Regen/Gewitter", "ruhig"])
+    bins = [-5, 2, 4, 6, 8, 30]
+    grp = lambda X: X.groupby(pd.cut(X.gesamt, bins), observed=False)  # noqa: E731
+    F = pd.DataFrame({"Anstieg thermisch": grp(sued[therm]).anstieg.median(), "n": grp(sued[therm]).size(),
+                      "Anstieg ohne Ablauf": grp(sued[syn]).anstieg.median(), "n ohne": grp(sued[syn]).size()})
+    print("\nFetch-Prüfung – Anstieg Nord−Süd (dB) bei ähnlicher Gesamtrauigkeit:")
+    print(F.round(2).to_string())
+    F.round(3).to_csv(f"{OUT}/fetch.csv")
+    # Bilder
     fig, ax = plt.subplots(figsize=(6.5, 4))
-    for k, g in S.groupby("kategorie"):
-        pm = P.reindex(g.index).median()
-        ax.plot(LAT_BINS[:-1] + 0.005, pm.values, lw=2, label=f"{k} ({len(g)})")
-    for k, (a, b) in SEG.items():
-        ax.axvspan(a, b, alpha=0.06 if k == "mitte" else 0.0, color="grey")
-    for name, la in (("Bellagio", 45.985), ("Menaggio", 46.02), ("Dervio", 46.077), ("Domaso", 46.15), ("Colico", 46.137), ("Sorico", 46.162)):
+    for k, g in M.groupby("kategorie"):
+        ax.plot(LAT_BINS[:-1] + 0.005, P.reindex(g.index).median().values, lw=2, label=f"{k} ({len(g)})")
+    for name, la in (("Bellagio", 45.985), ("Menaggio", 46.02), ("Dervio", 46.077), ("Colico", 46.137), ("Domaso", 46.15), ("Sorico", 46.162)):
         ax.axvline(la, color="grey", lw=0.5, ls=":")
         ax.text(la, 0.02, name, rotation=90, fontsize=7, va="bottom", transform=ax.get_xaxis_transform())
-    ax.set_xlabel("Breite (Süd → Nord)"); ax.set_ylabel("Median-Wind (kn)"); ax.legend(fontsize=8); ax.grid(alpha=0.3)
-    ax.set_title("Mittleres Windprofil entlang des oberen Sees je Kategorie (März–Oktober)", fontsize=9)
+    ax.axhline(0, color="black", lw=0.6)
+    ax.set_xlabel("Breite (Süd → Nord)"); ax.set_ylabel("Rauigkeit über ruhig (dB)"); ax.legend(fontsize=8); ax.grid(alpha=0.3)
+    ax.set_title("Mittleres Rauigkeitsprofil entlang des oberen Sees je Kategorie (März–Oktober)", fontsize=9)
     fig.tight_layout(); fig.savefig(f"{OUT}/profile.png", dpi=100); plt.close(fig)
-    # Bildtafeln je Kategorie
-    for k, g in S.groupby("kategorie"):
-        sheet(f"{OUT}/{k}.png", g.sort_values("nord", ascending=False), water, f"{k}: {len(g)} Abende")
-    # Breva-Stufen
-    bt = S[S.kategorie == "breva_typisch"]
-    bins = [(10, 12), (12, 14), (14, 16), (16, 18), (18, 99)]
-    sel = pd.concat([bt[(bt.nord >= a) & (bt.nord < b)].sample(min(6, int(((bt.nord >= a) & (bt.nord < b)).sum())), random_state=0)
-                     .sort_values("nord") for a, b in bins])
-    sheet(f"{OUT}/breva_stufen.png", sel, water, "Typischer Breva nach Stärke im Nordbecken: je Zeile eine Stufe 10–12 / 12–14 / 14–16 / 16–18 / ≥ 18 kn")
-    # Satellit gegen Stationen
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.scatter(sued[syn].gesamt, sued[syn].anstieg, s=12, alpha=0.6, label="Südwind ohne thermischen Ablauf")
+    ax.scatter(sued[therm].gesamt, sued[therm].anstieg, s=12, alpha=0.6, label="Breva (thermischer Ablauf)")
+    ax.axhline(ANSTIEG, color="#d1495b", ls="--", lw=0.8)
+    ax.set_xlabel("Gesamtrauigkeit (dB über ruhig)"); ax.set_ylabel("Anstieg Nord − Süd (dB)"); ax.legend(fontsize=8); ax.grid(alpha=0.3)
+    ax.set_title("Fetch-Prüfung", fontsize=9)
+    fig.tight_layout(); fig.savefig(f"{OUT}/fetch.png", dpi=100); plt.close(fig)
+
+    def sheet(path, X, title):
+        X = X[:24]
+        if not len(X):
+            return
+        nc = 6; nr = int(np.ceil(len(X) / nc))
+        fig, axs = plt.subplots(nr, nc, figsize=(2.3 * nc, 2.9 * nr), squeeze=False)
+        for ax, (d, r) in zip(axs.flat, X.iterrows()):
+            im = ax.imshow(np.where(water, R[d], np.nan), extent=(SL.BBOX[0], SL.BBOX[2], SL.BBOX[1], SL.BBOX[3]),
+                           cmap="magma", vmin=-2, vmax=12)
+            ax.set_aspect(1 / np.cos(np.radians(46))); ax.set_xticks([]); ax.set_yticks([])
+            ax.set_title(f"{d:%d.%m.%y} N{r.nord:.1f}/M{r.mitte:.1f}/S{r.sued:.1f} dB\n"
+                         f"Sam {r.sam_max:.0f} · Col {r.col_max:.0f} kn · ~{r.kn_richtwert:.0f} kn", fontsize=7)
+        for ax in list(axs.flat)[len(X):]:
+            ax.axis("off")
+        fig.colorbar(im, ax=axs, shrink=0.5, label="dB über ruhig")
+        fig.suptitle(title + "  (N/M/S = Nordbecken/Mitte/Süd; Sam/Col = Stationsmaximum 11–20 Uhr; ~kn = CMOD-Richtwert)", fontsize=8)
+        fig.savefig(path, dpi=75, bbox_inches="tight"); plt.close(fig)
+    for k, g in M.groupby("kategorie"):
+        sheet(f"{OUT}/{k}.png", g.sort_values("nord", ascending=False), f"{k}: {len(g)} Abende")
+    bt = M[M.kategorie == "breva_typisch"]
+    if len(bt) >= 10:
+        qs = np.nanpercentile(bt.nord, [0, 20, 40, 60, 80, 100]); parts = []
+        for a, b in zip(qs[:-1], qs[1:]):
+            g = bt[(bt.nord >= a) & (bt.nord <= b)]
+            parts.append(g.sample(min(6, len(g)), random_state=0).sort_values("nord"))
+        sheet(f"{OUT}/breva_stufen.png", pd.concat(parts), "Typischer Breva nach Rauigkeit im Nordbecken, je Zeile ein Fünftel (schwach → stark)")
     fig, axs = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
     for ax, st in zip(axs, ("sam_max", "col_max")):
-        for k, g in S.groupby("kategorie"):
+        for k, g in M.groupby("kategorie"):
             ax.scatter(g[st], g.nord, s=12, alpha=0.7, label=k)
         ax.set_xlabel(f"{'Samolaco' if st == 'sam_max' else 'Colico'}: Maximum 11–20 Uhr (kn)"); ax.grid(alpha=0.3)
-    axs[0].set_ylabel("Satellit Nordbecken um 19:15 (kn)"); axs[0].legend(fontsize=7)
+    axs[0].set_ylabel("Rauigkeit Nordbecken um 19:15 (dB über ruhig)"); axs[0].legend(fontsize=7)
     fig.tight_layout(); fig.savefig(f"{OUT}/stationen.png", dpi=100); plt.close(fig)
-    print(f"\ngeschrieben: {os.path.relpath(OUT)}/ (abende.csv, profile.png, Bildtafeln je Kategorie, breva_stufen.png, stationen.png)")
+    print(f"\ngeschrieben: {os.path.relpath(OUT)}/ (abende.csv, profile.csv/png, fetch.csv/png, Bildtafeln, breva_stufen.png, stationen.png)")
 
 
 if __name__ == "__main__":
