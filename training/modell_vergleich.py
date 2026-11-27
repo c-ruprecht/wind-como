@@ -20,7 +20,7 @@ Schritte (der Reihe nach):
 Wichtig zur Einordnung: Die „Wahrheit“ in a) ist ERA5 (31 km). Ein feines Regionalmodell kann näher an der
 Wirklichkeit und trotzdem weiter von ERA5 weg liegen. Entscheidend ist deshalb b) – trifft der Breva-Tag ein?
 """
-import argparse, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, http.client, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 import numpy as np
 import pandas as pd
 
@@ -73,7 +73,7 @@ def fetch(q):
             if e.code == 400:
                 raise ValueError(body)
             time.sleep(15 * (i + 1))
-        except (TimeoutError, urllib.error.URLError) as e:
+        except (OSError, http.client.HTTPException) as e:      # Zeitüberschreitung, Verbindung getrennt, SSL
             print("  ", e); time.sleep(15 * (i + 1))
     raise RuntimeError("keine Antwort")
 

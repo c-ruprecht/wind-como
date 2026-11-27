@@ -20,6 +20,7 @@ Ablauf
 
 Aufruf (Repo-Ordner):  python training/download_arpa.py [--from 2014] [--only colico,como]
 """
+import http.client
 import argparse, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 import numpy as np
 import pandas as pd
@@ -87,7 +88,7 @@ def get(url, tries=6, raw=False):
                 raise NotFound(f"{e.code} {url[:140]}")
             wait = 60 if e.code == 429 else 5 * (i + 1)
             print(f"    {e} – neuer Versuch in {wait} s", flush=True); time.sleep(wait)
-        except (urllib.error.URLError, TimeoutError, ValueError) as e:
+        except (OSError, http.client.HTTPException, ValueError) as e:   # inkl. getrennte Verbindung, SSL
             if "CERTIFICATE_VERIFY_FAILED" in str(e):
                 sys.exit("SSL-Zertifikate fehlen: im conda-Env mit python starten oder pip install certifi")
             wait = 60 if "429" in str(e) else 5 * (i + 1)

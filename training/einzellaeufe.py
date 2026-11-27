@@ -19,7 +19,7 @@ gewichtete, also zwei Tage Kontingent (~2,2 h Laufzeit). Mit 18 UTC doppelt.
 
 Aufruf:  python training/einzellaeufe.py [--laeufe 00,18] [--ab 2024-03-14] [--modell ecmwf_ifs]
 """
-import argparse, glob, json, os, sys, time, urllib.error, urllib.parse, urllib.request
+import argparse, glob, http.client, json, os, sys, time, urllib.error, urllib.parse, urllib.request
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -50,7 +50,7 @@ def fetch(q):
             if e.code == 400:
                 raise ValueError(body)
             time.sleep(15 * (i + 1))
-        except (TimeoutError, urllib.error.URLError) as e:
+        except (OSError, http.client.HTTPException) as e:      # Zeitüberschreitung, Verbindung getrennt, SSL
             print("  ", e); time.sleep(15 * (i + 1))
     raise RuntimeError("keine Antwort")
 
