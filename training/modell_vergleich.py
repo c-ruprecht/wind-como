@@ -148,19 +148,18 @@ def laden(modelle, leads, start):
                 cols = [f"{v}_previous_day{d}" for v in vs for d in L]
                 for y in range(s0.year, yesterday.year + 1):
                     f = f"{B.PREV}/{m}_{p}_{y}.csv"
-                    if os.path.exists(f) and y < yesterday.year:
-                        have = set(pd.read_csv(f, nrows=1).columns)
-                        if all(c in have for c in cols):
-                            continue
-                    s = max(s0, pd.Timestamp(f"{y}-01-01")); e = min(pd.Timestamp(f"{y}-12-31"), yesterday)
+                    plan = B.plan_year(f, y, s0, yesterday, cols)
+                    if plan is None:
+                        continue
+                    s, e, old = plan
                     parts = []
                     for i in range(0, len(cols), 14):
                         j = fetch(dict(latitude=la, longitude=lo, models=m, hourly=",".join(cols[i:i + 14]),
                                        timezone=B.TZ, wind_speed_unit="kn",
                                        start_date=s.strftime("%Y-%m-%d"), end_date=e.strftime("%Y-%m-%d")))
                         parts.append(pd.DataFrame(j["hourly"]).set_index("time")); time.sleep(0.4)
-                    pd.concat(parts, axis=1).reset_index().to_csv(f, index=False)
-                    print(f"  {m} {p} {y}", flush=True)
+                    B.merge_save(f, old, pd.concat(parts, axis=1).reset_index())
+                    print(f"  {m} {p} {y} ab {s:%m-%d}", flush=True)
         except Tageslimit:
             sys.exit("Tageslimit erreicht – morgen denselben Befehl erneut starten, Fertiges bleibt.")
 

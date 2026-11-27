@@ -101,6 +101,36 @@ def supported(kind, model, cand, suffix=""):
     return [v for v in cand if have.get(v)]
 
 
+def plan_year(f, y, start, yesterday, cols=None):
+    """Was für Jahr y zu laden ist: (von, bis, vorhandene Daten) – oder None, wenn nichts fehlt.
+    Vergangene Jahre: vorhanden und alle Spalten da = fertig. Laufendes Jahr: nur ab dem letzten Tag mit Werten
+    (ERA5 kommt mit ~5 Tagen Verzug; leere Zeilen am Ende werden so später gefüllt)."""
+    s = max(pd.Timestamp(start), pd.Timestamp(f"{y}-01-01")); e = min(pd.Timestamp(f"{y}-12-31"), yesterday)
+    if not os.path.exists(f):
+        return s, e, None
+    old = pd.read_csv(f)
+    if cols and not all(c in old.columns for c in cols):
+        return s, e, None                                   # neue Spalten: Jahr ganz neu
+    if y < yesterday.year:
+        return None
+    t = pd.to_datetime(old.time)
+    valid = old.drop(columns="time").notna().any(axis=1)
+    if not valid.any():
+        return s, e, None
+    von = t[valid].max().normalize()                        # letzter Tag mit Werten erneut (kann unvollständig sein)
+    if von >= e:
+        return None
+    return max(von, s), e, old
+
+
+def merge_save(f, old, new):
+    """neue Zeilen ersetzen alte zur selben Zeit, Rest bleibt"""
+    if old is not None and len(old):
+        new = new.copy(); new["time"] = new.time.astype(str); old = old.copy(); old["time"] = old.time.astype(str)
+        new = pd.concat([old[~old.time.isin(set(new.time))], new]).sort_values("time")
+    new.to_csv(f, index=False)
+
+
 def wetter(start=2014, model="era5"):
     """Stundenwerte der Vergangenheit: ERA5 (25 km, ab 1940) oder ECMWF IFS 9 km (model="ecmwf_ifs", ab 2017)."""
     out = ERA if model == "era5" else IFS9
@@ -113,13 +143,14 @@ def wetter(start=2014, model="era5"):
         vs = [v for v in vs if v in ok]
         for y in range(start, yesterday.year + 1):
             f = f"{out}/{p}_{y}.csv"
-            if os.path.exists(f) and y < yesterday.year:
+            plan = plan_year(f, y, f"{y}-01-01", yesterday, vs)
+            if plan is None:
                 continue
-            end = min(pd.Timestamp(f"{y}-12-31"), yesterday)
+            von, end, old = plan
             j = get_json(ERA_URL, dict(latitude=la, longitude=lo, models=model, hourly=",".join(vs), timezone=TZ,
-                                       wind_speed_unit="kn", start_date=f"{y}-01-01", end_date=end.strftime("%Y-%m-%d")))
-            pd.DataFrame(j["hourly"]).to_csv(f, index=False)
-            print(f"  {model} {p} {y}", flush=True); time.sleep(0.5)
+                                       wind_speed_unit="kn", start_date=von.strftime("%Y-%m-%d"), end_date=end.strftime("%Y-%m-%d")))
+            merge_save(f, old, pd.DataFrame(j["hourly"]))
+            print(f"  {model} {p} {y} ab {von:%m-%d}", flush=True); time.sleep(0.5)
 
 
 def archiv(model="icon_seamless", start=2022):
@@ -144,14 +175,15 @@ def archiv(model="icon_seamless", start=2022):
         vs = [v for v in vs if v in ok]
         for y in range(start, yesterday.year + 1):
             f = f"{ARCH}/{model}_{p}_{y}.csv"
-            if os.path.exists(f) and y < yesterday.year:
+            plan = plan_year(f, y, f"{y}-01-01", yesterday)
+            if plan is None:
                 continue
-            end = min(pd.Timestamp(f"{y}-12-31"), yesterday)
+            von, end, old = plan
             parts = []
             for i in range(0, len(vs), 15):
                 try:
                     j = get_json(HF_URL, dict(latitude=la, longitude=lo, models=model, hourly=",".join(vs[i:i + 15]),
-                                              timezone=TZ, wind_speed_unit="kn", start_date=f"{y}-01-01",
+                                              timezone=TZ, wind_speed_unit="kn", start_date=von.strftime("%Y-%m-%d"),
                                               end_date=end.strftime("%Y-%m-%d")))
                 except RuntimeError as err:
                     print(f"  {p} {y}: {err}"); continue
@@ -161,8 +193,8 @@ def archiv(model="icon_seamless", start=2022):
             d = pd.concat(parts, axis=1)
             d = d[d.notna().mean(axis=1) > 0.3]                       # Zeiten vor Beginn des Archivs weglassen
             if len(d):
-                d.reset_index().to_csv(f, index=False)
-                print(f"  Archiv {model} {p} {y}: {len(d) // 24} Tage", flush=True)
+                merge_save(f, old, d.reset_index())
+                print(f"  Archiv {model} {p} {y} ab {von:%m-%d}: {len(d) // 24} Tage", flush=True)
 
 
 def laeufe(model="ecmwf_ifs025", start="2024-01-01"):
@@ -174,9 +206,10 @@ def laeufe(model="ecmwf_ifs025", start="2024-01-01"):
         cols = [f"{v}_previous_day{d}" for v in vs if v in ok for d in LEADS]
         for y in range(pd.Timestamp(start).year, yesterday.year + 1):
             f = f"{PREV}/{model}_{p}_{y}.csv"
-            if os.path.exists(f) and y < yesterday.year:
+            plan = plan_year(f, y, start, yesterday, cols)
+            if plan is None:
                 continue
-            s = max(pd.Timestamp(start), pd.Timestamp(f"{y}-01-01")); e = min(pd.Timestamp(f"{y}-12-31"), yesterday)
+            s, e, old = plan
             parts = []
             for i in range(0, len(cols), 14):
                 try:
@@ -187,8 +220,8 @@ def laeufe(model="ecmwf_ifs025", start="2024-01-01"):
                     print(f"  {p} {y}: {err}"); continue
                 parts.append(pd.DataFrame(j["hourly"]).set_index("time")); time.sleep(0.5)
             if parts:
-                pd.concat(parts, axis=1).reset_index().to_csv(f, index=False)
-                print(f"  Läufe {model} {p} {y}", flush=True)
+                merge_save(f, old, pd.concat(parts, axis=1).reset_index())
+                print(f"  Läufe {model} {p} {y} ab {s:%m-%d}", flush=True)
 
 
 def load(kind="era5", lead=0, model="ecmwf_ifs025"):
