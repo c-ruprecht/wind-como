@@ -56,7 +56,8 @@ def rnd(v, n=2):
 def main():
     out = {"stand": pd.Timestamp.today().strftime("%Y-%m-%d")}
     D = pd.read_csv(f"{RES}/breva_tage.csv", index_col=0, parse_dates=True)
-    y = (D.klasse == "Breva").astype(int)
+    # Breva-Tag wie das Modell (breva_daten.tage: Samolaco oder Colico, ≥ 14 kn ≥ 2 h); alte Ziele als Rückfall
+    y = D.breva.astype(int) if "breva" in D else (D.klasse == "Breva").astype(int)
     out["jahre"] = f"{D.index.year.min()}–{D.index.year.max()}"
     # Tagesgang je Station (ganzes Jahr): mittlere Stärke und Anteil Breva-Richtung, an Breva-Tagen und sonst
     prof = {}
@@ -92,6 +93,14 @@ def main():
     out["vortag"] = {"nach_breva": rnd(j[j.v == 1].y.mean(), 3), "sonst": rnd(j[j.v == 0].y.mean(), 3)}
     # Klassen je Monat (Tage je Saison)
     yrs = D.index.year.nunique()
+    if "breva_lang" in D:                 # Klassen wie breva_klassen.py, Störungen aus den alten Tagesklassen
+        k = pd.Series("ruhig", index=D.index)
+        k[(D.breva == 0) & ((D.see_max_stunde >= 10) | (D.breva_lauf >= 1))] = "Grenzfall"
+        k[(D.breva == 0) & (D.klasse == "Regen/Gewitter")] = "Regen/Gewitter"
+        k[(D.breva == 0) & (D.klasse == "Nordföhn")] = "Nordföhn"
+        k[D.breva == 1] = "Breva kurz"
+        k[D.breva_lang == 1] = "Breva lang"
+        D["klasse"] = k
     kl = (pd.crosstab(D.index.month, D.klasse) / yrs).round(1)
     out["klassen"] = {"monate": [int(m) for m in kl.index], "klassen": {k: kl[k].tolist() for k in kl.columns}}
     out["klassen_saison"] = {k: rnd(v, 1) for k, v in (D.klasse.value_counts() / yrs).items()}
@@ -100,17 +109,34 @@ def main():
     # Satellit je Klasse
     s = D.sat_see.notna()
     out["sat_je_klasse"] = {k: {"median": rnd(v.median(), 1), "n": int(len(v))} for k, v in D[s].groupby("klasse").sat_see}
-    # Faktoren (Prüfung je Größe)
+    # Faktoren: ruhig → Breva → lang (breva_klassen.py), sonst die ältere Prüfung je Größe
+    fk = f"{RES}/breva_klassen_merkmale.csv"
     f = f"{RES}/pruefung_era5.csv"
-    if os.path.exists(f):
+    if os.path.exists(fk):
+        M = pd.read_csv(fk)
+        M = M[M.im_modell | M.groesse.isin(["rad_milano", "bodenfeuchte_milano"])]
+        eigen = M[(M.eff_kurz_lang.abs() >= 0.15) & (M.eff_ruhig_kurz.abs() < 0.1)]
+        top = M.reindex(M.eff_ruhig_kurz.abs().sort_values(ascending=False).index).head(12)
+        M = pd.concat([top, eigen[~eigen.groesse.isin(top.groesse)]])
+        out["faktoren2"] = [{"merkmal": r.groesse, "name": LABEL.get(r.groesse, r.groesse), "im_modell": bool(r.im_modell),
+                             "ruhig": rnd(r.median_ruhig), "grenzfall": rnd(r.median_grenzfall), "kurz": rnd(r.median_kurz),
+                             "lang": rnd(r.median_lang), "eff_breva": rnd(r.eff_ruhig_kurz), "eff_lang": rnd(r.eff_kurz_lang),
+                             "eigen_lang": r.groesse in set(eigen.groesse)} for r in M.itertuples()]
+    elif os.path.exists(f):
         P = pd.read_csv(f)
         P = P[P.urteil.isin(["stark", "mittel"])].head(16)
         out["faktoren"] = [{"merkmal": r.merkmal, "name": LABEL.get(r.merkmal, r.merkmal), "breva": rnd(r.breva),
                             "kein": rnd(r.kein), "auc": rnd(r.auc_je_monat, 2), "kraft": rnd(r.kraft, 2),
                             "stabil": rnd(r.stabil, 2), "sat": rnd(r.rho_satellit, 2), "urteil": r.urteil,
                             "wie": r.wie if isinstance(r.wie, str) else ""} for r in P.itertuples()]
-    # Vorhersagbarkeit
+    # Vorhersagbarkeit: aktuelles Modell (export_modell.py -> app/modell.json), sonst ältere Auswertung
+    fm = f"{APP}/modell.json"
     f = f"{RES}/breva_vorlauf_v2.csv"
+    if os.path.exists(fm):
+        Mo = json.load(open(fm))
+        Ls = sorted(Mo["sieben"], key=int)
+        out["vorlauf_neu"] = {"vorlauf": [int(L) for L in Ls], "breva": [Mo["sieben"][L]["breva"]["auc"] for L in Ls],
+                              "lang": [Mo["sieben"][L].get("lang", {}).get("auc") for L in Ls]}
     if os.path.exists(f):
         V = pd.read_csv(f)
         out["vorlauf"] = {thr.strip("≥"): [{"vorlauf": r.vorlauf, "auc": r.auc, "brier": r.brier} for r in g.itertuples()]
@@ -128,7 +154,10 @@ def main():
     out["sat_abende"] = b.get("sat_abende")
     out["overlay"] = b.get("overlay")
     out["klima"] = b.get("klima")
-    out["satfaktor_samolaco"] = rnd(float((D.see_max_est / D.sam_max).median()), 2)
+    fh = f"{APP}/model/heute.json"
+    hj = json.load(open(fh)) if os.path.exists(fh) else {}
+    out["satfaktor_samolaco"] = rnd(hj.get("faktor") or float((D.see_max_est / D.sam_max).median()), 2)
+    out["satfaktor_colico"] = rnd(hj.get("faktor_col"), 2)
     for img in ("breva_top.png", "station_detail.png"):
         if os.path.exists(f"{RES}/{img}"):
             shutil.copy(f"{RES}/{img}", f"{APP}/img/{img}")

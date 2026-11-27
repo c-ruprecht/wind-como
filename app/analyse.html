@@ -31,7 +31,7 @@
 
 <main class="an">
   <nav class="subnav" aria-label="Sections">
-    <a href="#breva">The Breva</a><a href="#entstehung">How it forms</a><a href="#wo">Where it is strongest</a><a href="#wann">When</a><a href="#warum">What drives it</a>
+    <a href="#breva">The Breva</a><a href="#wann">When</a><a href="#entstehung">How it forms</a><a href="#wo">Where it is strongest</a><a href="#warum">What drives it</a>
     <a href="#vorhersage">Forecast</a><a href="#pruefung">Model check</a><a href="#stationen">Stations</a><a href="#methode">Method</a>
   </nav>
 
@@ -49,9 +49,21 @@
       thermal pull), thunderstorms over the mountains (cold outflow from the north), clouds and humid air (less
       heating) – and heat waves in the Po plain, which shrink the difference to the valleys.</p>
     <div id="kpis" class="kpis"></div>
-    <p class="hint"><b>Update 25 Nov 2026:</b> The model now predicts the Breva as the stations measure it – without
-      excluding rain days taken from the weather model. Against the satellite it is clearly better this way.
-      Also checked for leakage, tuning and model size: <a href="#pruefung">model check</a>.</p>
+    <p class="hint"><b>Update 27 Nov 2026:</b> A Breva day now counts when Samolaco <i>or</i> Colico, scaled to the lake,
+      shows 14+ kn for at least 2 hours; a <b>long Breva</b> lasts 5 hours or more. Counts and charts on this page use
+      these definitions. How the forecast model works: <a href="modell.html">model page</a>.</p>
+  </section>
+
+  <section class="panel" id="wann">
+    <h2>When: daily cycle and season</h2>
+    <h3>Daily cycle on Breva days</h3>
+    <div class="charts"><figure><figcaption>Mean wind per hour (kn), whole year</figcaption><div id="diurnal"></div><div class="legend" id="diurnalLeg"></div></figure></div>
+    <p class="hint">Solid line: Breva days, dashed: other days. The stations stand in the valley or on slopes and
+      measure only part of the lake wind (factor see <a href="#stationen">stations</a>).</p>
+    <h3>Season</h3>
+    <div class="charts"><figure><figcaption>Days per month by type of day (mean 2014–2026)</figcaption><div id="months"></div><div class="legend" id="monthsLeg"></div></figure>
+      <figure><figcaption>Breva days per year</figcaption><div id="years"></div></figure></div>
+    <p class="hint" id="seasonHint"></p>
   </section>
 
   <section class="panel prose" id="entstehung">
@@ -94,13 +106,13 @@
       <li><b>High pressure, weak wind over the Alps</b> – no northerly or foehn situation, no front. On the large scale
         rather a light southerly than a northerly flow.</li>
       <li><b>Sun from the morning, dry air</b> – the clearer the morning, the earlier and stronger.</li>
-      <li><b>Spring and early summer</b> – April to June have the most Breva days (8–10 a month), July fewer, from
-        September rare: the valleys no longer heat up enough compared with the plain.</li>
-      <li><b>It often comes several days in a row:</b> after a Breva day another follows in 36 % of cases, otherwise
-        only in 9 % – the weather situation usually persists.</li>
+      <li><b>Spring and summer</b> – April to July have the most Breva days (about 15 a month, 9 of them long), August
+        fewer, from September rare: the valleys no longer heat up enough compared with the plain.</li>
+      <li><b>It often comes several days in a row:</b> after a Breva day another follows in 52 % of cases, otherwise
+        only in 17 % – the weather situation usually persists.</li>
       <li><b>Long into the evening</b> when the gradient towards the valley is strong and the north–south situation over
         the Alps is very calm (Zurich−Milan 1.8 instead of 3.9 hPa on days when it dies early).</li>
-      <li><b>Disruptors:</b> north foehn (6–10 days a month, all year), rain and thunderstorms (most frequent May to
+      <li><b>Disruptors:</b> north foehn (4–10 days a month, all year), rain and thunderstorms (most frequent May to
         August), thick cloud, heat waves.</li>
     </ul>
   </section>
@@ -120,26 +132,14 @@
       <figcaption>The strongest evenings with south wind (Sentinel-1). Titles: wind on the upper lake and at Samolaco at the overpass hour (afternoon maximum). Typical Breva: strongest at the northern end, decreasing southwards. Images in which the whole lake is deep red (e.g. 13 Jul 2021, 15 Aug 2025) are probably thunderstorm gusts – they are not included in the Breva map above if it rained.</figcaption></figure>
   </section>
 
-  <section class="panel" id="wann">
-    <h2>When: daily cycle and season</h2>
-    <h3>Daily cycle on Breva days</h3>
-    <div class="charts"><figure><figcaption>Mean wind per hour (kn), whole year</figcaption><div id="diurnal"></div><div class="legend" id="diurnalLeg"></div></figure></div>
-    <p class="hint">Solid line: Breva days, dashed: other days. The stations stand in the valley or on slopes and
-      measure only part of the lake wind (factor see stations).</p>
-    <h3>Season</h3>
-    <div class="charts"><figure><figcaption>Days per month and season by class</figcaption><div id="months"></div><div class="legend" id="monthsLeg"></div></figure>
-      <figure><figcaption>Breva days (≥ 14 kn) per year</figcaption><div id="years"></div></figure></div>
-    <p class="hint" id="seasonHint"></p>
-  </section>
-
   <section class="panel" id="warum">
-    <h2>What makes a Breva day</h2>
-    <p class="lead">Each weather variable was tested on its own against the Breva days – on fair-weather days, within
-      the same month (so that it is not just the season speaking) and year by year. Source: ERA5 weather data
-      2014–2026, the weather as it was.</p>
+    <h2>What makes a Breva day – and a long one</h2>
+    <p class="lead">Typical values of each weather variable on calm days, near misses, short and long Breva days
+      (March–October 2014–2026, ERA5 – the weather as it was), and how clearly it separates calm from Breva and short
+      from long.</p>
     <div class="tscroll"><table class="atab num" id="faktTab"></table></div>
-    <p class="hint">Separation: 0 = useless, 1 = separates Breva days perfectly. Stable: share of years with the same
-      relationship. Satellite: relationship with the lake wind in the evening image (deviation from the seasonal cycle).</p>
+    <p class="hint">Medians per type of day. Separation: −1 to +1 (2 × AUC − 1); positive = higher on Breva or long days,
+      0 = no difference. ◆ = matters mainly for the duration. Chart and all 37 variables: <a href="modell.html#faktoren">model page</a>.</p>
     <ul class="tips" id="warumTips"></ul>
   </section>
 
@@ -147,7 +147,7 @@
     <h2>How predictable it is</h2>
     <p class="lead">The Breva model learns from the weather variables and was tested on the real ECMWF forecasts
       2024–2026, year by year out-of-fold – exactly the way the app uses it.</p>
-    <div class="charts"><figure><figcaption>Skill (AUC) by lead time</figcaption><div id="lead"></div><div class="legend" id="leadLeg"></div></figure>
+    <div class="charts"><figure><figcaption>Skill (AUC) by days ahead, March–October</figcaption><div id="lead"></div><div class="legend" id="leadLeg"></div></figure>
       <figure><figcaption>Today: how early the stations reveal the Breva (AUC)</figcaption><div class="tscroll"><table class="atab num-c" id="timing"></table></div></figure></div>
     <p class="hint">AUC: probability that a Breva day is rated higher than a day without Breva (1 = perfect,
       0.5 = chance). Up to day 4 the Breva is well predictable; after that the chance mainly reflects the general situation.</p>
@@ -165,11 +165,11 @@
       classification partly came from the ERA5 weather model. The model could therefore read part of its target straight
       from the rain forecast: it looked very good on paper (AUC 0.93) but scored only 0.72 against the satellite.
       Many of those “rain days” had good wind on the lake.</p>
-    <p>Now the measurements alone define the target: Samolaco calm in the morning, no north wind, and on the lake in the
+    <p>Since 25 November the measurements alone define the target: Samolaco calm in the morning, no north wind, and on the lake in the
       afternoon at least 2 hours in a row above the threshold. That is the question “can I kite?”.</p>
     <div class="tscroll"><table class="atab num"><thead><tr><th style="text-align:left">Target</th><th>AUC tomorrow</th><th>AUC in 5 days</th><th>vs satellite</th><th>90 % range satellite</th></tr></thead><tbody>
       <tr><td style="text-align:left">before: without rain/foehn days (ERA5)</td><td>0.93</td><td>0.85</td><td>0.72</td><td>0.59–0.83</td></tr>
-      <tr><td style="text-align:left"><b>now: from stations only</b></td><td>0.88</td><td>0.82</td><td><b>0.81</b></td><td>0.69–0.89</td></tr>
+      <tr><td style="text-align:left"><b>25 Nov: from Samolaco only</b></td><td>0.88</td><td>0.82</td><td><b>0.81</b></td><td>0.69–0.89</td></tr>
     </tbody></table></div>
     <p class="hint">≥ 14 kn, tested 2024–2026 with real ECMWF runs. Only 126 evenings with 19 Breva cases are available
       against the satellite, hence the wide ranges; but the improvement shows up in all variants. The lower AUC on its
@@ -240,8 +240,9 @@
       the satellite shows how much wind reaches the lake.</p>
     <div class="tscroll"><table class="atab num" id="stTab"></table></div>
     <p class="hint">Factor: lake wind / station at the overpass hour on Breva evenings. Skill: how well the station
-      recognises evenings with ≥ 12 kn on the lake. Samolaco is the station with the clearest Breva daily cycle; its
-      afternoon maximum times <b id="sfak"></b> corresponds to the wind on the upper lake.</p>
+      recognises evenings with ≥ 12 kn on the lake. For the Breva days the hourly wind from Breva direction at Samolaco
+      × <b id="sfak"></b> or at Colico × <b id="cfak"></b> (the larger of the two) is taken as the wind on the upper lake –
+      factors from clean Breva evenings in the satellite images.</p>
   </section>
 
   <section class="panel prose" id="methode">
