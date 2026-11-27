@@ -200,6 +200,16 @@ const BrevaModel = (() => {
     F.morgen_nicht_breva = morning(hourly, date, hour);
     return F;
   }
+  /* Gemessene Sonne/Temperatur (ARPA, wie train_heute.arpa_features): extra = { "chiavenna_rad": { "YYYY-MM-DDTHH": Wert } } */
+  function arpaFeatures(extra, date, hour, tal = ["chiavenna", "sondrio"], ebene = ["milano", "bergamo"]) {
+    const v = (c, h) => { const x = extra?.[c]?.[key(date, h)]; return fin(x) ? x : null; };
+    const avg = a => { const b = a.filter(x => x != null); return b.length ? b.reduce((s, x) => s + x, 0) / b.length : null; };
+    const rad = pts => { const hs = []; for (let h = 7; h <= hour; h++) { const m = avg(pts.map(p => v(`${p}_rad`, h))); if (m != null) hs.push(m); }
+      return hs.length ? hs.reduce((s, x) => s + x, 0) / hs.length : NaN; };
+    const temp = pts => avg(pts.map(p => v(`${p}_temp`, hour)));
+    const tt = temp(tal), te = temp(ebene);
+    return { rad_gem_tal: rad(tal), rad_gem_ebene: rad(ebene), dt_gem_tal_ebene: tt != null && te != null ? tt - te : NaN };
+  }
   /* Breva an einem ganzen Tag aus den Messungen (wie breva_daten.tage, Spalten breva / breva_lang) */
   function brevaDay(hourly, date, fs = 1.41, fc = 2.66, langH = 5) {
     const r = seeRun(hourly, date, 20, fs, fc);
@@ -211,6 +221,6 @@ const BrevaModel = (() => {
     return { breva, lang: breva && r.n >= langH ? 1 : 0, max: r.max, stunden: r.n };
   }
 
-  return { predictMargin, predictProba, calibrate, features, vec, obsFeatures, brevaDay, AXIS };
+  return { predictMargin, predictProba, calibrate, features, vec, obsFeatures, arpaFeatures, brevaDay, AXIS };
 })();
 if (typeof module !== "undefined") module.exports = BrevaModel;

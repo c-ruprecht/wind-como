@@ -32,6 +32,40 @@ AXIS = {"samolaco": 157, "colico": 270, "vercana": 225, "morbegno": 245}     # B
 OBS = ([f"{st}_{k}" for st in AXIS for k in ("jetzt", "mittel2h", "max_ab10")] + ["tivano_samolaco"]
        + ["see_jetzt", "see_stunden", "see_lauf", "morgen_nicht_breva"])
 VORTAG = ["gestern_breva", "gestern_max"]
+# Gemessene Sonne und Temperatur (ARPA, arpa_extra.py) bis zur Stunde – die App lädt dieselben Sensoren live
+ARPA_TAL, ARPA_EBENE = ("chiavenna", "sondrio"), ("milano", "bergamo")
+ARPA_OBS = ["rad_gem_tal", "rad_gem_ebene", "dt_gem_tal_ebene"]
+T.MONO.update({"rad_gem_tal": 1, "rad_gem_ebene": 1, "dt_gem_tal_ebene": 1})
+
+
+def arpa_extra():
+    """(Stundenwerte Ortszeit, Sensor-IDs) oder (None, {}) ohne arpa_extra.py"""
+    f = os.path.join(B.DATA, "arpa", "messungen_stunde.csv"); fs_ = os.path.join(B.DATA, "arpa", "sensors_extra.json")
+    if not (os.path.exists(f) and os.path.exists(fs_)):
+        print("keine ARPA-Zusatzmessungen (python training/arpa_extra.py) – Heute-Modell ohne gemessene Sonne")
+        return None, {}
+    M = pd.read_csv(f, parse_dates=["time"]).set_index("time")
+    M.index = pd.DatetimeIndex(M.index).tz_convert(B.TZ).tz_localize(None)
+    M = M[~M.index.duplicated(keep="first")]
+    sens = json.load(open(fs_))
+    ids = {f"{p}_{k}": int(sens[p][k]["idsensore"]) for p in ARPA_TAL + ARPA_EBENE for k in ("rad", "temp")
+           if p in sens and k in sens[p] and f"{p}_{k}" in M}
+    return M, ids
+
+
+def arpa_features(M, days, hour):
+    """wie BrevaModel.arpaFeatures: mittlere Strahlung 7 Uhr bis zur Stunde (Tal, Ebene), Temperatur Tal − Ebene jetzt"""
+    def col(c):
+        return M[c] if c in M else pd.Series(dtype=float)
+    hh = M.index.hour; dd = M.index.normalize(); win = (hh >= 7) & (hh <= hour)
+    def rad(pts):
+        x = pd.concat([col(f"{p}_rad") for p in pts], axis=1).mean(axis=1)
+        return x[win].groupby(dd[win]).mean()
+    def temp(pts):
+        x = pd.concat([col(f"{p}_temp") for p in pts], axis=1).mean(axis=1)
+        return x[hh == hour].groupby(dd[hh == hour]).mean()
+    return pd.DataFrame({"rad_gem_tal": rad(ARPA_TAL), "rad_gem_ebene": rad(ARPA_EBENE),
+                         "dt_gem_tal_ebene": temp(ARPA_TAL) - temp(ARPA_EBENE)}).reindex(days)
 
 
 def hourly_obs():
@@ -97,6 +131,8 @@ def main():
         sys.exit("breva_tage.csv ohne Spalte breva – erst python training/breva_daten.py tage")
     fs, fc = float(D.faktor_sam.iloc[0]), float(D.faktor_col.iloc[0])
     O = hourly_obs()
+    MA, arpa_ids = arpa_extra()
+    obs_all = OBS + (ARPA_OBS if MA is not None else [])
     # Vortag direkt aus dem Ziel (die App rechnet ihn genauso: BrevaModel.brevaDay)
     full = D.reindex(pd.date_range(D.index.min(), D.index.max(), freq="D"))
     V = pd.DataFrame({"gestern_breva": full.breva.shift(1), "gestern_max": full.see_max_stunde.shift(1)}).reindex(D.index)
@@ -107,7 +143,8 @@ def main():
             L1[c] = np.nan
     L1 = L1[T.FEATS]
     out = {"version": 2, "ziel": "C", "ziele": {k: v[1] for k, v in ZIELE.items()}, "lang_h": B.LANG_H,
-           "monoton": T.OPT["monoton"], "hours": HOURS, "features": T.FEATS + OBS + VORTAG, "obs": OBS, "vortag": VORTAG,
+           "monoton": T.OPT["monoton"], "hours": HOURS, "features": T.FEATS + obs_all + VORTAG, "obs": obs_all, "vortag": VORTAG,
+           "arpa_extra": {"sensoren": arpa_ids, "tal": ARPA_TAL, "ebene": ARPA_EBENE} if MA is not None else None,
            "faktor": round(fs, 3), "faktor_col": round(fc, 3), "sektor": B.SEKTOR, "axis": AXIS,
            "files": {}, "calib": {}, "skill": {}, "call": {}}
     os.makedirs(T.OUT, exist_ok=True)
@@ -120,6 +157,8 @@ def main():
     obs_only = [c for c in out["features"] if c not in T.FEATS]
     for hour in HOURS:
         Ob = obs_features(O, D.index, hour, fs, fc)
+        if MA is not None:
+            Ob = pd.concat([Ob, arpa_features(MA, D.index, hour)], axis=1)
         X = pd.concat([FE, Ob, V], axis=1)[out["features"]]
         Xl = pd.concat([L1, Ob, V], axis=1)[out["features"]]
         for key, (col, name) in ZIELE.items():

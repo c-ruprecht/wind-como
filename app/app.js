@@ -17,6 +17,7 @@ const state = {
   spot: load("spot", "gera_lario"), day: 0, map: null, markers: [], layer: load("layer", "map"),
   mfc: null,        // Modellpunkte (ECMWF, mit 31 Tagen Vergangenheit)
   M: null,          // { man, m14, m18, heute, h: {"9_14": Modell, …} }
+  extra: {},        // gemessene Sonne/Temperatur (ARPA) für das Heute-Modell
   hourly: null      // Stundenmittel der Stationen { station: { "YYYY-MM-DDTHH": {kn, dir} } }
 };
 
@@ -141,6 +142,30 @@ async function fetchObs() {
   }
   return out;
 }
+/* Gemessene Sonne/Temperatur für das Heute-Modell (Sensoren aus heute.json, wie arpa_extra.py): Stundenmittel,
+   Stunde endet zur vollen Stunde, mind. 3 Werte. -> { "chiavenna_rad": { "YYYY-MM-DDTHH": Wert } } */
+async function fetchExtra() {
+  const sens = state.M?.heute?.arpa_extra?.sensoren; if (!sens || DEMO) return {};
+  const ids = Object.values(sens);
+  const since = new Date(Date.now() + 3600e3 - 20 * 3600e3).toISOString().slice(0, 19);
+  const q = new URLSearchParams({ $where: `idsensore in(${ids.map(i => `'${i}'`).join(",")}) AND data > '${since}'`,
+    $order: "data DESC", $limit: "5000" });
+  const rows = await fetchJSON(`${ARPA}?${q}`);
+  const out = {};
+  for (const [k, id] of Object.entries(sens)) {
+    const g = new Map();
+    for (const r of rows) {
+      if (Number(r.idsensore) !== id || Number(r.valore) <= -900 || (r.stato ?? "VA") === "NV") continue;
+      const t = new Date(r.data.slice(0, 19) + "+01:00");
+      const kk = localKey(new Date(Math.ceil(t.getTime() / 3600e3) * 3600e3));
+      if (!g.has(kk)) g.set(kk, []);
+      g.get(kk).push(Number(r.valore));
+    }
+    out[k] = {};
+    for (const [kk, xs] of g) if (xs.length >= 3) out[k][kk] = xs.reduce((a, b) => a + b, 0) / xs.length;
+  }
+  return out;
+}
 /* Stundenmittel wie im Training (download_arpa.py): Stunde endet zur vollen Stunde, mind. 3 von 6 Werten,
    Richtung als Vektormittel. Schlüssel "YYYY-MM-DDTHH" in Ortszeit (Europe/Rome). */
 function localKey(d) {
@@ -238,7 +263,9 @@ function heute() {
   const g = BrevaModel.brevaDay(hourly, shiftDate(today, -1), H.faktor, H.faktor_col, H.lang_h);
   const res = { hour, gestern: g, today, p: {}, pForecast: weekProb(today, 0, 14), obs: null };
   if (hour == null) { res.p = { "14": res.pForecast, lang: null }; return res; }
-  const obs = BrevaModel.obsFeatures(hourly, today, hour, H.faktor, H.faktor_col);
+  const ax = H.arpa_extra;
+  const obs = { ...BrevaModel.obsFeatures(hourly, today, hour, H.faktor, H.faktor_col),
+    ...(ax ? BrevaModel.arpaFeatures(state.extra, today, hour, ax.tal, ax.ebene) : {}) };
   res.obs = obs;
   const x = { ...F[today], ...obs, gestern_breva: g ? g.breva : NaN, gestern_max: g ? g.max : NaN };
   for (const k of HEUTE_ZIELE) {
@@ -340,6 +367,7 @@ function drawNow() {
         <li><b>Forecast alone</b> (ECMWF, 7-day model): ${pct(H.pForecast)}</li>
         <li><b>Breva yesterday</b>: ${H.gestern == null ? "unknown" : H.gestern.breva ? `yes, ${H.gestern.stunden} h at 14+ kn (up to ~${Math.round(H.gestern.max)} kn on the lake)` : `no (max ~${Math.round(H.gestern.max)} kn)`}
           <small>– after a Breva day another one follows in ${pct(state.M.heute.vortag_stat?.["1"])} of cases, otherwise in ${pct(state.M.heute.vortag_stat?.["0"])}</small></li>
+        ${H.obs && Number.isFinite(H.obs.rad_gem_tal) ? `<li><b>Sun so far</b> (ARPA, 7:00–${H.hour}:00): valleys ${Math.round(H.obs.rad_gem_tal)} W/m², plain ${Number.isFinite(H.obs.rad_gem_ebene) ? Math.round(H.obs.rad_gem_ebene) : "–"} W/m²${Number.isFinite(H.obs.dt_gem_tal_ebene) ? ` · valley ${H.obs.dt_gem_tal_ebene >= 0 ? "+" : "−"}${de(Math.abs(H.obs.dt_gem_tal_ebene))} °C vs plain` : ""}</li>` : ""}
         ${H.obs && Number.isFinite(H.obs.see_stunden) ? `<li><b>Breva so far today</b>: ${H.obs.see_stunden} h at 14+ kn on the lake (estimate from Samolaco/Colico), now ~${Math.round(H.obs.see_jetzt)} kn</li>` : ""}
         ${H.obs ? `<li><b>Breva direction now</b>: Vercana ${fmtObs(H.obs.vercana_jetzt)}, Samolaco ${fmtObs(H.obs.samolaco_jetzt)}, Colico ${fmtObs(H.obs.colico_jetzt)}, Morbegno ${fmtObs(H.obs.morbegno_jetzt)}
           <small>– wind component in Breva direction, negative = opposite. Vercana turns south-west first.</small></li>
@@ -469,11 +497,12 @@ function init() {
   setLayer(state.layer);
   renderAll();
   fetchJSON("breva.json").then(x => { state.info = x; addOverlay(); renderAll(); }).catch(e => console.warn("breva.json", e));
-  loadModels().then(M => { state.M = M; F7cache = null; renderAll();
+  const loadExtra = () => fetchExtra().then(x => { state.extra = x; renderAll(); }).catch(e => console.warn("ARPA Sonne/Temperatur", e));
+  loadModels().then(M => { state.M = M; F7cache = null; renderAll(); loadExtra();
     $("#status").textContent = $("#status").textContent.replace("Breva model loading …", state.mfc ? "Breva model active" : "Breva model loading …"); })
     .catch(e => console.warn("Breva model not loaded (run training/train_breva.py first)", e));
   refresh();
-  setInterval(() => fetchObs().then(o => { state.obs = o; renderAll(); }).catch(() => {}), 10 * 60e3);
+  setInterval(() => { fetchObs().then(o => { state.obs = o; renderAll(); }).catch(() => {}); loadExtra(); }, 10 * 60e3);
   if ("serviceWorker" in navigator && !DEMO) navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 document.addEventListener("DOMContentLoaded", init);

@@ -174,6 +174,29 @@ async function observations() {
   return out;
 }
 
+/* wie app.js fetchExtra: gemessene Sonne/Temperatur für das Heute-Modell */
+async function extraObs(sens) {
+  if (!sens) return {};
+  const since = new Date(Date.now() + 3600e3 - 20 * 3600e3).toISOString().slice(0, 19);
+  const q = new URLSearchParams({ $where: `idsensore in(${Object.values(sens).map(i => `'${i}'`).join(",")}) AND data > '${since}'`,
+    $order: "data DESC", $limit: "5000" });
+  const rows = await fetchJSON(`${ARPA}?${q}`);
+  const out = {};
+  for (const [k, id] of Object.entries(sens)) {
+    const g = new Map();
+    for (const r of rows) {
+      if (Number(r.idsensore) !== id || Number(r.valore) <= -900 || (r.stato ?? "VA") === "NV") continue;
+      const t = new Date(r.data.slice(0, 19) + "+01:00");
+      const kk = localKey(new Date(Math.ceil(t.getTime() / 3600e3) * 3600e3));
+      if (!g.has(kk)) g.set(kk, []);
+      g.get(kk).push(Number(r.valore));
+    }
+    out[k] = {};
+    for (const [kk, xs] of g) if (xs.length >= 3) out[k][kk] = xs.reduce((a, b) => a + b, 0) / xs.length;
+  }
+  return out;
+}
+
 const shiftDate = (d, n) => { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
 const csvLine = a => a.map(x => x == null || (typeof x === "number" && !Number.isFinite(x)) ? "" :
   typeof x === "number" ? String(Math.round(x * 10000) / 10000) : /[",\n]/.test(String(x)) ? `"${String(x).replace(/"/g, '""')}"` : String(x)).join(",");
@@ -211,7 +234,11 @@ async function main() {
   const hourKey = h => `${today}T${String(h).padStart(2, "0")}`;
   const hour = [...heuteMan.hours].reverse().find(h => ["vercana", "samolaco", "colico"].some(st => obs[st]?.[hourKey(h)])) ?? null;
   const g = BrevaModel.brevaDay(obs, shiftDate(today, -1), heuteMan.faktor, heuteMan.faktor_col, heuteMan.lang_h);
+  const ax = heuteMan.arpa_extra;
+  let extra = {};
+  if (ax && hour != null) { try { extra = await extraObs(ax.sensoren); } catch (e) { obsErr += ` Sonne/Temperatur: ${e.message || e}`; } }
   const hx = hour == null ? null : { ...F[today], ...BrevaModel.obsFeatures(obs, today, hour, heuteMan.faktor, heuteMan.faktor_col),
+    ...(ax ? BrevaModel.arpaFeatures(extra, today, hour, ax.tal, ax.ebene) : {}),
     gestern_breva: g ? g.breva : NaN, gestern_max: g ? g.max : NaN };
   for (const ziel of Object.keys(heuteMan.ziele || { 14: 1 })) {
     const key = `${hour}_${ziel}`, m = hour == null ? null : readJSON(heuteMan.files[key]);
