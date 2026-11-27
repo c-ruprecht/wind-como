@@ -163,8 +163,8 @@ function vorlauf(M) {
     Ls.map(L => `<tr><th>${L}</th><td>${de(S[L].breva.auc)}</td><td>${de(S[L].lang?.auc)}</td><td>${pc(S[L].breva.r70)}</td><td>${S[L].tage}</td></tr>`).join("") + "</tbody>";
 }
 
-function prChart(el, groups, labelFn) {
-  const keys = Object.keys(groups), cols = RAMP(keys.length);
+function prChart(el, groups, labelFn, order) {
+  const keys = order || Object.keys(groups), cols = RAMP(keys.length);   // Reihenfolge wie die Legende (Objektschlüssel sortiert JS selbst)
   const ser = keys.map((k, i) => {
     const g = groups[k];
     return { c: cols[i], pts: g.punkte.filter(p => p[0] != null && p[1] != null),
@@ -179,8 +179,8 @@ function prChart(el, groups, labelFn) {
 function pr7(M) {
   const S = M.sieben, Ls = Object.keys(S).sort((a, b) => a - b);
   const lab = L => L === "1" ? "tomorrow" : `day ${L}`;
-  prChart($("#pr7b"), Object.fromEntries(Ls.map(L => [L, S[L].breva])), lab);
-  prChart($("#pr7l"), Object.fromEntries(Ls.filter(L => S[L].lang).map(L => [L, S[L].lang])), lab);
+  prChart($("#pr7b"), Object.fromEntries(Ls.map(L => [L, S[L].breva])), lab, Ls);
+  prChart($("#pr7l"), Object.fromEntries(Ls.filter(L => S[L].lang).map(L => [L, S[L].lang])), lab, Ls.filter(L => S[L].lang));
   const cols = RAMP(Ls.length);
   legend($("#pr7Leg"), [...Ls.map((L, i) => [lab(L), cols[i]]), ["share of Breva days (guessing)", "var(--muted)", true]]);
   $("#prTab").innerHTML = `<thead><tr><th>Days ahead</th><th>AP Breva</th><th>recall at ≥ 70 % precision</th><th>AP long</th><th>recall long at ≥ 70 %</th></tr></thead><tbody>` +
@@ -217,8 +217,8 @@ function heute(M) {
   const Hh = M.heute || {};
   const hs = Object.keys(Hh["14"] || {}).sort((a, b) => b - a);          // latest hour = darkest
   const lab = h => `${h}:00`;
-  if (Hh["14"]) prChart($("#prHb"), Object.fromEntries(hs.map(h => [h, Hh["14"][h]])), lab);
-  if (Hh.lang) prChart($("#prHl"), Object.fromEntries(hs.map(h => [h, Hh.lang[h]])), lab);
+  if (Hh["14"]) prChart($("#prHb"), Hh["14"], lab, hs);
+  if (Hh.lang) prChart($("#prHl"), Hh.lang, lab, hs.filter(h => Hh.lang[h]));
   const cols = RAMP(hs.length);
   legend($("#prHLeg"), [...hs.map((h, i) => [lab(h), cols[i]]), ["share of Breva days (guessing)", "var(--muted)", true]]);
   $("#hFeatTab").innerHTML = "<thead><tr><th>Measured</th><th>Detail</th></tr></thead><tbody>" +

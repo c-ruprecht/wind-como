@@ -253,7 +253,7 @@ function weekProbLang(date, i) {
   return pl == null ? null : pb == null ? pl : Math.min(pl, pb);
 }
 const pClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
-const PCT_HINT = "How to read the %: the chances are calibrated on 2024–2026. 55 % means that on 55 of 100 days with such a forecast there really was a Breva.";
+const PCT_HINT = "How to read the %: 55 % means that on 55 of 100 days with such a forecast there really was a Breva. The model learned from the weather 2014–2026; the % is calibrated on real ECMWF forecasts 2024–2026, the years for which past forecasts are archived.";
 function hourlyAll() {
   const h = {}; for (const st of STATIONS) if (state.obs[st.id]?.hourly) h[st.id] = state.obs[st.id].hourly; return h;
 }
