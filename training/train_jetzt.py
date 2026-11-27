@@ -123,7 +123,7 @@ def main(lauf):
     if arpaA and Xtr[arpaA].notna().mean().max() > 0.3:
         stages["A + ARPA-Treiber"] = base + obsW + arpaA
     years = sorted(set(Xte.tag.dt.year))
-    rows = []
+    rows, OOF = [], []
     for name, feats in stages.items():
         for thr in (14, 18):
             tgt = f"kommt_noch_{thr}"
@@ -133,6 +133,9 @@ def main(lauf):
                 te = Xte[(Xte.tag.dt.year == yr) & Xte[tgt].notna()]
                 m = T.xgb_model().fit(tr[feats], tr[tgt])
                 p[te.index] = m.predict_proba(te[feats])[:, 1]
+            ok_ = p.notna()
+            OOF.append(pd.DataFrame({"tag": Xte.tag[ok_].dt.strftime("%Y-%m-%d"), "stunde": Xte.stunde[ok_], "schwelle": thr,
+                                     "stufe": name, "p": p[ok_].round(4), "y": Xte.loc[ok_, tgt]}))
             for H in HOURS:
                 i = (Xte.stunde == H) & p.notna(); s = i & Xte.tag.dt.month.between(3, 10)
                 rows.append(dict(art="kommt_noch", stufe=name, schwelle=thr, stunde=H, faelle=int(i.sum()),
@@ -156,6 +159,8 @@ def main(lauf):
         print(f"  {name} fertig", flush=True)
     R = pd.DataFrame(rows)
     R.to_csv(f"{B.RES}/jetzt_skill.csv", index=False)
+    pd.concat(OOF).to_csv(f"{B.RES}/oof_jetzt_{lauf}.csv", index=False)
+    print(f"geschrieben: results/oof_jetzt_{lauf}.csv (out-of-fold je Tag, Stunde, Stufe)")
     lines = ["# Same-Day-Modell, stündlich\n",
              f"Prüfung {years[0]}–{years[-1]} je Jahr out-of-fold; Vorhersage-Teil aus {lauf} (Vorlauf {lead}). "
              "Stufen: V nur Vorhersage, W + gemessener Wind, A + ARPA-Treiber.\n"]

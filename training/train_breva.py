@@ -113,6 +113,7 @@ def main():
            "trained": f"ERA5 {D.index.year.min()}–{D.index.year.max()}", "calib": {}, "skill": {}, "files": {}}
     test_rows = X.dropna(thresh=len(FEATS) - 5).sample(150, random_state=1)
     man["test"] = {"rows": test_rows.astype(float).where(test_rows.notna(), None).values.tolist(), "p": {}}
+    OOF = []
     for thr in (14, 18):
         y = target(D, thr)
         ok = X.notna().mean(axis=1) > 0.7
@@ -163,12 +164,20 @@ def main():
                               brier_geeicht=round(brier_score_loss(yy, pc), 3), mittel_roh=round(float(p.mean()), 3),
                               mittel_geeicht=round(float(pc.mean()), 3), anteil_echt=round(float(yy.mean()), 3)))
         cal["0"] = cal.get("1"); calls["0"] = calls.get("1")
+        for L, parts in oof.items():                       # out-of-fold-Vorhersagen für PR-Kurven (pr_kurven.py)
+            pr = pd.concat(parts)
+            if str(L) in cal and cal[str(L)]:
+                OOF.append(pd.DataFrame({"tag": pr.index, "schwelle": thr, "vorlauf": L, "p_roh": pr.values,
+                                         "p": np.interp(pr.values, *cal[str(L)]), "y": y[pr.index].values}))
         man["calib"][str(thr)] = cal
         man.setdefault("call", {})[str(thr)] = calls
         man["skill"][str(thr)] = skill
         print(f"\n≥ {thr} kn: {int(y[ok].sum())} Breva-Tage von {int(ok.sum())} (ERA5); Prüfung {TRAIN_UNTIL + 1}–heute mit {MODEL}, je Jahr out-of-fold:")
         print(pd.DataFrame(skill).to_string(index=False))
     json.dump(man, open(f"{OUT}/manifest.json", "w"), separators=(",", ":"))
+    if OOF:
+        pd.concat(OOF).round(4).to_csv(f"{B.RES}/oof_7tage.csv", index=False)
+        print("geschrieben: results/oof_7tage.csv (out-of-fold je Tag, Vorlauf, Schwelle)")
     print(f"\ngeschrieben: app/model/manifest.json, breva_14.json, breva_18.json ({len(FEATS)} Merkmale)")
 
 

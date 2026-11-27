@@ -106,13 +106,14 @@ def main(thr, n_fp, n_tp, n_fn, cut):
     L["p"] = p.reindex(L.index); L["y"] = y.reindex(L.index)
     L = L[L.p.notna()].copy()
     L["see"] = [see(f) for f in L.file]
+    L["sat_richtung"] = [float(np.load(f)["dir"]) for f in L.file]          # 200 = Süd (Breva), 20 = Nord
     L["fall"] = np.select([(L.p >= cut) & (L.y == 0), (L.p >= cut) & (L.y == 1), (L.p < 0.2) & (L.y == 1)],
                           ["fp", "tp", "fn"], "")
     print(f"Abende mit Satellitenbild und Modell: {len(L)}; FP {int((L.fall == 'fp').sum())}, "
           f"TP {int((L.fall == 'tp').sum())}, FN {int((L.fall == 'fn').sum())} (Schwelle {cut:.2f})")
     shutil.rmtree(OUT, ignore_errors=True)
     os.makedirs(OUT)
-    keep = ["p", "y", "fall", "klasse", "see", "sat_see", "sam_morgen", "sam_max", "sam_nord_std", "sam_boe",
+    keep = ["p", "y", "fall", "klasse", "see", "sat_richtung", "sat_see", "sam_morgen", "sam_max", "sam_nord_std", "sam_boe",
             "see_max_est", "regen", "sat_widerspruch"]
     L.assign(zeit=L.t.dt.strftime("%H:%M"))[["zeit"] + [c for c in keep if c in L]].round(3).to_csv(f"{OUT}/liste.csv")
     O = TH.hourly_obs()
