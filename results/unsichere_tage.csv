@@ -1,0 +1,161 @@
+gruppe,groesse,im_modell,n,auc_band,richtung,p,auc_alle,median_breva,median_kein
+D ARPA gemessen,morbegno_rad_9_17,,152,0.652,Breva höher,0.0013,0.745,599.15,513.55
+D ARPA gemessen,chiavenna_rad_9_17,,152,0.652,Breva höher,0.0013,0.745,599.15,513.55
+D ARPA gemessen,colico_rad_9_17,,152,0.652,Breva höher,0.0013,0.745,599.15,513.55
+D ARPA gemessen,sondrio_rad_9_17,,152,0.65,Breva höher,0.0015,0.746,618.02,517.41
+D ARPA gemessen,colico_temp_max,,148,0.641,Breva höher,0.0032,0.68,28.33,25.75
+D ARPA gemessen,morbegno_temp_max,,148,0.641,Breva höher,0.0032,0.68,28.33,25.75
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_bergamo_sondrio_15_fehler,,152,0.631,Breva tiefer,0.0058,0.539,-0.3,0.05
+D ARPA gemessen,dt_sondrio_bergamo_gemessen,,149,0.626,Breva höher,0.0084,0.683,1.19,0.2
+D ARPA gemessen,berg_nord_rad_9_17,,151,0.621,Breva höher,0.0112,0.754,547.63,493.61
+D ARPA gemessen,sondrio_temp_max,,152,0.621,Breva höher,0.0109,0.679,29.73,26.9
+D ARPA gemessen,milano_rad_9_17,,149,0.619,Breva höher,0.0128,0.702,579.19,493.24
+D ARPA gemessen,bergamo_rad_9_17,,152,0.615,Breva höher,0.0151,0.695,644.92,541.18
+B' Vorhersage Vortag,rad_chiavenna_vorhersage,,152,0.615,Breva höher,0.0156,0.723,5.54,5.09
+B' Vorhersage Vortag,rad_spaet_chiavenna_vorhersage,,152,0.614,Breva höher,0.0162,0.702,1.79,1.61
+D ARPA gemessen,lecco_rad_9_17,,151,0.613,Breva höher,0.018,0.691,647.94,540.74
+A ERA5 (Wetter wie es war),taupunktdiff_milano,True,152,0.612,Breva höher,0.0181,0.655,10.75,9.2
+D ARPA gemessen,como_rad_9_17,,152,0.61,Breva höher,0.0199,0.694,612.69,526.84
+D ARPA gemessen,lecco_temp_max,,151,0.609,Breva höher,0.0225,0.648,28.4,26.02
+D ARPA gemessen,como_temp_max,,152,0.609,Breva höher,0.0212,0.647,28.0,25.78
+D ARPA gemessen,berg_nord_temp_max,,151,0.609,Breva höher,0.0224,0.634,15.46,13.37
+D ARPA gemessen,como_rh_13,,136,0.608,Breva tiefer,0.0311,0.701,53.17,54.33
+A ERA5 (Wetter wie es war),tmax_chiavenna,True,152,0.607,Breva höher,0.0246,0.643,27.25,23.85
+A ERA5 (Wetter wie es war),bodenfeuchte_chiavenna,False,152,0.605,Breva tiefer,0.0269,0.633,0.29,0.31
+B' Vorhersage Vortag,doy_cos_vorhersage,,152,0.605,Breva tiefer,0.0267,0.65,-0.84,-0.66
+A ERA5 (Wetter wie es war),doy_cos,True,152,0.605,Breva tiefer,0.0267,0.65,-0.84,-0.66
+B' Vorhersage Vortag,tmax_bergamo_vorhersage,,152,0.601,Breva höher,0.0326,0.631,25.8,23.6
+A ERA5 (Wetter wie es war),tmax_engadin,True,152,0.601,Breva höher,0.0336,0.645,16.95,13.45
+B' Vorhersage Vortag,taupunktdiff_milano_vorhersage,,152,0.601,Breva höher,0.0332,0.669,10.1,8.7
+A ERA5 (Wetter wie es war),tmax_milano,True,152,0.601,Breva höher,0.0327,0.641,29.5,26.65
+A ERA5 (Wetter wie es war),tmax_sondrio,True,152,0.6,Breva höher,0.0347,0.637,27.05,23.9
+A ERA5 (Wetter wie es war),tmax_see,False,152,0.599,Breva höher,0.0364,0.634,28.05,25.65
+B' Vorhersage Vortag,dp_po_tal_18_vorhersage,,152,0.599,Breva tiefer,0.0365,0.559,-3.25,-2.3
+D ARPA gemessen,milano_temp_max,,150,0.598,Breva höher,0.0393,0.637,29.55,27.28
+B' Vorhersage Vortag,rad_see_vorhersage,,152,0.598,Breva höher,0.0388,0.679,5.19,4.78
+D ARPA gemessen,chiavenna_temp_max,,152,0.598,Breva höher,0.0384,0.66,29.36,26.76
+B' Vorhersage Vortag,tmax_chiavenna_vorhersage,,152,0.596,Breva höher,0.0428,0.632,26.55,24.25
+B Vorhersagefehler Vortag (Lauf − ERA5),rad_spaet_chiavenna_fehler,,152,0.595,Breva höher,0.0463,0.653,0.32,0.23
+B' Vorhersage Vortag,tmax_milano_vorhersage,,152,0.595,Breva höher,0.0449,0.637,27.6,25.15
+A ERA5 (Wetter wie es war),tmax_bergamo,True,152,0.594,Breva höher,0.0471,0.629,27.8,25.05
+B' Vorhersage Vortag,dp_po_tal_15_vorhersage,,152,0.593,Breva tiefer,0.0498,0.528,-2.45,-1.65
+A ERA5 (Wetter wie es war),tmin_milano,False,152,0.593,Breva höher,0.0499,0.599,19.5,17.95
+B' Vorhersage Vortag,dp_po_tal_06_vorhersage,,152,0.592,Breva tiefer,0.0525,0.561,-2.35,-1.8
+D ARPA gemessen,dt_sondrio_milano_gemessen,,150,0.592,Breva höher,0.0529,0.655,0.06,-0.58
+B' Vorhersage Vortag,tmax_sondrio_vorhersage,,152,0.592,Breva höher,0.0521,0.632,26.25,24.4
+A ERA5 (Wetter wie es war),dp_po_tal_18,True,152,0.591,Breva tiefer,0.0553,0.552,-3.4,-2.8
+B Vorhersagefehler Vortag (Lauf − ERA5),tmax_chiavenna_fehler,,152,0.59,Breva tiefer,0.0577,0.557,-0.85,-0.35
+B Vorhersagefehler Vortag (Lauf − ERA5),luft_minus_see_t30_fehler,,152,0.59,Breva tiefer,0.0573,0.557,-0.62,-0.17
+A ERA5 (Wetter wie es war),tmin_chiavenna,True,152,0.59,Breva höher,0.0582,0.589,18.3,17.2
+B' Vorhersage Vortag,tmax_engadin_vorhersage,,152,0.589,Breva höher,0.0612,0.617,13.8,11.8
+B' Vorhersage Vortag,wolken_morgen_see_vorhersage,,152,0.587,Breva tiefer,0.0652,0.604,29.58,38.5
+D ARPA gemessen,bergamo_temp_max,,149,0.587,Breva höher,0.0697,0.626,28.34,25.79
+A ERA5 (Wetter wie es war),bodenfeuchte_milano,False,152,0.583,Breva tiefer,0.08,0.621,0.34,0.37
+A ERA5 (Wetter wie es war),dp_po_tal_06,True,152,0.583,Breva tiefer,0.0809,0.557,-3.2,-2.65
+A ERA5 (Wetter wie es war),see_t30,True,152,0.581,Breva höher,0.0897,0.563,23.8,21.69
+D ARPA gemessen,bergamo_rh_13,,149,0.579,Breva tiefer,0.1015,0.643,54.75,57.83
+B' Vorhersage Vortag,tmin_chiavenna_vorhersage,,152,0.579,Breva höher,0.0958,0.563,17.05,15.85
+A ERA5 (Wetter wie es war),dp_po_tal_15,True,152,0.578,Breva tiefer,0.0984,0.536,-2.7,-2.4
+A ERA5 (Wetter wie es war),wolken_morgen_see,True,152,0.576,Breva tiefer,0.1108,0.628,49.67,61.92
+B Vorhersagefehler Vortag (Lauf − ERA5),dt_tal_po_fehler,,152,0.575,Breva tiefer,0.112,0.523,0.7,1.2
+B' Vorhersage Vortag,see_t30_vorhersage,,152,0.575,Breva höher,0.1154,0.547,22.46,20.3
+B Vorhersagefehler Vortag (Lauf − ERA5),rad_chiavenna_fehler,,152,0.571,Breva höher,0.1322,0.622,0.7,0.45
+D ARPA gemessen,milano_rh_13,,150,0.57,Breva tiefer,0.1458,0.661,49.83,52.17
+D ARPA gemessen,berg_see_rad_9_17,,152,0.569,Breva höher,0.1477,0.618,490.95,407.85
+B Vorhersagefehler Vortag (Lauf − ERA5),geo_staerke_fehler,,152,0.568,Breva höher,0.1508,0.57,-0.03,-0.06
+A ERA5 (Wetter wie es war),rad_milano,False,152,0.568,Breva höher,0.1492,0.666,5.43,4.88
+B Vorhersagefehler Vortag (Lauf − ERA5),tmax_bergamo_fehler,,152,0.567,Breva höher,0.1582,0.51,-1.15,-1.65
+D ARPA gemessen,chiavenna_rain_11_19,,152,0.565,Breva tiefer,0.0503,0.595,0.0,0.0
+B' Vorhersage Vortag,dp_zurich_milano_12_vorhersage,,152,0.563,Breva höher,0.182,0.551,1.65,1.05
+B' Vorhersage Vortag,dt_tal_po_vorhersage,,152,0.563,Breva tiefer,0.1856,0.534,-1.8,-1.6
+B' Vorhersage Vortag,dp_bergamo_sondrio_15_vorhersage,,152,0.561,Breva tiefer,0.1957,0.512,-1.85,-1.4
+D ARPA gemessen,berg_see_temp_max,,152,0.56,Breva höher,0.203,0.604,16.59,15.55
+B Vorhersagefehler Vortag (Lauf − ERA5),rad_see_fehler,,152,0.559,Breva höher,0.2165,0.602,0.34,0.24
+B' Vorhersage Vortag,geo_aus_sued_vorhersage,,152,0.559,Breva tiefer,0.2165,0.606,-0.22,-0.19
+B Vorhersagefehler Vortag (Lauf − ERA5),regen_vortag_fehler,,152,0.559,Breva höher,0.2084,0.514,0.0,-0.1
+A ERA5 (Wetter wie es war),rad_chiavenna,True,152,0.559,Breva höher,0.2123,0.685,4.76,4.46
+B Vorhersagefehler Vortag (Lauf − ERA5),tmax_sondrio_fehler,,152,0.557,Breva tiefer,0.229,0.52,-0.9,-0.55
+B Vorhersagefehler Vortag (Lauf − ERA5),drucktendenz_24h_fehler,,152,0.557,Breva tiefer,0.2267,0.529,0.0,0.1
+D ARPA gemessen,lecco_rh_13,,148,0.557,Breva tiefer,0.2332,0.63,47.92,49.75
+B Vorhersagefehler Vortag (Lauf − ERA5),geo_aus_sued_fehler,,152,0.556,Breva tiefer,0.2364,0.574,-0.06,-0.02
+A ERA5 (Wetter wie es war),luft_minus_see_t30,True,152,0.556,Breva höher,0.2394,0.641,5.5,4.47
+D ARPA gemessen,sondrio_rh_13,,152,0.556,Breva tiefer,0.2416,0.661,44.34,46.09
+A ERA5 (Wetter wie es war),rad_see,True,152,0.555,Breva höher,0.2484,0.652,4.84,4.55
+B' Vorhersage Vortag,wind_see_15_sued_vorhersage,,152,0.554,Breva tiefer,0.253,0.726,1.98,2.27
+B' Vorhersage Vortag,dt_engadin_po_vorhersage,,152,0.553,Breva tiefer,0.2624,0.555,-14.0,-13.05
+A ERA5 (Wetter wie es war),rad_spaet_chiavenna,True,152,0.553,Breva höher,0.2672,0.665,1.4,1.37
+B' Vorhersage Vortag,dp_lyon_venezia_12_vorhersage,,152,0.551,Breva höher,0.2818,0.595,1.7,1.25
+A ERA5 (Wetter wie es war),geo_aus_sued,True,152,0.549,Breva tiefer,0.3058,0.612,-0.16,-0.19
+A ERA5 (Wetter wie es war),dp_zurich_milano_12,True,152,0.548,Breva höher,0.3101,0.563,1.9,1.3
+B Vorhersagefehler Vortag (Lauf − ERA5),dt_engadin_po_fehler,,152,0.547,Breva tiefer,0.3218,0.557,-0.1,0.5
+B' Vorhersage Vortag,geo_aus_west_vorhersage,,152,0.546,Breva tiefer,0.3347,0.53,-0.29,-0.18
+A ERA5 (Wetter wie es war),amp_tal_minus_po,False,152,0.543,Breva höher,0.3624,0.522,-1.85,-1.95
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_lyon_venezia_12_fehler,,152,0.543,Breva höher,0.3681,0.59,0.4,0.2
+B Vorhersagefehler Vortag (Lauf − ERA5),taupunktdiff_milano_fehler,,152,0.542,Breva höher,0.3723,0.58,0.5,0.2
+D ARPA gemessen,morbegno_rain_11_19,,152,0.542,Breva tiefer,0.2223,0.588,0.0,0.0
+A ERA5 (Wetter wie es war),dp_bergamo_sondrio_15,True,152,0.541,Breva tiefer,0.3832,0.513,-1.85,-1.6
+A ERA5 (Wetter wie es war),sonne_see_h,False,152,0.54,Breva höher,0.3367,0.612,9.0,9.0
+A ERA5 (Wetter wie es war),dp_lyon_venezia_12,True,152,0.54,Breva höher,0.3946,0.602,1.45,1.15
+D ARPA gemessen,sondrio_rain_11_19,,152,0.537,Breva tiefer,0.3438,0.595,0.0,0.0
+A ERA5 (Wetter wie es war),regen_chiavenna,True,152,0.537,Breva höher,0.4271,0.505,0.75,0.65
+B Vorhersagefehler Vortag (Lauf − ERA5),tmax_engadin_fehler,,152,0.536,Breva tiefer,0.4449,0.584,-1.55,-1.25
+A ERA5 (Wetter wie es war),geo_aus_west,True,152,0.536,Breva tiefer,0.4538,0.548,-0.25,-0.24
+B' Vorhersage Vortag,luft_minus_see_t30_vorhersage,,152,0.536,Breva höher,0.4471,0.63,4.89,4.14
+B' Vorhersage Vortag,dp_muenchen_genova_12_vorhersage,,152,0.536,Breva höher,0.4549,0.507,1.0,0.3
+A ERA5 (Wetter wie es war),dp_muenchen_genova_12,True,152,0.535,Breva höher,0.4572,0.512,0.55,0.25
+B Vorhersagefehler Vortag (Lauf − ERA5),geo_aus_west_fehler,,152,0.534,Breva tiefer,0.472,0.617,-0.04,-0.03
+D ARPA gemessen,colico_rain_11_19,,152,0.534,Breva tiefer,0.3216,0.579,0.0,0.0
+B Vorhersagefehler Vortag (Lauf − ERA5),see_t30_fehler,,152,0.534,Breva tiefer,0.4697,0.618,-1.14,-1.08
+B' Vorhersage Vortag,drucktendenz_24h_vorhersage,,152,0.532,Breva tiefer,0.5046,0.546,0.0,0.35
+B Vorhersagefehler Vortag (Lauf − ERA5),wind_see_15_sued_fehler,,152,0.532,Breva tiefer,0.5046,0.539,-0.14,0.18
+D ARPA gemessen,lecco_rain_11_19,,152,0.531,Breva tiefer,0.3814,0.577,0.0,0.0
+B' Vorhersage Vortag,wind_see_15_vorhersage,,152,0.53,Breva tiefer,0.5211,0.646,2.2,2.6
+B' Vorhersage Vortag,regen_chiavenna_vorhersage,,152,0.529,Breva höher,0.5352,0.509,0.6,0.6
+B Vorhersagefehler Vortag (Lauf − ERA5),wind_see_15_fehler,,152,0.529,Breva tiefer,0.5371,0.51,-0.05,0.1
+A ERA5 (Wetter wie es war),wolken_chiavenna,True,152,0.528,Breva tiefer,0.5582,0.604,59.39,65.83
+A ERA5 (Wetter wie es war),wind_see_15_sued,True,152,0.528,Breva höher,0.5495,0.73,2.35,2.23
+B' Vorhersage Vortag,wind_milano_12_vorhersage,,152,0.528,Breva höher,0.5506,0.514,2.55,2.6
+B Vorhersagefehler Vortag (Lauf − ERA5),wolken_see_fehler,,152,0.528,Breva tiefer,0.5607,0.554,-24.0,-22.44
+B' Vorhersage Vortag,dp_tag_minus_nacht_vorhersage,,152,0.526,Breva tiefer,0.5897,0.571,0.0,0.15
+B Vorhersagefehler Vortag (Lauf − ERA5),regen_see_fehler,,152,0.524,Breva höher,0.6055,0.541,0.0,0.0
+A ERA5 (Wetter wie es war),geo_staerke,True,152,0.524,Breva tiefer,0.6171,0.622,0.89,0.82
+D ARPA gemessen,morbegno_rh_13,,146,0.523,Breva tiefer,0.638,0.621,56.33,56.0
+B' Vorhersage Vortag,regen_vortag_vorhersage,,152,0.523,Breva höher,0.6188,0.531,0.6,0.6
+D ARPA gemessen,colico_rh_13,,146,0.523,Breva tiefer,0.638,0.621,56.33,56.0
+D ARPA gemessen,berg_nord_rain_11_19,,152,0.523,Breva tiefer,0.5743,0.608,0.0,0.0
+A ERA5 (Wetter wie es war),dp_tag_minus_nacht,True,152,0.522,Breva tiefer,0.6474,0.519,0.35,0.4
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_po_tal_06_fehler,,152,0.521,Breva tiefer,0.6526,0.505,0.55,0.6
+A ERA5 (Wetter wie es war),wind_milano_12,True,152,0.521,Breva höher,0.6595,0.532,3.2,3.2
+A ERA5 (Wetter wie es war),regen_vortag,True,152,0.52,Breva höher,0.6665,0.514,1.4,1.2
+A ERA5 (Wetter wie es war),drucktendenz_24h,True,152,0.52,Breva tiefer,0.6799,0.549,0.15,0.4
+B Vorhersagefehler Vortag (Lauf − ERA5),tmax_milano_fehler,,152,0.519,Breva höher,0.6866,0.514,-1.25,-1.5
+B' Vorhersage Vortag,wolken_see_vorhersage,,152,0.519,Breva tiefer,0.6867,0.575,29.0,32.72
+A ERA5 (Wetter wie es war),wolken_tief_see,False,152,0.519,Breva tiefer,0.6853,0.501,8.78,16.78
+D ARPA gemessen,berg_see_rain_11_19,,152,0.518,Breva tiefer,0.6656,0.566,0.0,0.0
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_zurich_milano_12_fehler,,152,0.518,Breva höher,0.7128,0.579,-0.3,-0.35
+A ERA5 (Wetter wie es war),dt_tal_po,True,152,0.518,Breva höher,0.7114,0.515,-2.75,-2.65
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_tag_minus_nacht_fehler,,152,0.518,Breva höher,0.71,0.527,-0.05,-0.2
+A ERA5 (Wetter wie es war),regen_see,True,152,0.517,Breva höher,0.7242,0.51,0.6,0.75
+B Vorhersagefehler Vortag (Lauf − ERA5),wolken_morgen_see_fehler,,152,0.515,Breva tiefer,0.7506,0.508,-15.08,-13.83
+D ARPA gemessen,berg_nord_rh_13,,151,0.514,Breva tiefer,0.7727,0.591,61.83,64.67
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_muenchen_genova_12_fehler,,152,0.513,Breva tiefer,0.7789,0.601,0.2,0.2
+B Vorhersagefehler Vortag (Lauf − ERA5),wind_milano_12_fehler,,152,0.513,Breva tiefer,0.7847,0.537,-0.65,-0.6
+D ARPA gemessen,como_rain_11_19,,152,0.513,Breva tiefer,0.6953,0.575,0.0,0.0
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_po_tal_18_fehler,,152,0.513,Breva tiefer,0.7803,0.524,0.3,0.3
+B' Vorhersage Vortag,geo_staerke_vorhersage,,152,0.51,Breva tiefer,0.8336,0.621,0.87,0.84
+B Vorhersagefehler Vortag (Lauf − ERA5),dp_po_tal_15_fehler,,152,0.51,Breva tiefer,0.8263,0.518,0.5,0.5
+D ARPA gemessen,milano_rain_11_19,,152,0.51,Breva tiefer,0.7483,0.581,0.0,0.0
+A ERA5 (Wetter wie es war),wolken_see,True,152,0.509,Breva tiefer,0.8569,0.569,59.33,62.72
+B' Vorhersage Vortag,doy_sin_vorhersage,,152,0.508,Breva tiefer,0.8671,0.603,0.06,0.01
+A ERA5 (Wetter wie es war),doy_sin,True,152,0.508,Breva tiefer,0.8671,0.603,0.06,0.01
+B Vorhersagefehler Vortag (Lauf − ERA5),wolken_chiavenna_fehler,,152,0.507,Breva tiefer,0.8906,0.511,-24.83,-23.56
+D ARPA gemessen,bergamo_rain_11_19,,152,0.506,Breva tiefer,0.8647,0.582,0.0,0.0
+D ARPA gemessen,berg_see_rh_13,,152,0.504,Breva tiefer,0.9393,0.521,74.25,76.75
+B' Vorhersage Vortag,regen_see_vorhersage,,152,0.504,Breva höher,0.9274,0.538,0.3,0.3
+D ARPA gemessen,dt_chiavenna_milano_gemessen,,150,0.504,Breva tiefer,0.9335,0.56,-0.2,-0.34
+B Vorhersagefehler Vortag (Lauf − ERA5),regen_chiavenna_fehler,,152,0.504,Breva tiefer,0.937,0.539,0.0,0.0
+B' Vorhersage Vortag,wolken_chiavenna_vorhersage,,152,0.502,Breva tiefer,0.9733,0.576,26.56,29.72
+D ARPA gemessen,chiavenna_rh_13,,152,0.502,Breva tiefer,0.9689,0.603,55.09,55.5
+A ERA5 (Wetter wie es war),wind_see_15,True,152,0.501,Breva höher,0.9881,0.63,2.55,2.5
+A ERA5 (Wetter wie es war),dt_engadin_po,True,152,0.501,Breva höher,0.9822,0.51,-13.1,-13.4
+B Vorhersagefehler Vortag (Lauf − ERA5),tmin_chiavenna_fehler,,152,0.5,Breva höher,0.9956,0.564,-1.6,-1.7
