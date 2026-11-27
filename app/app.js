@@ -223,18 +223,7 @@ function weekProb(date, i, thr) {
   return BrevaModel.calibrate(cal[String(i)] ?? cal["7"], raw);
 }
 const pClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
-/* Breva-Call: Chance über der Schwelle, ab der das Modell in der Prüfung 2024–heute ≥ 70 % Präzision hatte */
-function weekCall(i, thr, p) {
-  const c = state.M?.man?.call?.[String(thr)]; const k = c && (c[String(i)] ?? c["7"]);
-  return k && p != null && p >= k.schwelle ? k : null;
-}
-function heuteCall(H, key) {
-  if (!H || H.hour == null) return key === "14" ? weekCall(0, 14, H?.p[key]) : null;
-  const k = state.M?.heute?.call?.[`${H.hour}_${key}`];
-  return k && H.p[key] != null && H.p[key] >= k.schwelle ? k : null;
-}
-const callTip = c => `Breva call: at values this high, the 2024–today test had a real Breva in ${Math.round(c.praezision * 100)} % of cases; it catches ${Math.round(c.trefferquote * 100)} % of all Breva days.`;
-const callTag = c => c ? `<span class="call" title="${callTip(c)}">Call</span>` : "";
+const PCT_HINT = "How to read the %: the chances are calibrated on 2024–2026. 55 % means that on 55 of 100 days with such a forecast there really was a Breva.";
 function hourlyAll() {
   const h = {}; for (const st of STATIONS) if (state.obs[st.id]?.hourly) h[st.id] = state.obs[st.id].hourly; return h;
 }
@@ -342,10 +331,11 @@ function drawNow() {
   const cl = ds.length ? climateP(ds[0], state.thr) : null;
   const fmtObs = v => v == null || !Number.isFinite(v) ? "–" : `${v >= 0 ? "" : "−"}${de(Math.abs(v))} kn`;
   const heuteHtml = H ? `<div class="heute">
-      <div class="hcards">${[["14", "Breva today", "≥ 14 kn for at least 2 h"], ["lang", "Long Breva", `≥ 14 kn for at least ${state.M.heute.lang_h ?? 5} h`]].map(([k, t, sub]) => `<div class="hcard ${pClass(H.p[k])}"><span class="hp">${H.p[k] == null ? "–" : Math.round(H.p[k] * 100) + "\u00a0%"}${callTag(heuteCall(H, k))}</span>
+      <div class="hcards">${[["14", "Breva today", "≥ 14 kn for at least 2 h"], ["lang", "Long Breva", `≥ 14 kn for at least ${state.M.heute.lang_h ?? 5} h`]].map(([k, t, sub]) => `<div class="hcard ${pClass(H.p[k])}"><span class="hp">${H.p[k] == null ? "–" : Math.round(H.p[k] * 100) + "\u00a0%"}</span>
         <span class="hl">${t}<br><small>${sub}</small></span></div>`).join("")}</div>
       <p class="hint">${H.hour == null ? `Forecast only – measurements are added from ${state.M.heute.hours[0]}:00 (model at ${state.M.heute.hours.map(h => h + ":00").join(", ")}).`
         : `As of ${H.hour}:00: forecast for today + measurements until ${H.hour}:00 + yesterday. ${state.M.heute.hours.some(h => h > H.hour) ? `Next update at ${state.M.heute.hours.filter(h => h > H.hour).map(h => h + ":00").join(", ")}.` : "Last update of the day – from now on the stations show how it develops."}`}</p>
+      <p class="hint">${PCT_HINT}</p>
       <ul class="hfak">
         <li><b>Forecast alone</b> (ECMWF, 7-day model): ${pct(H.pForecast)}</li>
         <li><b>Breva yesterday</b>: ${H.gestern == null ? "unknown" : H.gestern.breva ? `yes, ${H.gestern.stunden} h at 14+ kn (up to ~${Math.round(H.gestern.max)} kn on the lake)` : `no (max ~${Math.round(H.gestern.max)} kn)`}
@@ -382,7 +372,7 @@ function drawWeek() {
   const rainRow = S.map(({ sig }, i) => `<td data-day="${i}" class="rain">${sig == null ? "" : sig.rain >= 2 ? "🌧" : sig.rain >= 0.5 ? "🌦" : ""}</td>`).join("");
   const modelRow = state.M && features7() ? `<tr><th scope="row">Breva chance<br><small>14+ kn for at least 2 h</small></th>${S.map(({ d, season }, i) => {
       const p = weekProb(d, i, state.thr);
-      return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span>${season ? callTag(weekCall(i, state.thr, p)) : ""}</td>`; }).join("")}</tr>` : "";
+      return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span></td>`; }).join("")}</tr>` : "";
   t.innerHTML = `<thead><tr><th scope="col" class="spotcol"></th>${head}</tr></thead><tbody>
     ${modelRow}
     <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva signs<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
@@ -410,7 +400,7 @@ function drawDetail() {
       <span class="meta">${sp.shore}${ratio ? ` · in Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % vs. the upper-lake average` : ""}</span></div>
     <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
     ${state.M && features7() ? `<p class="sigline"><b>Breva model:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
-      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> chance of a Breva day${callTag(weekCall(ds.indexOf(date), t, p))}`; }).join(" · ")}${
+      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> chance of a Breva day`; }).join(" · ")}${
       sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
         ? `<br><small>🌧 South wind with rain: more likely pre-frontal wind than a thermal Breva – usually steady but wet; watch for thunderstorms.</small>` : ""}</p>` : ""}
     ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>
