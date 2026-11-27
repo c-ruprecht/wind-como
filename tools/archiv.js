@@ -65,6 +65,69 @@ async function modelPoints() {
   return H;
 }
 
+/* ECMWF-Ensemble (51 Läufe, Open-Meteo Ensemble-API): Open-Meteo hebt die einzelnen Läufe nur ~3 Tage auf.
+   Deshalb archivieren wir hier selbst: je Lauf und Zieltag die Breva-Chance jedes Ensemble-Mitglieds.
+   Vergangenheit (Vortage, 30-Tage-Mittel) kommt aus dem normalen Lauf, ab heute 0 Uhr die Werte des Mitglieds. */
+const ENS_MODEL = "ecmwf_ifs025";
+async function ensemblePoints() {
+  const ids = Object.keys(S.MODEL_POINTS);
+  const p = new URLSearchParams({
+    latitude: ids.map(k => S.MODEL_POINTS[k][0]).join(","), longitude: ids.map(k => S.MODEL_POINTS[k][1]).join(","),
+    hourly: S.MODEL_VARS.join(","), models: ENS_MODEL, wind_speed_unit: "kn", timezone: "Europe/Rome", forecast_days: "8"
+  });
+  let res = await fetchJSON("https://ensemble-api.open-meteo.com/v1/ensemble?" + p);
+  if (!Array.isArray(res)) res = [res];
+  const E = {};
+  ids.forEach((k, i) => { if (res[i]?.hourly) E[k] = res[i].hourly; });
+  return E;
+}
+/* Mitglied m (0 = Kontrolllauf) in die deterministische Reihe H einsetzen, ab Datum `from` (YYYY-MM-DD) */
+function spliceMember(H, E, m, from) {
+  const suf = m === 0 ? "" : `_member${String(m).padStart(2, "0")}`;
+  const out = {};
+  for (const [k, h] of Object.entries(H)) {
+    const e = E[k]; out[k] = { time: h.time };
+    const pos = e ? new Map(e.time.map((t, i) => [t, i])) : new Map();
+    for (const v of S.MODEL_VARS) {
+      const src = e && (e[v + suf] ?? (m === 0 ? e[`${v}_member00`] : undefined));
+      out[k][v] = h[v].map((x, i) => {
+        const t = h.time[i];
+        if (!src || t.slice(0, 10) < from || !pos.has(t)) return x;
+        const y = src[pos.get(t)]; return y == null ? x : y;
+      });
+    }
+  }
+  return out;
+}
+function memberCount(E) {
+  const e = Object.values(E)[0]; if (!e) return 0;
+  return Object.keys(e).filter(c => c.startsWith(S.MODEL_VARS[0] + "_member")).length + 1;
+}
+const quant = (a, q) => { const b = [...a].sort((x, y) => x - y); const i = (b.length - 1) * q, lo = Math.floor(i);
+  return b[lo] + (b[Math.min(lo + 1, b.length - 1)] - b[lo]) * (i - lo); };
+/* je Zieltag: Chance jedes Mitglieds (geeicht wie die App) -> Mittel, Streuung, Quantile */
+function ensembleRows(H, E, ds, today, man, M, base, mid) {
+  const n = memberCount(E); if (n < 2) return [];
+  const P = ds.map(() => []), R = ds.map(() => []);
+  for (let m = 0; m < n; m++) {
+    const F = BrevaModel.features(spliceMember(H, E, m, today), S.MODEL_POINTS);
+    ds.forEach((d, i) => {
+      if (!F[d]) return;
+      const raw = BrevaModel.predictProba(M["14"], BrevaModel.vec(F[d], man.features));
+      const cal = man.calib["14"] || {};
+      P[i].push(BrevaModel.calibrate(cal[String(i)] ?? cal["7"], raw)); R[i].push(raw);
+    });
+  }
+  const mean = a => a.reduce((x, y) => x + y, 0) / a.length;
+  return ds.map((d, i) => {
+    const p = P[i]; if (!p.length) return null;
+    const mu = mean(p), sd = Math.sqrt(mean(p.map(x => (x - mu) ** 2)));
+    return { ...base, modell_id: mid, ens_modell: ENS_MODEL, zieldatum: d, vorlauf: i, mitglieder: p.length,
+      p_mittel: mu, p_sd: sd, p_q10: quant(p, 0.1), p_q50: quant(p, 0.5), p_q90: quant(p, 0.9),
+      p_roh_mittel: mean(R[i]), anteil_ueber_50: mean(p.map(x => x >= 0.5 ? 1 : 0)) };
+  }).filter(Boolean);
+}
+
 async function ecmwfInit() {
   try {
     const m = await fetchJSON(`https://api.open-meteo.com/data/${WX}/static/meta.json`, 2);
@@ -159,8 +222,20 @@ async function main() {
     rows.push({ ...base, art: "heute", modell_id: hid, zieldatum: today, vorlauf: 0, schwelle: ziel, stunde: hour ?? "", p, p_roh: raw,
       call_ab: k ? k.schwelle : "", call: k && p != null ? Number(p >= k.schwelle) : "" });
   }
+  // Ensemble (eigene Datei, damit vorhersagen.csv gleich bleibt); Fehler hier stoppen das Archiv nicht
+  let ens = [], ensErr = "";
+  try { ens = ensembleRows(H, await ensemblePoints(), ds, today, man, M, { lauf_id, app_commit: commit }, ids["14"]); }
+  catch (e) { ensErr = String(e.message || e); console.warn("Ensemble:", ensErr); }
   // schreiben
   fs.mkdirSync(path.join(OUT, "merkmale"), { recursive: true });
+  if (ens.length) {
+    const ec = ["lauf_id", "modell_id", "ens_modell", "app_commit", "zieldatum", "vorlauf", "mitglieder", "p_mittel", "p_sd",
+      "p_q10", "p_q50", "p_q90", "p_roh_mittel", "anteil_ueber_50"];
+    const fe = path.join(OUT, "ensemble.csv");
+    if (!fs.existsSync(fe)) fs.writeFileSync(fe, ec.join(",") + "\n");
+    fs.appendFileSync(fe, ens.map(r => csvLine(ec.map(c => r[c]))).join("\n") + "\n");
+    console.log(`  Ensemble ${ENS_MODEL}: ${ens[0].mitglieder} Mitglieder, ` + ens.map(r => `${r.zieldatum.slice(5)} ${(100 * r.p_mittel).toFixed(0)}±${(100 * r.p_sd).toFixed(0)}`).join("  "));
+  }
   const readme = path.join(OUT, "README.md");
   if (!fs.existsSync(readme)) fs.writeFileSync(readme, `# Breva-Vorhersage-Archiv
 
@@ -177,13 +252,17 @@ Jeder Lauf rechnet genau, was die App in dem Moment anzeigt.
 - \`p\`: geeichte Chance (wie in der App), \`p_roh\`: Modellausgabe vor der Eichung
 - \`call_ab\`: Schwelle für einen Breva-Call (≥ 70 % Präzision in der Prüfung; leer = nie erreicht), \`call\`: 1 = Call
 
+**ensemble.csv** – je Lauf × Zieltag die Breva-Chance über die 51 Läufe des ECMWF-Ensembles (Open-Meteo hebt die
+einzelnen Läufe nur ~3 Tage auf, deshalb archivieren wir sie selbst): \`p_mittel\`, \`p_sd\` (Streuung),
+\`p_q10/q50/q90\`, \`anteil_ueber_50\` (Anteil der Läufe mit ≥ 50 %). Jedes Mitglied geeicht wie die App.
+
 **merkmale/JJJJ-MM.jsonl** – je Lauf die Eingangsgrößen (zum Nachrechnen und für Modellvergleiche)
 `);
   const cols = ["lauf_id", "art", "modell_id", "wettermodell", "ecmwf_init", "app_commit", "zieldatum", "vorlauf", "schwelle", "stunde", "p", "p_roh", "call_ab", "call"];
   const f = path.join(OUT, "vorhersagen.csv");
   if (!fs.existsSync(f)) fs.writeFileSync(f, cols.join(",") + "\n");
   fs.appendFileSync(f, rows.map(r => csvLine(cols.map(c => r[c]))).join("\n") + "\n");
-  const rec = { lauf_id, ecmwf_init: init, wettermodell: WX, modell_ids: ids, heute_stunde: hour, obs_fehler: obsErr,
+  const rec = { lauf_id, ecmwf_init: init, wettermodell: WX, modell_ids: ids, heute_stunde: hour, obs_fehler: obsErr, ensemble_fehler: ensErr,
     merkmale: Object.fromEntries(ds.map(d => [d, F[d]])), heute_eingang: hx };
   fs.appendFileSync(path.join(OUT, "merkmale", `${today.slice(0, 7)}.jsonl`), JSON.stringify(rec) + "\n");
   console.log(`${lauf_id}: ${rows.length} Zeilen, ECMWF-Lauf ${init || "?"}, Heute-Stunde ${hour ?? "–"}${obsErr ? " (Messungen: " + obsErr + ")" : ""}`);
