@@ -167,9 +167,13 @@ def laden(modelle, leads, start):
 # ------------------------------------------------------------------ 3. Vergleich
 
 def auc(y, p):
-    from sklearn.metrics import roc_auc_score
-    y = np.asarray(y); p = np.asarray(p)
-    return roc_auc_score(y, p) if len(set(y)) == 2 else np.nan
+    """AUC über Ränge (gleich roc_auc_score, aber ohne Overhead – wichtig im Bootstrap)."""
+    from scipy.stats import rankdata
+    y = np.asarray(y).astype(bool); p = np.asarray(p, float)
+    n1 = y.sum(); n0 = len(y) - n1
+    if n1 == 0 or n0 == 0:
+        return np.nan
+    return (rankdata(p)[y].sum() - n1 * (n1 + 1) / 2) / (n1 * n0)
 
 
 def qmap(X, E, years):
@@ -205,7 +209,7 @@ def block_boot(y, pa, pb, days, n=1000, seed=0):
     return np.percentile(d, [5, 95])
 
 
-def vergleich(thr_list=(14, 18), train_until=2023):
+def vergleich(thr_list=(14, 18), train_until=2023, jobs=-1):
     D = pd.read_csv(f"{RES}/breva_tage.csv", index_col=0, parse_dates=True)
     F = T.FEATS
     E = B.features(B.load("era5")).reindex(D.index).reindex(columns=F)
@@ -267,13 +271,16 @@ def vergleich(thr_list=(14, 18), train_until=2023):
                     mm = T.xgb_model(F).fit(Xo[tr], yo[tr])
                 out[te] = mm.predict_proba(Xo.loc[common[te]])[:, 1]
             return out
-        def score(m, L, common, ref_p=None, tag=None):
-            """Vorhersagen und Kennzahlen eines Wettermodells auf den Tagen common."""
+        def score(m, L, common, ref_p=None, tag=None, full=True):
+            """Vorhersagen und Kennzahlen eines Wettermodells auf den Tagen common.
+            full=False: nur ERA5-Modell und Angleichung (für die Referenz im Paarvergleich und die Mittel)."""
             y = y_all.loc[common].values; yrs = common.year.values; season = common.month.isin(range(3, 11))
             Ec = E.loc[common]; Xm = X[(m, L)].loc[common]
             r = Xm.corrwith(Ec); nmae = (Xm - Ec).abs().mean() / Ec.std()
-            P = {"": pred(Xm), "|q": pred(qmap(Xm, Ec, yrs)), "|eigen": own(m, L, common, False),
-                 "|kombi": own(m, L, common, True)}
+            P = {"": pred(Xm), "|q": pred(qmap(Xm, Ec, yrs))}
+            nan = np.full(len(common), np.nan)
+            P["|eigen"] = own(m, L, common, False) if full else nan
+            P["|kombi"] = own(m, L, common, True) if full else nan
             okp = ~np.isnan(P["|eigen"]); p = P[""]
             row = dict(schwelle=thr, vorlauf=L, modell=tag or m, tage=len(common), breva=int(y.sum()),
                        ab=str(common.min().date()),
@@ -290,10 +297,11 @@ def vergleich(thr_list=(14, 18), train_until=2023):
         def okdays(idx):
             return idx[E.loc[idx].notna().mean(axis=1) > 0.7]
 
-        for L in B.LEADS:
+        def do_lead(L):
+            rows, lines = [], []
             ms = [m for m in models if (m, L) in X]
             if REF not in ms:
-                continue
+                return rows, lines
             # 1) Referenz auf ihrem ganzen Zeitraum
             cref = okdays(X[(REF, L)].index)
             _, row, _ = score(REF, L, cref); rows.append(row)
@@ -304,7 +312,7 @@ def vergleich(thr_list=(14, 18), train_until=2023):
                 c = okdays(X[(m, L)].index.intersection(X[(REF, L)].index))
                 if len(c) < 150:
                     print(f"  Vorlauf {L}: {m} nur {len(c)} gemeinsame Tage – weggelassen"); continue
-                Pr, _, y = score(REF, L, c)
+                Pr, _, y = score(REF, L, c, full=False)
                 Pm, row, _ = score(m, L, c, ref_p=Pr[""]); rows.append(row)
                 for k in ("", "|q", "|kombi"):
                     ok_ = ~np.isnan(Pm[k])
@@ -322,7 +330,7 @@ def vergleich(thr_list=(14, 18), train_until=2023):
                     c = c.intersection(X[(m, L)].index)
                 c = okdays(c)
                 if len(c) >= 150:
-                    P = {m: score(m, L, c)[0] for m in longm}
+                    P = {m: score(m, L, c, full=False)[0] for m in longm}
                     y = y_all.loc[c].values; season = c.month.isin(range(3, 11)); yrs = c.year.values
                     pref = P[REF][""]
                     for tag, pm in (("Mittel (langes Archiv)", np.mean([P[m][""] for m in longm], axis=0)),
@@ -348,6 +356,15 @@ def vergleich(thr_list=(14, 18), train_until=2023):
                     if thr == thr_list[0] and L in (1, 3):
                         lines.append(f"\n**Bestes Modell je Merkmal, Vorlauf {L} (gewählt {y0}):** " +
                                      ", ".join(f"{f} → {best[f]}" for f in gain.sort_values(ascending=False).index[:12]))
+            return rows, lines
+
+        # Vorlauftage parallel (je Prozess XGBoost mit 1 Thread – bei kleinen Daten schneller als viele Threads je Fit)
+        from joblib import Parallel, delayed
+        os.environ["BREVA_XGB_THREADS"] = "1"
+        leads = [L for L in B.LEADS if (REF, L) in X]
+        print(f"≥ {thr} kn: {len(leads)} Vorlauftage parallel …", flush=True)
+        for r_, l_ in Parallel(n_jobs=jobs, verbose=5)(delayed(do_lead)(L) for L in leads):
+            rows += r_; lines += l_
     R = pd.DataFrame(rows)
     R.to_csv(f"{RES}/modellvergleich.csv", index=False)
     base = ["schwelle", "vorlauf", "modell", "ab", "tage", "breva", "merkmal_r", "merkmal_nmae", "auc", "auc_saison",
@@ -376,10 +393,11 @@ if __name__ == "__main__":
     ap.add_argument("--modelle", default="ecmwf_ifs,meteoswiss_icon_ch2,icon_seamless,ecmwf_aifs025_single")
     ap.add_argument("--leads", default="1,2,3,5,7")
     ap.add_argument("--start", default="2024-01-01")
+    ap.add_argument("--jobs", type=int, default=-1, help="parallele Prozesse für vergleich (-1 = alle Kerne)")
     a = ap.parse_args()
     if a.step == "pruefen":
         pruefen()
     elif a.step == "laden":
         laden(a.modelle.split(","), [int(x) for x in a.leads.split(",")], a.start)
     else:
-        vergleich()
+        vergleich(jobs=a.jobs)

@@ -70,16 +70,19 @@ def main():
     lat = (SL.BBOX[3] - (np.arange(H) + 0.5) * (SL.BBOX[3] - SL.BBOX[1]) / H)[:, None] * np.ones((1, W))
     S = scenes()
     print(f"{len(S)} Überflüge mit Rohbild; lese σ⁰ …", flush=True)
-    DB, track = [], []
-    for _, s in S.iterrows():
+    def one(s):
         try:
             db, inc = read_raw(s.file)
         except Exception as e:
-            print("  ", os.path.basename(s.file), e); DB.append(None); track.append(None); continue
+            print("  ", os.path.basename(s.file), e); return None, None
         if db.shape != water.shape:
-            DB.append(None); track.append(None); continue
-        DB.append(np.where(water, db, np.nan).astype("float32"))
-        track.append(f"{s.orbit}{int(round(float(np.nanmedian(inc[water]))))}")
+            return None, None
+        return (np.where(water, db, np.nan).astype("float32"),
+                f"{s.orbit}{int(round(float(np.nanmedian(inc[water]))))}")
+    from concurrent.futures import ThreadPoolExecutor        # GDAL gibt beim Lesen den GIL frei
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as ex:
+        res = list(ex.map(one, [s for _, s in S.iterrows()]))
+    DB = [r[0] for r in res]; track = [r[1] for r in res]
     S["spur"] = track
     ok = S.spur.notna().values
     S = S[ok].reset_index(drop=True); DB = [d for d, k in zip(DB, ok) if k]

@@ -52,6 +52,8 @@ def target(D, thr):
 def xgb_model(feats=None):
     from xgboost import XGBClassifier
     kw = {}
+    if os.environ.get("BREVA_XGB_THREADS"):
+        kw["n_jobs"] = int(os.environ["BREVA_XGB_THREADS"])
     if OPT["monoton"] and feats is not None:
         kw["monotone_constraints"] = "(" + ",".join(str(MONO.get(f, 0)) for f in feats) + ")"
     return XGBClassifier(n_estimators=250, max_depth=3, learning_rate=0.05, subsample=0.8, colsample_bytree=0.8,
