@@ -100,7 +100,10 @@ def main():
             print("  ", os.path.basename(s.file), e); return None, None
         if db.shape != water.shape:
             return None, None
-        return np.where(water, db, np.nan).astype("float32"), f"{s.orbit}{int(round(float(np.nanmedian(inc[water]))))}"
+        iw = inc[water & np.isfinite(db)]
+        if iw.size < 0.5 * water.sum():                  # Überflug deckt den See nur am Rand (Streifenkante)
+            return None, None
+        return np.where(water, db, np.nan).astype("float32"), f"{s.orbit}{int(round(float(np.nanmedian(iw))))}"
     from concurrent.futures import ThreadPoolExecutor
     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as ex:
         res = list(ex.map(one, [s for _, s in S.iterrows()]))
