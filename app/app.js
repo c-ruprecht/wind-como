@@ -14,7 +14,7 @@ const CACHE_KEY = "breva-cache-v1";
 const state = {
   fc: null, obs: {}, info: null,
   model: "ecmwf", thr: 14,
-  spot: load("spot", "gera_lario"), day: 0, map: null, markers: [], layer: load("layer", "map"),
+  day: 0, map: null, markers: [], layer: load("layer", "map"),
   mfc: null,        // Modellpunkte (ECMWF, mit 31 Tagen Vergangenheit)
   M: null,          // { man, m14, m18, heute, h: {"9_14": Modell, …} }
   extra: {},        // gemessene Sonne/Temperatur (ARPA) für das Heute-Modell
@@ -53,7 +53,7 @@ async function fetchJSON(url, timeoutMs = 25000) {
 
 /* ---------- Vorhersage (Open-Meteo, ECMWF) ---------- */
 async function fetchForecast() {
-  const places = [...SPOTS, ...POINTS];
+  const places = [...POINTS];                       // nur die Modellpunkte; Spots erst mit eigenen Stationsdaten
   const p = new URLSearchParams({
     latitude: places.map(s => s.lat).join(","), longitude: places.map(s => s.lon).join(","),
     hourly: VARS.join(","), daily: "sunrise,sunset", models: Object.values(MODELS).join(","),
@@ -75,10 +75,9 @@ async function fetchForecast() {
     }
     return o;
   };
-  const spots = {}, points = {};
-  SPOTS.forEach((s, i) => { spots[s.id] = parse(res[i]); });
-  POINTS.forEach((s, i) => { points[s.id] = parse(res[SPOTS.length + i]); });
-  return { spots, points, fetched: new Date().toISOString() };
+  const points = {};
+  POINTS.forEach((s, i) => { points[s.id] = parse(res[i]); });
+  return { points, fetched: new Date().toISOString() };
 }
 
 /* ---------- Vorhersage an den Modellpunkten (ECMWF, wie im Training) ---------- */
@@ -362,18 +361,6 @@ function setLayer(which) {
 function drawMarkers() {
   state.markers.forEach(m => m.remove()); state.markers = [];
   if (!state.map) return;
-  const today = state.fc ? Object.keys(state.fc.points.see.sunrise)[0] : null;
-  const sig = today ? brevaSigns(today, state.model) : null;
-  for (const sp of SPOTS) {
-    const el = document.createElement("button");
-    el.type = "button";
-    const pt = state.M && features7() && today ? weekProb(today, 0, state.thr) : null;
-    el.className = `spot-mk mk-${pt != null ? pClass(pt) : "r0"}${sp.id === state.spot ? " cur" : ""}`;
-    el.innerHTML = `<span class="dot"></span><span class="lab"><b>${sp.short}</b></span>`;
-    el.setAttribute("aria-label", sp.name);
-    el.addEventListener("click", ev => { ev.stopPropagation(); selectSpot(sp.id); });
-    state.markers.push(new maplibregl.Marker({ element: el, anchor: "left", offset: [-8, 0] }).setLngLat([sp.lon, sp.lat]).addTo(state.map));
-  }
   for (const st of STATIONS) {
     const o = state.obs[st.id];
     const el = document.createElement("div");
@@ -426,7 +413,6 @@ function drawNow() {
   box.innerHTML = `<div class="panel-head"><h2>Today</h2><span class="meta">Is it worth going?</span></div>
     ${heuteHtml}
     <h3>Stations (ARPA Lombardia, last 6 h)</h3><ul class="stnlist">${stn}</ul>`;
-  box.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
 }
 
 /* ---------- Woche ---------- */
@@ -468,16 +454,13 @@ function drawDetail() {
   const box = $("#detail");
   const ds = days(); if (!ds.length) { box.innerHTML = ""; return; }
   const date = ds[state.day] ?? ds[0];
-  const sp = SPOTS.find(s => s.id === state.spot) || SPOTS[0];
-  const o = state.fc.spots[sp.id];
+  const o = state.fc.points.see;                   // Modellpunkt oberer See (wie das Breva-Modell)
   const hrs = dayIdx(o, date, 8, 20);
   const sig = brevaSigns(date, state.model);
   const row = (lab, fn, cls = "") => `<tr class="${cls}"><th scope="row">${lab}</th>${hrs.map(fn).join("")}</tr>`;
-  const ratio = state.info?.spot_zu_see?.[sp.id];
   const cl = climateP(date, state.thr);
-  box.innerHTML = `<div class="panel-head"><h2>${sp.name} · ${dayLabel(date, ds.indexOf(date))}</h2>
-      <span class="meta">${sp.shore}${ratio ? ` · in Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % vs. the upper-lake average` : ""}</span></div>
-    <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
+  box.innerHTML = `<div class="panel-head"><h2>Upper lake · ${dayLabel(date, ds.indexOf(date))}</h2>
+      <span class="meta">Dervio – Colico – Domaso</span></div>
     ${state.M && features7() ? `<p class="sigline"><b>Breva model:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
       return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> chance of a Breva day${(() => { const pl = weekProbLang(date, ds.indexOf(date)); return pl == null ? "" : ` · <span class="badge ${pClass(pl)}">${Math.round(pl * 100)}%</span> long Breva (5+ h)`; })()}`; }).join(" · ")}${
       sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
@@ -493,10 +476,9 @@ function drawDetail() {
       ${row("Rain mm", i => `<td>${o.ecmwf.precipitation[i] > 0.05 ? de(o.ecmwf.precipitation[i]) : ""}</td>`, "wrow")}
       ${row("°C", i => `<td>${o.ecmwf.temperature_2m[i] == null ? "" : Math.round(o.ecmwf.temperature_2m[i])}</td>`, "trow")}
     </tbody></table></div>
-    <p class="hint">Raw model values at the spot. The models barely see the Breva (ECMWF grid ~25 km, the lake is 2–4 km wide):
+    <p class="hint">Raw ECMWF values over the upper lake. The model barely sees the Breva (ECMWF grid ~25 km, the lake is 2–4 km wide):
       on Breva afternoons they mostly show 4–8 kn while 12–20 kn blow on the water. That is why the Breva model above matters more than the knots here.</p>
     <div class="legend"><span>Model (kn):</span>${KN_SCALE.map(([v, k], j) => `<span><i class="sw ${k}"></i>${v}${KN_SCALE[j + 1] ? "–" + KN_SCALE[j + 1][0] : "+"}</span>`).join("")}</div>`;
-  box.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot, false)));
 }
 
 function drawLegend() {
@@ -509,10 +491,6 @@ function drawLegend() {
 function renderAll() {
   if (state.fc) { drawWeek(); drawDetail(); }
   drawNow(); drawMarkers(); drawLegend();
-}
-function selectSpot(id, scroll = true) {
-  state.spot = id; save("spot", id); renderAll();
-  if (scroll) $("#detail").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 }
 async function refresh() {
   const st = $("#status");
