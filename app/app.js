@@ -1,6 +1,5 @@
-/* Breva – Kitewind oberer Comer See. Holt alles direkt im Browser (Open-Meteo, ARPA Lombardia), kein Server.
-   Erste Version: Breva-Zeichen aus den Wettermodellen (vorläufig, noch ohne trainiertes Modell),
-   Breva-Vorhersage (7 Tage + heute), Stationsmessungen, Breva-Bild aus Sentinel-1. */
+/* Breva – kite wind on upper Lake Como. Fetches everything in the browser (Open-Meteo, ARPA Lombardia), no server.
+   Breva forecast (7 days + today), station measurements, Breva map from Sentinel-1. */
 "use strict";
 
 const DEMO = new URLSearchParams(location.search).has("demo");
@@ -26,17 +25,17 @@ function load(k, d) { try { return localStorage.getItem("breva-" + k) ?? d; } ca
 function save(k, v) { try { localStorage.setItem("breva-" + k, v); } catch (e) {} }
 const $ = s => document.querySelector(s);
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
-const compass = d => d == null ? "" : ["N","NNO","NO","ONO","O","OSO","SO","SSO","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
+const compass = d => d == null ? "" : ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round((((d % 360) + 360) % 360) / 22.5) % 16];
 const inSec = (d, [a, b]) => d != null && (a <= b ? d >= a && d <= b : d >= a || d <= b);
 const arrow = (dir, cls = "arrow") => `<svg class="${cls}" viewBox="0 0 20 20" aria-hidden="true"><g transform="rotate(${(dir + 180) % 360} 10 10)"><path d="M10 1 L15 11 L11 9.5 L11 19 L9 19 L9 9.5 L5 11 Z"/></g></svg>`;
-const fmtTime = d => d.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
-const de = (x, n = 1) => x.toFixed(n).replace(".", ",");
+const fmtTime = d => d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Rome" });
+const de = (x, n = 1) => x.toFixed(n);
 const pct = p => p == null ? "–" : Math.round(p * 100) + " %";
 function dayLabel(dateStr, i) {
   const d = new Date(dateStr + "T12:00:00");
-  if (i === 0) return "Heute";
-  if (i === 1) return "Morgen";
-  return d.toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" });
+  if (i === 0) return "Today";
+  if (i === 1) return "Tomorrow";
+  return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "numeric" });
 }
 const isWeekend = s => [0, 6].includes(new Date(s + "T12:00:00").getDay());
 
@@ -186,16 +185,16 @@ function brevaSigns(date, m) {
   const t13 = atHour(mi, m, "temperature_2m", date, 13), d13 = atHour(mi, m, "dew_point_2m", date, 13);
   const td = t13 != null && d13 != null ? t13 - d13 : null;
   const parts = [
-    { key: "sued", label: "Südwind am See (Modell)", w: 0.30, v: sued, s: sued == null ? null : clamp((sued - 0.5) / 3),
-      txt: sued == null ? "–" : `${de(sued)} kn aus SSW` },
-    { key: "dp", label: "Druckgefälle Ebene → Tal", w: 0.20, v: dp, s: dp == null ? null : clamp((dp + 3.2) / 2.2),
-      txt: dp == null ? "–" : `Mailand – Chiavenna ${dp > 0 ? "+" : ""}${de(dp)} hPa` },
-    { key: "sonne", label: "Sonne im Tal", w: 0.20, v: rad, s: rad == null ? null : clamp((rad / 1000 - 3.0) / 2.5),
+    { key: "sued", label: "South wind on the lake (model)", w: 0.30, v: sued, s: sued == null ? null : clamp((sued - 0.5) / 3),
+      txt: sued == null ? "–" : `${de(sued)} kn from SSW` },
+    { key: "dp", label: "Pressure gradient plain → valley", w: 0.20, v: dp, s: dp == null ? null : clamp((dp + 3.2) / 2.2),
+      txt: dp == null ? "–" : `Milan – Chiavenna ${dp > 0 ? "+" : ""}${de(dp)} hPa` },
+    { key: "sonne", label: "Sun in the valley", w: 0.20, v: rad, s: rad == null ? null : clamp((rad / 1000 - 3.0) / 2.5),
       txt: rad == null ? "–" : `${de(rad / 1000)} kWh/m² Chiavenna` },
-    { key: "foehn", label: "kein Nordföhn", w: 0.15, v: foehn, s: foehn == null ? null : clamp((4.5 - foehn) / 3.5),
-      txt: foehn == null ? "–" : `Zürich – Mailand ${foehn > 0 ? "+" : ""}${de(foehn)} hPa` },
-    { key: "trocken", label: "trockene Luft", w: 0.15, v: td, s: td == null ? null : clamp((td - 7) / 6),
-      txt: td == null ? "–" : `Mailand Taupunktabstand ${de(td)} K` }
+    { key: "foehn", label: "No north foehn", w: 0.15, v: foehn, s: foehn == null ? null : clamp((4.5 - foehn) / 3.5),
+      txt: foehn == null ? "–" : `Zurich – Milan ${foehn > 0 ? "+" : ""}${de(foehn)} hPa` },
+    { key: "trocken", label: "Dry air", w: 0.15, v: td, s: td == null ? null : clamp((td - 7) / 6),
+      txt: td == null ? "–" : `Milan dew-point spread ${de(td)} K` }
   ];
   const ok = parts.filter(x => x.s != null);
   if (!ok.length) return null;
@@ -204,7 +203,7 @@ function brevaSigns(date, m) {
   return { score: base * rainF, parts, rain, rainF };
 }
 const signalClass = s => s == null ? "r0" : s >= 0.65 ? "r4" : s >= 0.5 ? "r2" : s >= 0.35 ? "r1" : "r0";
-const signalWord = s => s == null ? "–" : s >= 0.65 ? "gute Zeichen" : s >= 0.5 ? "möglich" : s >= 0.35 ? "schwach" : "eher nicht";
+const signalWord = s => s == null ? "–" : s >= 0.65 ? "good signs" : s >= 0.5 ? "possible" : s >= 0.35 ? "weak" : "unlikely";
 function climateP(date, thr) {
   const m = String(Number(date.slice(5, 7)));
   return state.info?.klima?.[String(thr)]?.[m] ?? null;
@@ -234,7 +233,7 @@ function heuteCall(H, thr) {
   const k = state.M?.heute?.call?.[`${H.hour}_${thr}`];
   return k && H.p[thr] != null && H.p[thr] >= k.schwelle ? k : null;
 }
-const callTip = c => `Breva-Call: Bei so hohen Werten gab es in der Prüfung 2024–heute in ${Math.round(c.praezision * 100)} % der Fälle wirklich Breva; erwischt werden so ${Math.round(c.trefferquote * 100)} % aller Breva-Tage.`;
+const callTip = c => `Breva call: at values this high, the 2024–today test had a real Breva in ${Math.round(c.praezision * 100)} % of cases; it catches ${Math.round(c.trefferquote * 100)} % of all Breva days.`;
 const callTag = c => c ? `<span class="call" title="${callTip(c)}">Call</span>` : "";
 function hourlyAll() {
   const h = {}; for (const st of STATIONS) if (state.obs[st.id]?.hourly) h[st.id] = state.obs[st.id].hourly; return h;
@@ -314,7 +313,7 @@ function drawMarkers() {
     const o = state.obs[st.id];
     const el = document.createElement("div");
     el.className = "stn-mk" + (o ? "" : " off");
-    el.title = `${st.name} (${st.note})${o ? ", " + fmtTime(o.time) + " Uhr" : ", keine aktuellen Daten"}`;
+    el.title = `${st.name} (${st.note})${o ? ", " + fmtTime(o.time) + "" : ", no current data"}`;
     el.innerHTML = `${o && o.dir != null ? arrow(o.dir, "arrow big") : '<span class="sq"></span>'}<span class="lab"><b>${o ? Math.round(o.kn) + " kn " + compass(o.dir) : "–"}</b><small>${st.name}</small></span>`;
     state.markers.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([st.lon, st.lat]).addTo(state.map));
   }
@@ -335,7 +334,7 @@ function drawNow() {
     const breva = o && inSec(o.dir, st.sektor) && o.kn >= 2;
     const trend = o && o.kn1h != null ? (o.kn - o.kn1h >= 1.5 ? "↑" : o.kn1h - o.kn >= 1.5 ? "↓" : "→") : "";
     return `<li>${o && o.dir != null ? arrow(o.dir) : '<span class="arrow"></span>'}<span><b>${st.name}</b> <small>${st.note}</small></span>
-      <span>${o ? `<b>${Math.round(o.kn)} kn</b> ${compass(o.dir)} ${trend} <small>${fmtTime(o.time)}${breva ? " · Breva-Richtung" : ""}</small>` : "keine Daten"}</span>
+      <span>${o ? `<b>${Math.round(o.kn)} kn</b> ${compass(o.dir)} ${trend} <small>${fmtTime(o.time)}${breva ? " · Breva direction" : ""}</small>` : "no data"}</span>
       ${o ? spark(o.series) : "<span></span>"}</li>`;
   }).join("");
   const H = heute();
@@ -344,21 +343,21 @@ function drawNow() {
   const fmtObs = v => v == null || !Number.isFinite(v) ? "–" : `${v >= 0 ? "" : "−"}${de(Math.abs(v))} kn`;
   const heuteHtml = H ? `<div class="heute">
       <div class="hcards">${THRESHOLDS.map(t => `<div class="hcard ${pClass(H.p[t])}"><span class="hp">${H.p[t] == null ? "–" : Math.round(H.p[t] * 100) + "\u00a0%"}${callTag(heuteCall(H, t))}</span>
-        <span class="hl">Breva ≥ ${t} kn heute<br><small>mind. 2 h am Stück</small></span></div>`).join("")}</div>
-      <p class="hint">${H.hour == null ? "Nur Vorhersage – Messungen fließen ab 9 Uhr ein (Modell 9, 11 und 13 Uhr)."
-        : `Stand ${H.hour} Uhr: Vorhersage für heute + Messungen bis ${H.hour} Uhr + gestern. ${state.M.heute.hours.some(h => h > H.hour) ? `Neu um ${state.M.heute.hours.filter(h => h > H.hour).join(" und ")} Uhr.` : "Letzter Stand des Tages – ab jetzt zeigen die Stationen, wie es weitergeht."}`}</p>
+        <span class="hl">Breva ≥ ${t} kn today<br><small>at least 2 h in a row</small></span></div>`).join("")}</div>
+      <p class="hint">${H.hour == null ? "Forecast only – measurements are added from 9:00 (model at 9, 11 and 13:00)."
+        : `As of ${H.hour}:00: forecast for today + measurements until ${H.hour}:00 + yesterday. ${state.M.heute.hours.some(h => h > H.hour) ? `Next update at ${state.M.heute.hours.filter(h => h > H.hour).map(h => h + ":00").join(" and ")}.` : "Last update of the day – from now on the stations show how it develops."}`}</p>
       <ul class="hfak">
-        <li><b>Vorhersage allein</b> (ECMWF, 7-Tage-Modell): ${THRESHOLDS.map(t => `≥${t}: ${pct(H.pForecast[t])}`).join(" · ")}</li>
-        <li><b>Gestern Breva</b>: ${H.gestern == null ? "unbekannt" : H.gestern.breva ? `ja (bis ~${Math.round(H.gestern.max)} kn auf dem See)` : `nein (max ~${Math.round(H.gestern.max)} kn)`}
-          <small>– nach einem Breva-Tag folgt in ${pct(state.M.heute.vortag_stat?.["1"])} der Fälle wieder einer, sonst in ${pct(state.M.heute.vortag_stat?.["0"])}</small></li>
-        ${H.obs ? `<li><b>Breva-Richtung jetzt</b>: Vercana ${fmtObs(H.obs.vercana_jetzt)}, Samolaco ${fmtObs(H.obs.samolaco_jetzt)}, Colico ${fmtObs(H.obs.colico_jetzt)}, Morbegno ${fmtObs(H.obs.morbegno_jetzt)}
-          <small>– Wind in Breva-Richtung, negativ = Gegenwind. Vercana dreht als erste auf Südwest.</small></li>
-        <li><b>Tivano heute früh</b> (Samolaco aus Nord, 5–9 Uhr): ${fmtObs(H.obs.tivano_samolaco)}</li>` : ""}
-        ${cl ? `<li><b>Üblich</b> im ${new Date(ds[0] + "T12:00:00").toLocaleDateString("de-DE", { month: "long" })}: ${pct(cl.p)} der Tage ≥ ${state.thr} kn</li>` : ""}
+        <li><b>Forecast alone</b> (ECMWF, 7-day model): ${THRESHOLDS.map(t => `≥${t}: ${pct(H.pForecast[t])}`).join(" · ")}</li>
+        <li><b>Breva yesterday</b>: ${H.gestern == null ? "unknown" : H.gestern.breva ? `yes (up to ~${Math.round(H.gestern.max)} kn on the lake)` : `no (max ~${Math.round(H.gestern.max)} kn)`}
+          <small>– after a Breva day another one follows in ${pct(state.M.heute.vortag_stat?.["1"])} of cases, otherwise in ${pct(state.M.heute.vortag_stat?.["0"])}</small></li>
+        ${H.obs ? `<li><b>Breva direction now</b>: Vercana ${fmtObs(H.obs.vercana_jetzt)}, Samolaco ${fmtObs(H.obs.samolaco_jetzt)}, Colico ${fmtObs(H.obs.colico_jetzt)}, Morbegno ${fmtObs(H.obs.morbegno_jetzt)}
+          <small>– wind component in Breva direction, negative = opposite. Vercana turns south-west first.</small></li>
+        <li><b>Tivano this morning</b> (Samolaco from north, 5–9:00): ${fmtObs(H.obs.tivano_samolaco)}</li>` : ""}
+        ${cl ? `<li><b>Usual</b> in ${new Date(ds[0] + "T12:00:00").toLocaleDateString("en-GB", { month: "long" })}: ${pct(cl.p)} of days ≥ ${state.thr} kn</li>` : ""}
       </ul></div>` : "";
-  box.innerHTML = `<div class="panel-head"><h2>Heute</h2><span class="meta">Lohnt es sich loszufahren?</span></div>
+  box.innerHTML = `<div class="panel-head"><h2>Today</h2><span class="meta">Is it worth going?</span></div>
     ${heuteHtml}
-    <h3>Stationen (ARPA Lombardia, letzte 6 h)</h3><ul class="stnlist">${stn}</ul>`;
+    <h3>Stations (ARPA Lombardia, last 6 h)</h3><ul class="stnlist">${stn}</ul>`;
   box.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
 }
 
@@ -368,10 +367,10 @@ function drawWeek() {
   const t = $("#week");
   const ds = days();
   if (!ds.length) { t.innerHTML = ""; return; }
-  const head = ds.map((d, i) => `<th scope="col" class="${isWeekend(d) ? "we" : ""}">${i === 0 ? "Heute" : new Date(d + "T12:00:00").toLocaleDateString("de-DE", { weekday: "short" })}<br><small>${+d.slice(8)}.${+d.slice(5, 7)}.</small></th>`).join("");
+  const head = ds.map((d, i) => `<th scope="col" class="${isWeekend(d) ? "we" : ""}">${i === 0 ? "Today" : new Date(d + "T12:00:00").toLocaleDateString("en-GB", { weekday: "short" })}<br><small>${+d.slice(8)}/${+d.slice(5, 7)}</small></th>`).join("");
   const S = ds.map(d => ({ d, sig: brevaSigns(d, state.model), cl: climateP(d, state.thr), season: SEASON.includes(Number(d.slice(5, 7))) }));
   const sigRow = S.map(({ d, sig, season }, i) => `<td class="cell ${season ? signalClass(sig?.score) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"
-      title="${sig ? signalWord(sig.score) : ""}"><span class="v">${sig ? Math.round(sig.score * 100) : "–"}</span><span class="pd">${season ? signalWord(sig?.score) : "keine Saison"}</span></td>`).join("");
+      title="${sig ? signalWord(sig.score) : ""}"><span class="v">${sig ? Math.round(sig.score * 100) : "–"}</span><span class="pd">${season ? signalWord(sig?.score) : "off season"}</span></td>`).join("");
   const clRow = S.map(({ d, cl }, i) => `<td class="climc${isWeekend(d) ? " we" : ""}" data-day="${i}">${cl ? pct(cl.p) : "–"}</td>`).join("");
   const partRows = ["sued", "dp", "sonne", "foehn", "trocken"].map(k => {
     const lab = S[0].sig?.parts.find(p => p.key === k)?.label ?? k;
@@ -380,15 +379,15 @@ function drawWeek() {
       return `<td data-day="${i}" title="${p?.txt ?? ""}"><span class="bar"><i style="width:${p?.s == null ? 0 : Math.round(p.s * 100)}%"></i></span></td>`; }).join("")}</tr>`;
   }).join("");
   const rainRow = S.map(({ sig }, i) => `<td data-day="${i}" class="rain">${sig == null ? "" : sig.rain >= 2 ? "🌧" : sig.rain >= 0.5 ? "🌦" : ""}</td>`).join("");
-  const modelRow = state.M && features7() ? `<tr><th scope="row">Chance ≥ ${state.thr} kn<br><small>Breva-Modell, mind. 2 h</small></th>${S.map(({ d, season }, i) => {
+  const modelRow = state.M && features7() ? `<tr><th scope="row">Chance ≥ ${state.thr} kn<br><small>Breva model, at least 2 h</small></th>${S.map(({ d, season }, i) => {
       const p = weekProb(d, i, state.thr);
       return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span>${season ? callTag(weekCall(i, state.thr, p)) : ""}</td>`; }).join("")}</tr>` : "";
   t.innerHTML = `<thead><tr><th scope="col" class="spotcol"></th>${head}</tr></thead><tbody>
     ${modelRow}
-    <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva-Zeichen<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
-    <tr><th scope="row">Üblich ${state.thr}+ kn<br><small>Anteil Tage im Monat</small></th>${clRow}</tr>
+    <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva signs<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
+    <tr><th scope="row">Usual ${state.thr}+ kn<br><small>share of days in month</small></th>${clRow}</tr>
     ${partRows}
-    <tr class="part"><th scope="row">Regen 11–19 Uhr</th>${rainRow}</tr></tbody>`;
+    <tr class="part"><th scope="row">Rain 11–19:00</th>${rainRow}</tr></tbody>`;
   t.querySelectorAll("[data-day]").forEach(e => e.addEventListener("click", () => { state.day = Number(e.dataset.day); drawWeek(); drawDetail(); }));
 }
 
@@ -407,34 +406,34 @@ function drawDetail() {
   const ratio = state.info?.spot_zu_see?.[sp.id];
   const cl = climateP(date, state.thr);
   box.innerHTML = `<div class="panel-head"><h2>${sp.name} · ${dayLabel(date, ds.indexOf(date))}</h2>
-      <span class="meta">${sp.shore}${ratio ? ` · bei Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % gegenüber dem Mittel des oberen Sees` : ""}</span></div>
+      <span class="meta">${sp.shore}${ratio ? ` · in Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % vs. the upper-lake average` : ""}</span></div>
     <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
-    ${state.M && features7() ? `<p class="sigline"><b>Breva-Modell:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
+    ${state.M && features7() ? `<p class="sigline"><b>Breva model:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
       return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> ≥ ${t} kn${callTag(weekCall(ds.indexOf(date), t, p))}`; }).join(" · ")}${
       sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
-        ? `<br><small>🌧 Südwind mit Regen: eher Wind vor einer Front als thermischer Breva – meist gleichmäßig, aber nass; auf Gewitter achten.</small>` : ""}</p>` : ""}
+        ? `<br><small>🌧 South wind with rain: more likely pre-frontal wind than a thermal Breva – usually steady but wet; watch for thunderstorms.</small>` : ""}</p>` : ""}
     ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>
-      ${cl ? ` · üblich an ${pct(cl.p)} der Tage im Monat mind. 2 h ab ${state.thr} kn` : ""}${sig.rainF < 1 ? ` · Regen ${de(sig.rain)} mm dämpft` : ""}</p>
+      ${cl ? ` · usual on ${pct(cl.p)} of days in the month: at least 2 h from ${state.thr} kn` : ""}${sig.rainF < 1 ? ` · rain ${de(sig.rain)} mm dampens` : ""}</p>
       <ul class="parts">${sig.parts.map(p => `<li><span class="bar"><i style="width:${p.s == null ? 0 : Math.round(p.s * 100)}%"></i></span> ${p.label}: ${p.txt}</li>`).join("")}</ul>` : ""}
     <div class="ftable-wrap"><table class="ftable"><tbody>
-      ${row("Uhr", i => `<td>${o.time[i].slice(11, 13)}</td>`, "hrow")}
-      ${Object.keys(MODELS).map(m => row("Richtung " + MODEL_LABEL[m], i => `<td title="${compass(o[m].wind_direction_10m[i])}">${o[m].wind_direction_10m[i] != null ? arrow(o[m].wind_direction_10m[i]) : ""}</td>`, "drow")
+      ${row("Hour", i => `<td>${o.time[i].slice(11, 13)}</td>`, "hrow")}
+      ${Object.keys(MODELS).map(m => row("Direction " + MODEL_LABEL[m], i => `<td title="${compass(o[m].wind_direction_10m[i])}">${o[m].wind_direction_10m[i] != null ? arrow(o[m].wind_direction_10m[i]) : ""}</td>`, "drow")
         + row(MODEL_LABEL[m] + " kn", i => { const k = o[m].wind_speed_10m[i]; return `<td class="${knCls(k)}">${k == null ? "–" : Math.round(k)}</td>`; }, "mrow")).join("")}
-      ${row("Böen ICON", i => `<td>${o.icon.wind_gusts_10m[i] == null ? "" : Math.round(o.icon.wind_gusts_10m[i])}</td>`, "grow2")}
-      ${row("Wolken %", i => `<td>${o.icon.cloud_cover[i] == null ? "" : Math.round(o.icon.cloud_cover[i])}</td>`, "wrow")}
-      ${row("Regen mm", i => `<td>${o.icon.precipitation[i] > 0.05 ? de(o.icon.precipitation[i]) : ""}</td>`, "wrow")}
+      ${row("Gusts ICON", i => `<td>${o.icon.wind_gusts_10m[i] == null ? "" : Math.round(o.icon.wind_gusts_10m[i])}</td>`, "grow2")}
+      ${row("Clouds %", i => `<td>${o.icon.cloud_cover[i] == null ? "" : Math.round(o.icon.cloud_cover[i])}</td>`, "wrow")}
+      ${row("Rain mm", i => `<td>${o.icon.precipitation[i] > 0.05 ? de(o.icon.precipitation[i]) : ""}</td>`, "wrow")}
       ${row("°C", i => `<td>${o.icon.temperature_2m[i] == null ? "" : Math.round(o.icon.temperature_2m[i])}</td>`, "trow")}
     </tbody></table></div>
-    <p class="hint">Rohwerte der Modelle am Spot. Die Modelle sehen den Breva kaum (Gitter 2–9 km, der See ist 2–4 km breit):
-      an Breva-Nachmittagen zeigen sie meist 4–8 kn, auf dem Wasser wehen 12–20. Deshalb zählen die Breva-Zeichen oben mehr als die Knoten hier.</p>
-    <div class="legend"><span>Modell (kn):</span>${KN_SCALE.map(([v, k], j) => `<span><i class="sw ${k}"></i>${v}${KN_SCALE[j + 1] ? "–" + KN_SCALE[j + 1][0] : "+"}</span>`).join("")}</div>`;
+    <p class="hint">Raw model values at the spot. The models barely see the Breva (grid 2–9 km, the lake is 2–4 km wide):
+      on Breva afternoons they mostly show 4–8 kn while 12–20 kn blow on the water. That is why the Breva model and signs above matter more than the knots here.</p>
+    <div class="legend"><span>Model (kn):</span>${KN_SCALE.map(([v, k], j) => `<span><i class="sw ${k}"></i>${v}${KN_SCALE[j + 1] ? "–" + KN_SCALE[j + 1][0] : "+"}</span>`).join("")}</div>`;
   box.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot, false)));
 }
 
 function drawLegend() {
   const o = state.info?.overlay;
   $("#brevaLegend").innerHTML = `<span class="grad"></span><small>0</small><small style="margin-left:auto">14</small><small style="margin-left:auto">28 kn</small>`
-    + (o ? `<span class="cap">Median ${o.abende ?? ""} Breva-Abende ${o.jahre ?? ""}, Sentinel-1 um 19:15</span>` : "");
+    + (o ? `<span class="cap">Median of ${o.abende ?? ""} Breva evenings ${o.jahre ?? ""}, Sentinel-1 at 19:15</span>` : "");
 }
 
 /* ---------- Ablauf ---------- */
@@ -448,7 +447,7 @@ function selectSpot(id, scroll = true) {
 }
 async function refresh() {
   const st = $("#status");
-  st.textContent = "Lade Vorhersage und Messwerte …"; st.className = "status";
+  st.textContent = "Loading forecast and measurements …"; st.className = "status";
   $("#refreshBtn").disabled = true;
   const [fc, obs, mfc] = await Promise.allSettled([fetchForecast(), fetchObs(), fetchModelPoints()]);
   if (fc.status === "fulfilled") state.fc = fc.value;
@@ -458,11 +457,11 @@ async function refresh() {
   const nObs = Object.keys(state.obs).length;
   if (fc.status === "fulfilled") {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify({ fc: state.fc })); } catch (e) {}
-    st.textContent = `Vorhersage von ${fmtTime(new Date(state.fc.fetched))} Uhr · ${nObs} von ${STATIONS.length} Stationen live${obs.status === "rejected" ? " (ARPA nicht erreichbar)" : ""} · ${state.M && state.mfc ? "Breva-Modell aktiv" : "Breva-Modell lädt …"}`;
+    st.textContent = `Forecast from ${fmtTime(new Date(state.fc.fetched))} · ${nObs} of ${STATIONS.length} stations live${obs.status === "rejected" ? " (ARPA unreachable)" : ""} · ${state.M && state.mfc ? "Breva model active" : "Breva model loading …"}`;
   } else if (state.fc) {
-    st.textContent = `Keine Verbindung zu Open-Meteo (${fc.reason.message}). Zeige gespeicherte Vorhersage.`; st.className = "status warn";
+    st.textContent = `No connection to Open-Meteo (${fc.reason.message}). Showing saved forecast.`; st.className = "status warn";
   } else {
-    st.textContent = `Vorhersage konnte nicht geladen werden (${fc.reason.message}).`; st.className = "status err";
+    st.textContent = `Forecast could not be loaded (${fc.reason.message}).`; st.className = "status err";
   }
   $("#refreshBtn").disabled = false;
   renderAll();
@@ -484,13 +483,13 @@ function init() {
   $("#btnSat").addEventListener("click", () => setLayer("sat"));
   $("#btnBreva").addEventListener("click", () => setLayer("breva"));
   try { const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); if (c && c.fc && c.fc.points) state.fc = c.fc; } catch (e) {}
-  if (window.maplibregl) initMap(); else $("#map").innerHTML = '<p class="maperr">Karte nicht verfügbar (offline).</p>';
+  if (window.maplibregl) initMap(); else $("#map").innerHTML = '<p class="maperr">Map not available (offline).</p>';
   setLayer(state.layer);
   renderAll();
   fetchJSON("breva.json").then(x => { state.info = x; addOverlay(); renderAll(); }).catch(e => console.warn("breva.json", e));
   loadModels().then(M => { state.M = M; F7cache = null; renderAll();
-    $("#status").textContent = $("#status").textContent.replace("Breva-Modell lädt …", state.mfc ? "Breva-Modell aktiv" : "Breva-Modell lädt …"); })
-    .catch(e => console.warn("Breva-Modell nicht geladen (erst training/train_breva.py laufen lassen)", e));
+    $("#status").textContent = $("#status").textContent.replace("Breva model loading …", state.mfc ? "Breva model active" : "Breva model loading …"); })
+    .catch(e => console.warn("Breva model not loaded (run training/train_breva.py first)", e));
   refresh();
   setInterval(() => fetchObs().then(o => { state.obs = o; renderAll(); }).catch(() => {}), 10 * 60e3);
   if ("serviceWorker" in navigator && !DEMO) navigator.serviceWorker.register("sw.js").catch(() => {});

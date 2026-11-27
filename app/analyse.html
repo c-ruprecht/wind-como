@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07222e">
-<title>Windanalyse &amp; Breva – oberer Comer See</title>
+<title>Wind analysis &amp; Breva – upper Lake Como</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-32.png" sizes="32x32">
 <link rel="icon" href="icons/icon-64.png" sizes="64x64">
@@ -17,223 +17,223 @@
 </head>
 <body>
 <header class="top">
-  <a class="logo" href="./" aria-label="Breva – Startseite"><img src="icons/icon-96.png" width="44" height="44" alt=""></a>
+  <a class="logo" href="./" aria-label="Breva – home"><img src="icons/icon-96.png" width="44" height="44" alt=""></a>
   <div class="brand">
     <h1>Breva</h1>
-    <span class="sub">Windanalyse oberer Comer See</span>
+    <span class="sub">Wind analysis, upper Lake Como</span>
   </div>
-  <nav class="nav" aria-label="Hauptmenü">
-    <a href="./">Vorhersage</a>
-    <a href="analyse.html" aria-current="page">Windanalyse &amp; Breva</a>
+  <nav class="nav" aria-label="Main menu">
+    <a href="./">Forecast</a>
+    <a href="analyse.html" aria-current="page">Wind analysis &amp; Breva</a>
   </nav>
 </header>
 
 <main class="an">
-  <nav class="subnav" aria-label="Abschnitte">
-    <a href="#breva">Der Breva</a><a href="#entstehung">Wie er entsteht</a><a href="#wo">Wo am stärksten</a><a href="#wann">Wann</a><a href="#warum">Was ihn macht</a>
-    <a href="#vorhersage">Vorhersage</a><a href="#pruefung">Modellprüfung</a><a href="#stationen">Messstationen</a><a href="#methode">Methode</a>
+  <nav class="subnav" aria-label="Sections">
+    <a href="#breva">The Breva</a><a href="#entstehung">How it forms</a><a href="#wo">Where it is strongest</a><a href="#wann">When</a><a href="#warum">What drives it</a>
+    <a href="#vorhersage">Forecast</a><a href="#pruefung">Model check</a><a href="#stationen">Stations</a><a href="#methode">Method</a>
   </nav>
 
   <section class="panel prose" id="breva">
-    <h2>Der Breva</h2>
-    <p>Der Breva ist der Nachmittagswind des Comer Sees. Er weht von Süden den See hinauf, an sonnigen Tagen von etwa
-      Mittag bis zum Abend, und ist am oberen See zwischen Dervio und Colico am kräftigsten. Morgens weht schwächer
-      der Gegenwind aus Norden, der Tivano.</p>
-    <p><b>Wie er entsteht:</b> Die Sonne heizt die Alpentäler nördlich des Sees – Valchiavenna und Veltlin – stärker auf
-      als die Po-Ebene. Über den Tälern bildet sich tagsüber ein flaches Hitzetief, die Luft aus der Ebene strömt nach.
-      Der See ist der Kanal dorthin: Zwischen steilen Hängen wird die Strömung gebündelt und am Nordende in die beiden
-      Täler aufgeteilt – in Richtung Chiavenna nach Norden, in Richtung Sondrio nach Osten. Abends kühlen die Täler ab,
-      der Druckunterschied verschwindet und der Wind schläft ein.</p>
-    <p><b>Was ihn stört:</b> Nordföhn und kräftige Nordlagen (die Strömung über die Alpen ist stärker als der
-      thermische Sog), Gewitter über den Bergen (kalte Ausflussluft aus Norden), Bewölkung und feuchte Luft
-      (weniger Aufheizung) – und große Hitze in der Po-Ebene, bei der der Unterschied zu den Tälern kleiner wird.</p>
+    <h2>The Breva</h2>
+    <p>The Breva is the afternoon wind of Lake Como. It blows from the south up the lake on sunny days, from about
+      midday until the evening, and is strongest on the upper lake between Dervio and Colico. In the morning a weaker
+      wind blows the other way, from the north: the Tivano.</p>
+    <p><b>How it forms:</b> The sun heats the Alpine valleys north of the lake – Valchiavenna and Valtellina – more
+      strongly than the Po plain. A shallow heat low forms over the valleys during the day and air from the plain flows
+      in. The lake is the channel: between steep slopes the flow is bundled and at the northern end split into the two
+      valleys – north towards Chiavenna, east towards Sondrio. In the evening the valleys cool, the pressure difference
+      disappears and the wind dies.</p>
+    <p><b>What disrupts it:</b> North foehn and strong northerly situations (the flow over the Alps is stronger than the
+      thermal pull), thunderstorms over the mountains (cold outflow from the north), clouds and humid air (less
+      heating) – and heat waves in the Po plain, which shrink the difference to the valleys.</p>
     <div id="kpis" class="kpis"></div>
-    <p class="hint"><b>Update 25.11.2026:</b> Das Modell sagt jetzt den Breva so vorher, wie ihn die Stationen messen –
-      ohne Regentage aus dem Wettermodell auszuschließen. Gegen den Satelliten trifft es damit deutlich besser.
-      Außerdem auf Leckage, Verfeinerung und Verkleinerung geprüft: <a href="#pruefung">Modellprüfung</a>.</p>
+    <p class="hint"><b>Update 25 Nov 2026:</b> The model now predicts the Breva as the stations measure it – without
+      excluding rain days taken from the weather model. Against the satellite it is clearly better this way.
+      Also checked for leakage, tuning and model size: <a href="#pruefung">model check</a>.</p>
   </section>
 
   <section class="panel prose" id="entstehung">
-    <h2>Wie er entsteht – Karte und Wetterlage</h2>
+    <h2>How it forms – map and weather situation</h2>
     <div class="karte-grid">
-      <figure class="karte"><img src="img/breva_karte.svg" alt="Schema: Die Täler nördlich des Sees heizen sich auf, über ihnen entsteht ein Hitzetief; Luft aus der Po-Ebene strömt über beide Seearme und den oberen See in Valchiavenna und Veltlin." loading="lazy">
-        <figcaption>Schema, geografisch maßstäblich. Gestrichelte Linien: Druck sinkt von der Po-Ebene zu den Tälern.</figcaption></figure>
+      <figure class="karte"><img src="img/breva_karte.svg" alt="Schematic: the valleys north of the lake heat up and a heat low forms above them; air from the Po plain flows over both arms of the lake and up the upper lake into Valchiavenna and Valtellina." loading="lazy">
+        <figcaption>Schematic, geographically to scale. Dashed lines: pressure drops from the Po plain towards the valleys.</figcaption></figure>
       <div>
-        <p><b>Der Motor:</b> Valchiavenna und Veltlin sind eng und von Bergen umgeben. Die Sonne heizt dort wenig Luft
-          über viel Hangfläche auf, die Ebene erwärmt sich langsamer. Über den Tälern sinkt der Druck (T), die
-          Po-Ebene bleibt relativ höher (H). Die Luft gleicht das aus und nimmt den kürzesten Weg: über die beiden
-          Seearme, den oberen See hinauf und am Nordende in die Täler.</p>
-        <p><b>Der Trichter:</b> Am oberen See bündeln steile Hänge die Strömung, im Nordbecken teilt sie sich nach
-          Chiavenna und Sondrio. Darum weht er zwischen Dervio und Colico am stärksten.</p>
-        <p><b>Der Tagesgang:</b> In Samolaco beginnt der Südwind gegen 11–12 Uhr, erreicht 15–17 Uhr sein Maximum
-          und schläft gegen 20–21 Uhr ein, wenn die Täler abkühlen. Morgens weht schwach der Tivano aus Norden zurück.</p>
+        <p><b>The engine:</b> Valchiavenna and Valtellina are narrow and surrounded by mountains. The sun heats little air
+          over a lot of slope, while the plain warms more slowly. Pressure drops over the valleys (L), the Po plain stays
+          relatively higher (H). The air evens this out by the shortest route: over both arms of the lake, up the upper
+          lake and at its northern end into the valleys.</p>
+        <p><b>The funnel:</b> On the upper lake steep slopes bundle the flow; in the northern basin it splits towards
+          Chiavenna and Sondrio. That is why it is strongest between Dervio and Colico.</p>
+        <p><b>The daily cycle:</b> At Samolaco the south wind starts around 11–12:00, peaks at 15–17:00 and dies around
+          20–21:00 when the valleys cool. In the morning the Tivano blows weakly back from the north.</p>
       </div>
     </div>
 
-    <h3>Die Wetterlage an Breva-Tagen – in unseren Daten</h3>
-    <p>Typische Werte an Schönwettertagen mit Breva (≥ 14 kn) und ohne, aus den Wetterdaten 2014–2026 (ERA5),
-      innerhalb derselben Monate verglichen. In Klammern: Abende, an denen der Satellit den Wind auf dem See gemessen hat.</p>
+    <h3>The weather situation on Breva days – in our data</h3>
+    <p>Typical values on fair-weather days with Breva (≥ 14 kn) and without, from the 2014–2026 weather data (ERA5),
+      compared within the same months. In brackets: evenings on which the satellite measured the wind on the lake.</p>
     <div class="tscroll"><table class="atab num">
-      <thead><tr><th style="text-align:left">Zutat</th><th>mit Breva</th><th>ohne</th><th style="text-align:left">was es bedeutet</th></tr></thead>
+      <thead><tr><th style="text-align:left">Ingredient</th><th>with Breva</th><th>without</th><th style="text-align:left">what it means</th></tr></thead>
       <tbody>
-        <tr><td style="text-align:left">Druckgefälle Mailand → Chiavenna, 15 Uhr</td><td>−1,6 hPa</td><td>−2,3 hPa</td><td style="text-align:left">0,7 hPa mehr Gefälle zum Tal (Satellit: 1,6 hPa) – der Antrieb. Die Absolutwerte sind durch die Höhenumrechnung verschoben; es zählt der Unterschied.</td></tr>
-        <tr><td style="text-align:left">Aufbau des Gefälles, 6 → 15 Uhr</td><td>+0,6 hPa</td><td>+0,4 hPa</td><td style="text-align:left">Das Hitzetief im Tal bildet sich tagsüber (Satellit: +0,7 gegen +0,2 hPa).</td></tr>
-        <tr><td style="text-align:left">Druckgefälle Bergamo → Sondrio, 15 Uhr</td><td>−0,8 hPa</td><td>−1,5 hPa</td><td style="text-align:left">Dasselbe ins Veltlin.</td></tr>
-        <tr><td style="text-align:left">Sonne im Tal (Chiavenna, 9–17 Uhr)</td><td>5,3 kWh/m²</td><td>4,7 kWh/m²</td><td style="text-align:left">Mehr Sonne, mehr Aufheizung.</td></tr>
-        <tr><td style="text-align:left">Wolken über Chiavenna</td><td>(42 %)</td><td>(62 %)</td><td style="text-align:left">Bewölkung bremst die Aufheizung.</td></tr>
-        <tr><td style="text-align:left">Trockene Luft in Mailand (Taupunktabstand)</td><td>13,1 K</td><td>10,8 K</td><td style="text-align:left">Trockene Luft heizt sich schneller auf, weniger Dunst und Quellwolken.</td></tr>
-        <tr><td style="text-align:left">Tageshöchstwert Sondrio</td><td>25,0 °C</td><td>27,1 °C</td><td style="text-align:left">Nicht die heißesten Tage: Bei großer Hitze ist die Ebene selbst aufgeheizt, der Unterschied kleiner.</td></tr>
-        <tr><td style="text-align:left">Heute wärmer als die letzten 30 Tage</td><td>+6,6 K</td><td>+4,5 K</td><td style="text-align:left">Warme Luft über noch kühlem See und Boden – typisch für Frühling und Frühsommer.</td></tr>
-        <tr><td style="text-align:left">Druckunterschied Zürich → Mailand, 12 Uhr</td><td>0,3 hPa</td><td>0,65 hPa</td><td style="text-align:left">Ruhige Lage über den Alpen. Ab etwa 4 hPa drückt Nordföhn durch – dann kein Breva.</td></tr>
-        <tr><td style="text-align:left">Regen am See</td><td>(0 mm)</td><td>(1 mm)</td><td style="text-align:left">Ein kurzer Schauer stört wenig, Regenlagen schon.</td></tr>
+        <tr><td style="text-align:left">Pressure gradient Milan → Chiavenna, 15:00</td><td>−1.6 hPa</td><td>−2.3 hPa</td><td style="text-align:left">0.7 hPa more gradient towards the valley (satellite: 1.6 hPa) – the driver. Absolute values are shifted by the reduction to sea level; the difference is what counts.</td></tr>
+        <tr><td style="text-align:left">Build-up of the gradient, 6 → 15:00</td><td>+0.6 hPa</td><td>+0.4 hPa</td><td style="text-align:left">The heat low in the valley forms during the day (satellite: +0.7 vs +0.2 hPa).</td></tr>
+        <tr><td style="text-align:left">Pressure gradient Bergamo → Sondrio, 15:00</td><td>−0.8 hPa</td><td>−1.5 hPa</td><td style="text-align:left">The same into Valtellina.</td></tr>
+        <tr><td style="text-align:left">Sun in the valley (Chiavenna, 9–17:00)</td><td>5.3 kWh/m²</td><td>4.7 kWh/m²</td><td style="text-align:left">More sun, more heating.</td></tr>
+        <tr><td style="text-align:left">Clouds over Chiavenna</td><td>(42 %)</td><td>(62 %)</td><td style="text-align:left">Cloud cover slows the heating.</td></tr>
+        <tr><td style="text-align:left">Dry air in Milan (dew-point spread)</td><td>13.1 K</td><td>10.8 K</td><td style="text-align:left">Dry air heats faster, less haze and fewer cumulus clouds.</td></tr>
+        <tr><td style="text-align:left">Daily maximum, Sondrio</td><td>25.0 °C</td><td>27.1 °C</td><td style="text-align:left">Not the hottest days: in great heat the plain itself is heated and the difference is smaller.</td></tr>
+        <tr><td style="text-align:left">Today warmer than the last 30 days</td><td>+6.6 K</td><td>+4.5 K</td><td style="text-align:left">Warm air over a still cool lake and ground – typical of spring and early summer.</td></tr>
+        <tr><td style="text-align:left">Pressure difference Zurich → Milan, 12:00</td><td>0.3 hPa</td><td>0.65 hPa</td><td style="text-align:left">Calm situation over the Alps. From about 4 hPa north foehn pushes through – then no Breva.</td></tr>
+        <tr><td style="text-align:left">Rain on the lake</td><td>(0 mm)</td><td>(1 mm)</td><td style="text-align:left">A short shower hardly matters, rainy weather does.</td></tr>
       </tbody></table></div>
 
-    <h3>Kurz gesagt: Breva-Wetter</h3>
+    <h3>In short: Breva weather</h3>
     <ul class="tips">
-      <li><b>Hochdruck, schwacher Wind über den Alpen</b> – keine Nord- oder Föhnlage, keine Front. Großräumig
-        eher leichte Südströmung als Nordströmung.</li>
-      <li><b>Sonne von morgens an, trockene Luft</b> – je klarer der Vormittag, desto früher und kräftiger.</li>
-      <li><b>Frühling und Frühsommer</b> – April bis Juni haben die meisten Breva-Tage (8–10 im Monat), im Juli
-        weniger, ab September selten: Die Täler heizen dann nicht mehr genug gegenüber der Ebene.</li>
-      <li><b>Er kommt oft mehrere Tage hintereinander:</b> Nach einem Breva-Tag folgt in 36 % der Fälle wieder
-        einer, sonst nur in 9 % – die Wetterlage hält meist an.</li>
-      <li><b>Lang bis in den Abend</b> weht er, wenn das Gefälle zum Tal stark und die Nord-Süd-Lage über den Alpen
-        ganz ruhig ist (Zürich−Mailand 1,8 statt 3,9 hPa an Tagen, an denen er früh einschläft).</li>
-      <li><b>Störer:</b> Nordföhn (6–10 Tage im Monat, das ganze Jahr), Regen und Gewitter (Mai bis August am
-        häufigsten), dichte Bewölkung, Hitzewellen.</li>
+      <li><b>High pressure, weak wind over the Alps</b> – no northerly or foehn situation, no front. On the large scale
+        rather a light southerly than a northerly flow.</li>
+      <li><b>Sun from the morning, dry air</b> – the clearer the morning, the earlier and stronger.</li>
+      <li><b>Spring and early summer</b> – April to June have the most Breva days (8–10 a month), July fewer, from
+        September rare: the valleys no longer heat up enough compared with the plain.</li>
+      <li><b>It often comes several days in a row:</b> after a Breva day another follows in 36 % of cases, otherwise
+        only in 9 % – the weather situation usually persists.</li>
+      <li><b>Long into the evening</b> when the gradient towards the valley is strong and the north–south situation over
+        the Alps is very calm (Zurich−Milan 1.8 instead of 3.9 hPa on days when it dies early).</li>
+      <li><b>Disruptors:</b> north foehn (6–10 days a month, all year), rain and thunderstorms (most frequent May to
+        August), thick cloud, heat waves.</li>
     </ul>
   </section>
 
   <section class="panel" id="wo">
-    <h2>Wo er am stärksten weht</h2>
-    <p class="lead">Der Wind auf dem Wasser lässt sich mit Radarbildern des Satelliten Sentinel-1 messen: Wind raut die
-      Wasseroberfläche auf, das Radar sieht die Rauigkeit (100 m Auflösung). Gemittelt über die Abende mit Breva ergibt
-      sich das typische Bild.</p>
+    <h2>Where it is strongest</h2>
+    <p class="lead">Wind on the water can be measured with radar images from the Sentinel-1 satellite: wind roughens
+      the water surface and the radar sees the roughness (100 m resolution). Averaged over the evenings with Breva, this
+      gives the typical picture.</p>
     <div class="anmap-wrap"><div id="anmap"></div><div class="wind-legend" id="anLegend"></div></div>
     <div id="spotbars"></div>
-    <p class="hint">Die Aufnahmen entstehen gegen 19:15 Uhr – in der Spätphase des Breva. Das Bild zeigt also, wo der
-      Breva am Abend am längsten durchhält: im Nordbecken bei Colico, Sorico und Gera, wo die Strömung in die Täler
-      gebündelt wird. Erfahrungsberichte nennen mittags auch die Enge zwischen Dervio und Cremia als Ort der stärksten
-      Böen – dort setzt der Breva zuerst ein und lässt vermutlich auch zuerst nach.</p>
-    <figure class="satex"><img src="img/breva_top.png" alt="Die stärksten Breva-Abende im Satellitenbild" loading="lazy">
-      <figcaption>Die stärksten Abende mit Südwind (Sentinel-1). Titel: Wind auf dem oberen See und Samolaco zur Überflugstunde (Nachmittagsmaximum). Typischer Breva: am Nordende am stärksten, nach Süden abnehmend. Bilder, auf denen der ganze See tiefrot ist (z. B. 13.7.2021, 15.8.2025), sind vermutlich Gewitterböen – sie gehen nicht in das Breva-Bild oben ein, wenn es geregnet hat.</figcaption></figure>
+    <p class="hint">The images are taken around 19:15 – in the late phase of the Breva. So the picture shows where the
+      Breva lasts longest in the evening: in the northern basin at Colico, Sorico and Gera, where the flow is funnelled
+      into the valleys. Local reports also name the narrows between Dervio and Cremia as the place with the strongest
+      gusts at midday – the Breva starts there first and probably also fades there first.</p>
+    <figure class="satex"><img src="img/breva_top.png" alt="The strongest Breva evenings in satellite images" loading="lazy">
+      <figcaption>The strongest evenings with south wind (Sentinel-1). Titles: wind on the upper lake and at Samolaco at the overpass hour (afternoon maximum). Typical Breva: strongest at the northern end, decreasing southwards. Images in which the whole lake is deep red (e.g. 13 Jul 2021, 15 Aug 2025) are probably thunderstorm gusts – they are not included in the Breva map above if it rained.</figcaption></figure>
   </section>
 
   <section class="panel" id="wann">
-    <h2>Wann: Tagesgang und Saison</h2>
-    <h3>Tagesgang an Breva-Tagen</h3>
-    <div class="charts"><figure><figcaption>Mittlerer Wind je Stunde (kn), ganzes Jahr</figcaption><div id="diurnal"></div><div class="legend" id="diurnalLeg"></div></figure></div>
-    <p class="hint">Volle Linie: Breva-Tage, gestrichelt: übrige Tage. Die Stationen stehen im Tal oder am Hang und
-      messen nur einen Teil des Seewinds (Faktor siehe Messstationen).</p>
-    <h3>Saison</h3>
-    <div class="charts"><figure><figcaption>Tage je Monat und Saison nach Klasse</figcaption><div id="months"></div><div class="legend" id="monthsLeg"></div></figure>
-      <figure><figcaption>Breva-Tage (≥ 14 kn) je Jahr</figcaption><div id="years"></div></figure></div>
+    <h2>When: daily cycle and season</h2>
+    <h3>Daily cycle on Breva days</h3>
+    <div class="charts"><figure><figcaption>Mean wind per hour (kn), whole year</figcaption><div id="diurnal"></div><div class="legend" id="diurnalLeg"></div></figure></div>
+    <p class="hint">Solid line: Breva days, dashed: other days. The stations stand in the valley or on slopes and
+      measure only part of the lake wind (factor see stations).</p>
+    <h3>Season</h3>
+    <div class="charts"><figure><figcaption>Days per month and season by class</figcaption><div id="months"></div><div class="legend" id="monthsLeg"></div></figure>
+      <figure><figcaption>Breva days (≥ 14 kn) per year</figcaption><div id="years"></div></figure></div>
     <p class="hint" id="seasonHint"></p>
   </section>
 
   <section class="panel" id="warum">
-    <h2>Was einen Breva-Tag ausmacht</h2>
-    <p class="lead">Jede Wettergröße wurde einzeln gegen die Breva-Tage geprüft – an Schönwettertagen, innerhalb
-      desselben Monats (damit nicht einfach die Jahreszeit spricht) und Jahr für Jahr. Quelle: ERA5-Wetterdaten
-      2014–2026, das Wetter, wie es war.</p>
+    <h2>What makes a Breva day</h2>
+    <p class="lead">Each weather variable was tested on its own against the Breva days – on fair-weather days, within
+      the same month (so that it is not just the season speaking) and year by year. Source: ERA5 weather data
+      2014–2026, the weather as it was.</p>
     <div class="tscroll"><table class="atab num" id="faktTab"></table></div>
-    <p class="hint">Trennkraft: 0 = nutzlos, 1 = trennt Breva-Tage perfekt. Stabil: Anteil der Jahre mit demselben
-      Zusammenhang. Satellit: Zusammenhang mit dem Seewind im Abendbild (Abweichung vom Jahresgang).</p>
+    <p class="hint">Separation: 0 = useless, 1 = separates Breva days perfectly. Stable: share of years with the same
+      relationship. Satellite: relationship with the lake wind in the evening image (deviation from the seasonal cycle).</p>
     <ul class="tips" id="warumTips"></ul>
   </section>
 
   <section class="panel" id="vorhersage">
-    <h2>Wie gut er vorhersagbar ist</h2>
-    <p class="lead">Das Breva-Modell lernt aus den Wettergrößen der Jahre 2014–2023 und wurde an den echten
-      ECMWF-Vorhersagen 2024–2026 geprüft – also so, wie es die App benutzt.</p>
-    <div class="charts"><figure><figcaption>Trefferquote (AUC) nach Vorlauf</figcaption><div id="lead"></div><div class="legend" id="leadLeg"></div></figure>
-      <figure><figcaption>Heute: wie früh die Stationen den Breva verraten (AUC)</figcaption><div class="tscroll"><table class="atab num-c" id="timing"></table></div></figure></div>
-    <p class="hint">AUC: Wahrscheinlichkeit, dass ein Breva-Tag höher eingeschätzt wird als ein Tag ohne Breva
-      (1 = perfekt, 0,5 = Zufall). Bis Tag 4 ist der Breva gut vorhersagbar, danach zeigt die Chance vor allem die Lage.</p>
+    <h2>How predictable it is</h2>
+    <p class="lead">The Breva model learns from the weather variables and was tested on the real ECMWF forecasts
+      2024–2026, year by year out-of-fold – exactly the way the app uses it.</p>
+    <div class="charts"><figure><figcaption>Skill (AUC) by lead time</figcaption><div id="lead"></div><div class="legend" id="leadLeg"></div></figure>
+      <figure><figcaption>Today: how early the stations reveal the Breva (AUC)</figcaption><div class="tscroll"><table class="atab num-c" id="timing"></table></div></figure></div>
+    <p class="hint">AUC: probability that a Breva day is rated higher than a day without Breva (1 = perfect,
+      0.5 = chance). Up to day 4 the Breva is well predictable; after that the chance mainly reflects the general situation.</p>
     <div id="heuteTab"></div>
   </section>
 
   <section class="panel prose" id="pruefung">
-    <h2>Wie verlässlich das Modell ist</h2>
-    <p class="lead">Ein Modell, das auf den eigenen Daten gut aussieht, muss den Wind auf dem See noch nicht treffen.
-      Deshalb wurde es gegen eine unabhängige Wahrheit geprüft – den Wind im Satellitenbild (Sentinel-1, gegen 19:15 Uhr) –
-      und gezielt nach Abkürzungen gesucht, über die es die Antwort „sehen“ statt vorhersagen könnte.</p>
+    <h2>How reliable the model is</h2>
+    <p class="lead">A model that looks good on its own data need not hit the wind on the lake. So it was tested against
+      an independent truth – the wind in the satellite image (Sentinel-1, around 19:15) – and deliberately searched for
+      shortcuts through which it might “see” the answer instead of predicting it.</p>
 
-    <h3>Was genau vorhergesagt wird</h3>
-    <p>Bisher galt ein Tag nur als Breva-Tag, wenn er auch nicht als Regen- oder Föhntag eingestuft war – und diese
-      Einstufung kam zum Teil aus dem Wettermodell ERA5. Das Modell konnte dadurch ein Stück seines Ziels einfach aus
-      der Regenvorhersage ablesen: Es sah auf dem Papier sehr gut aus (AUC 0,93), lag aber gegen den Satelliten nur bei 0,72.
-      Viele dieser „Regentage“ hatten nämlich guten Wind auf dem See.</p>
-    <p>Jetzt bestimmen allein die Messungen das Ziel: Samolaco morgens ruhig, kein Nordwind, nachmittags auf dem See
-      mindestens 2 Stunden am Stück über der Schwelle. Das ist die Frage „kann ich kiten?“.</p>
-    <div class="tscroll"><table class="atab num"><thead><tr><th style="text-align:left">Ziel</th><th>AUC morgen</th><th>AUC in 5 Tagen</th><th>gegen Satellit</th><th>90 %-Bereich Satellit</th></tr></thead><tbody>
-      <tr><td style="text-align:left">bisher: ohne Regen-/Föhntage (ERA5)</td><td>0,93</td><td>0,85</td><td>0,72</td><td>0,59–0,83</td></tr>
-      <tr><td style="text-align:left"><b>jetzt: nur aus Stationen</b></td><td>0,88</td><td>0,82</td><td><b>0,81</b></td><td>0,69–0,89</td></tr>
+    <h3>What exactly is predicted</h3>
+    <p>Previously a day only counted as a Breva day if it was not also classed as a rain or foehn day – and that
+      classification partly came from the ERA5 weather model. The model could therefore read part of its target straight
+      from the rain forecast: it looked very good on paper (AUC 0.93) but scored only 0.72 against the satellite.
+      Many of those “rain days” had good wind on the lake.</p>
+    <p>Now the measurements alone define the target: Samolaco calm in the morning, no north wind, and on the lake in the
+      afternoon at least 2 hours in a row above the threshold. That is the question “can I kite?”.</p>
+    <div class="tscroll"><table class="atab num"><thead><tr><th style="text-align:left">Target</th><th>AUC tomorrow</th><th>AUC in 5 days</th><th>vs satellite</th><th>90 % range satellite</th></tr></thead><tbody>
+      <tr><td style="text-align:left">before: without rain/foehn days (ERA5)</td><td>0.93</td><td>0.85</td><td>0.72</td><td>0.59–0.83</td></tr>
+      <tr><td style="text-align:left"><b>now: from stations only</b></td><td>0.88</td><td>0.82</td><td><b>0.81</b></td><td>0.69–0.89</td></tr>
     </tbody></table></div>
-    <p class="hint">≥ 14 kn, geprüft 2024–2026 mit echten ECMWF-Läufen. Gegen den Satelliten stehen nur 126 Abende mit
-      19 Breva-Fällen zur Verfügung, daher die breiten Bereiche; die Verbesserung zeigt sich aber in allen Varianten.
-      Die niedrigere eigene AUC ist ehrlicher: Die bequeme Abkürzung über die Regenvorhersage fällt weg.</p>
-    <p>Ein Drittel der zusätzlichen Tage ab 18 kn hatte das Wettermodell als Föhntage geführt, obwohl am See morgens
-      Ruhe und nachmittags gleichmäßiger Südwind herrschte – echte Breva-Tage. Die übrigen zwei Drittel sind Südwind mit
-      Regen vor einer Front: im Satellitenbild fast so stark wie ein Breva (Median 15,6 statt 16,8 kn), aber schwerer vorherzusagen.
-      Deshalb ist die Chance ab 18 kn mehrere Tage voraus unsicherer (AUC um 0,74) als ab 14 kn.</p>
+    <p class="hint">≥ 14 kn, tested 2024–2026 with real ECMWF runs. Only 126 evenings with 19 Breva cases are available
+      against the satellite, hence the wide ranges; but the improvement shows up in all variants. The lower AUC on its
+      own target is more honest: the convenient shortcut via the rain forecast is gone.</p>
+    <p>A third of the additional days from 18 kn had been classed as foehn days by the weather model although the lake
+      was calm in the morning and had steady south wind in the afternoon – real Breva days. The other two thirds are south
+      wind with rain ahead of a front: in the satellite image almost as strong as a Breva (median 15.6 vs 16.8 kn) but
+      harder to predict. That is why the chance from 18 kn several days ahead is less certain (AUC around 0.74) than from 14 kn.</p>
 
-    <h3>Leckage: sagt das Modell vorher oder schaut es ab?</h3>
+    <h3>Leakage: does the model predict or copy?</h3>
     <ul class="tips">
-      <li><b>Wetter vom Vortag statt vom Tag selbst</b>: Die Trefferquote fällt in der Saison von 0,90 auf 0,76, mit der
-        Jahreszeit allein auf 0,65. Das Modell liest also wirklich das Wetter des Tages und nicht nur „Sommer“ oder „gestern auch“.</li>
-      <li><b>Zufällige gegen jahresweise Aufteilung</b>: beide 0,951 – benachbarte Tage verraten sich nicht gegenseitig.</li>
-      <li><b>Wettermodell-Analyse gegen echte Vorhersage</b>: Kein Merkmal trennt nur in der nachträglichen Analyse (ERA5)
-        und versagt in der Vorhersage; der größte Abstand ist 0,06.</li>
-      <li><b>Heute-Modell</b>: Samolaco bestimmt das Ziel mit, seine Mittagswerte sind aber kaum zu gut – gegen den
-        Satelliten 0,79, gegen das Ziel 0,81. Vercana und Colico, die nicht ins Ziel eingehen, liegen gleichauf.</li>
-      <li><b>Regen-Merkmale weglassen</b> ändert nichts (0,930 statt 0,928) – sie sind Wetter, kein Abschreiben.</li>
+      <li><b>Weather of the previous day instead of the day itself</b>: in season the skill drops from 0.90 to 0.76,
+        with the season alone to 0.65. So the model really reads the weather of the day, not just “summer” or “yesterday too”.</li>
+      <li><b>Random vs year-wise split</b>: both 0.951 – neighbouring days do not give each other away.</li>
+      <li><b>Weather-model analysis vs real forecast</b>: no variable separates only in the analysis (ERA5) and fails in the
+        forecast; the largest gap is 0.06.</li>
+      <li><b>Today model</b>: Samolaco helps define the target, but its midday values are hardly too good – 0.79 against
+        the satellite, 0.81 against the target. Vercana and Colico, which are not part of the target, score the same.</li>
+      <li><b>Dropping the rain variables</b> changes nothing (0.930 vs 0.928) – they are weather, not copying.</li>
     </ul>
 
-    <h3>Verfeinern, verkleinern, Wissen einbauen</h3>
+    <h3>Tuning, shrinking, adding knowledge</h3>
     <ul class="tips">
-      <li><b>Feinabstimmung</b> (tiefere oder flachere Bäume, mehr Bäume, kleinere Lernrate): alle Varianten innerhalb
-        von ±0,005. Das Modell ist nicht über- oder unterangepasst.</li>
-      <li><b>Kleiner geht</b>: 15 statt 37 Wettergrößen verlieren in der Saison nur 0,004–0,008 und treffen den Satelliten
-        gleich gut. Die wichtigsten: Nordföhn-Index, Südwind über dem See, Regen am See und im Tal, Jahreszeit, Sonne im Tal,
-        Wind in der Ebene, Temperatur- und Druckgefälle von der Ebene ins Tal, trockene Luft. Unter 10 Größen wird es spürbar
-        schlechter. Die App nutzt weiter alle 37 – das kostet im Browser nur Millisekunden.</li>
-      <li><b>Lokales Wissen als feste Wirkungsrichtung</b> („mehr Sonne im Tal, mehr Gefälle → nie weniger Breva“): hilft
-        beim alten Ziel bei 3–5 Tagen Vorlauf, beim neuen nicht. Monatsklima als Vorwissen, entsaisonalisierte Temperaturen
-        oder physikalisch kombinierte Größen bringen nichts – das Modell findet diese Zusammenhänge selbst.</li>
-      <li><b>Wassertemperatur</b> (Satellit, Copernicus): kaum eigener Einfluss, wenn Jahreszeit und Luftwerte bekannt
-        sind (AUC der Anomalie 0,61). Bleibt vorerst draußen.</li>
+      <li><b>Tuning</b> (deeper or shallower trees, more trees, smaller learning rate): all variants within ±0.005. The
+        model is neither over- nor underfitted.</li>
+      <li><b>Smaller works</b>: 15 instead of 37 weather variables lose only 0.004–0.008 in season and match the
+        satellite equally well. The most important: north-foehn index, south wind over the lake, rain on the lake and in the
+        valley, season, sun in the valley, wind in the plain, temperature and pressure gradient from plain to valley, dry
+        air. Below 10 variables it gets noticeably worse. The app keeps all 37 – it costs only milliseconds in the browser.</li>
+      <li><b>Local knowledge as fixed directions of effect</b> (“more sun in the valley, more gradient → never less
+        Breva”): helps the old target at 3–5 days lead, not the new one. Monthly climate as prior knowledge,
+        de-seasonalised temperatures or physically combined variables add nothing – the model finds these relations itself.</li>
+      <li><b>Water temperature</b> (satellite, Copernicus): hardly any effect of its own once season and air values are
+        known (AUC of the anomaly 0.61). Left out for now.</li>
     </ul>
   </section>
 
   <section class="panel" id="stationen">
-    <h2>Messstationen</h2>
-    <p class="lead">Die ARPA-Stationen am oberen See stehen geschützt oder abseits des Wassers. Erst der Vergleich mit
-      dem Satelliten zeigt, wie viel Wind auf dem See ankommt.</p>
+    <h2>Measuring stations</h2>
+    <p class="lead">The ARPA stations on the upper lake are sheltered or away from the water. Only the comparison with
+      the satellite shows how much wind reaches the lake.</p>
     <div class="tscroll"><table class="atab num" id="stTab"></table></div>
-    <p class="hint">Faktor: Seewind / Station zur Überflugstunde an Breva-Abenden. Trefferquote: wie gut die Station
-      Abende mit ≥ 12 kn auf dem See erkennt. Samolaco ist die Station mit dem klarsten Breva-Tagesgang; sein
-      Nachmittagsmaximum mal <b id="sfak"></b> entspricht dem Wind auf dem oberen See.</p>
+    <p class="hint">Factor: lake wind / station at the overpass hour on Breva evenings. Skill: how well the station
+      recognises evenings with ≥ 12 kn on the lake. Samolaco is the station with the clearest Breva daily cycle; its
+      afternoon maximum times <b id="sfak"></b> corresponds to the wind on the upper lake.</p>
   </section>
 
   <section class="panel prose" id="methode">
-    <h2>Methode und Grenzen</h2>
+    <h2>Method and limits</h2>
     <ul class="tips">
-      <li><b>Ganzes Jahr</b>, die Jahreszeit ist ein Merkmal des Modells (im Winter gibt es nur vereinzelt Breva).
-        <b>Breva-Tag</b> (was das Modell vorhersagt): Samolaco morgens ruhig (&lt; 6 kn), kein Nordwind, nachmittags Wind
-        aus SSO–S; auf dem See (Samolaco × Satellitenfaktor) mind. 2 h am Stück ab 14 bzw. 18 kn. Allein aus den
-        Messungen bestimmt – ein kurzer Schauer macht einen Breva-Tag nicht ungültig. Gegen den Satelliten trifft diese
-        Definition besser als eine, die Regentage aus dem Wettermodell ausschließt (AUC 0,81 statt 0,72).</li>
-      <li><b>Südwind mit Regen</b>: Etwa jeder fünfte Breva-Tag ab 18 kn ist nass (im Mittel 8 mm). Meist ist das Südwind vor
-        einer Front, kein thermischer Breva – laut Satellit weht er auf dem See aber ähnlich stark (Median 15,6 statt
-        16,8 kn am Abend) und gleichmäßig. Diese Tage sind schwerer vorherzusagen; die App zeigt dann einen Regenhinweis.</li>
-      <li><b>Prüfung auf Leckage</b>: Merkmale vom Vortag, zufällige gegen jahresweise Aufteilung, ERA5 gegen Vorhersage
-        und Messungen gegen Satellit – kein Hinweis, dass das Modell die Antwort „sieht“ statt sie vorherzusagen.</li>
-      <li><b>Satellit</b>: Sentinel-1 (seit 2014), Wind aus dem Radarsignal mit CMOD5.N, Windrichtung aus den
-        Messungen in Samolaco und Colico. Nur alle paar Tage ein Bild, immer gegen 7:30 und 19:15 Uhr.</li>
-      <li><b>Wettergrößen</b>: ERA5 (Training) und ECMWF-Vorhersagen (App) an 11 Punkten von Lyon bis Venedig.</li>
-      <li><b>Grenzen</b>: Keine Station misst direkt am Wasser bei Dervio, Cremia oder Domaso – der Tagesverlauf auf dem
-        See ist geschätzt. Private Stationen (Domaso, Gravedona, Cremia) würden das verbessern.</li>
+      <li><b>Whole year</b>, the season is a model input (in winter there is only the odd Breva).
+        <b>Breva day</b> (what the model predicts): Samolaco calm in the morning (&lt; 6 kn), no north wind, afternoon
+        wind from SSE–S; on the lake (Samolaco × satellite factor) at least 2 h in a row from 14 or 18 kn. Defined by the
+        measurements alone – a short shower does not invalidate a Breva day. Against the satellite this definition scores
+        better than one that excludes rain days from the weather model (AUC 0.81 vs 0.72).</li>
+      <li><b>South wind with rain</b>: roughly every fifth Breva day from 18 kn is wet (8 mm on average). Mostly this is
+        south wind ahead of a front, not a thermal Breva – but according to the satellite it blows similarly strong on the
+        lake (median 15.6 vs 16.8 kn in the evening) and steady. These days are harder to predict; the app then shows a rain note.</li>
+      <li><b>Leakage check</b>: previous-day variables, random vs year-wise split, ERA5 vs forecast and measurements vs
+        satellite – no sign that the model “sees” the answer instead of predicting it.</li>
+      <li><b>Satellite</b>: Sentinel-1 (since 2014), wind from the radar signal with CMOD5.N, wind direction from the
+        measurements at Samolaco and Colico. Only one image every few days, always around 7:30 and 19:15.</li>
+      <li><b>Weather variables</b>: ERA5 (training) and ECMWF forecasts (app) at 11 points from Lyon to Venice.</li>
+      <li><b>Limits</b>: no station measures directly on the water at Dervio, Cremia or Domaso – the daily course on the
+        lake is estimated. Private stations (Domaso, Gravedona, Cremia) would improve this.</li>
     </ul>
     <p class="hint" id="stand"></p>
   </section>

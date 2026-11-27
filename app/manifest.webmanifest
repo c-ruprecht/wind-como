@@ -1,8 +1,8 @@
 {
-  "name": "Breva – Kitewind oberer Comer See",
+  "name": "Breva – kite wind on upper Lake Como",
   "short_name": "Breva",
-  "description": "Breva am oberen Comer See: Messungen jetzt auf dem Wasser und Breva-Zeichen für 7 Tage.",
-  "lang": "de",
+  "description": "Breva on upper Lake Como: chance of a Breva day today and for the next 7 days, live station measurements.",
+  "lang": "en",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

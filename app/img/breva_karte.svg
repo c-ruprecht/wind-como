@@ -16,7 +16,7 @@
 <ellipse cx="383" cy="196" rx="170" ry="95" fill="url(#tief)"/>
 <ellipse cx="322" cy="613" rx="230" ry="110" fill="url(#hoch)"/>
 <text x="322" y="623" text-anchor="middle" font-size="40" font-weight="800" fill="#b8913a" fill-opacity=".85">H</text>
-<text x="423" y="198" text-anchor="middle" font-size="40" font-weight="800" fill="#c2551c" fill-opacity=".85">T</text>
+<text x="423" y="198" text-anchor="middle" font-size="40" font-weight="800" fill="#c2551c" fill-opacity=".85">L</text>
 <path d="M0.0,494.3 C26.8,490.9 113.3,478.9 161.1,473.7 C208.8,468.6 238.6,464.3 286.3,463.4 C334.0,462.6 381.8,462.6 447.4,468.6 C513.0,474.6 641.2,494.3 680.0,499.5" fill="none" stroke="#8a6d3b" stroke-width="1" stroke-opacity=".55" stroke-dasharray="2 4"/>
 <path d="M0.0,381.0 C26.8,377.6 113.3,368.2 161.1,360.4 C208.8,352.7 238.6,335.6 286.3,334.7 C334.0,333.8 381.8,346.7 447.4,355.3 C513.0,363.9 641.2,381.0 680.0,386.2" fill="none" stroke="#8a6d3b" stroke-width="1" stroke-opacity=".55" stroke-dasharray="2 4"/>
 <path d="M0.0,288.4 C26.8,284.9 113.3,278.1 161.1,267.8 C208.8,257.5 238.6,227.4 286.3,226.6 C334.0,225.7 381.8,251.5 447.4,262.6 C513.0,273.8 641.2,288.4 680.0,293.5" fill="none" stroke="#8a6d3b" stroke-width="1" stroke-opacity=".55" stroke-dasharray="2 4"/>
@@ -35,7 +35,7 @@
 <path d="M304.2,242.0 C311.4,242.0 331.6,242.0 347.2,242.0 C362.7,242.0 379.4,243.7 397.3,242.0 C415.2,240.3 445.0,233.4 454.5,231.7" fill="none" stroke="#0b6e8a" stroke-width="4" stroke-linecap="round" marker-end="url(#ah)"/>
 <path d="M178.9,0.0 C181.9,10.3 190.9,41.2 196.8,61.8 C202.8,82.4 211.8,113.3 214.7,123.6" fill="none" stroke="#8a8f96" stroke-width="4" stroke-linecap="round" marker-end="url(#ahg)"/>
 <circle cx="229.1" cy="597.3" r="3.2" fill="#1d2a33"/>
-<text x="235.1" y="612.3" text-anchor="start" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">Mailand</text>
+<text x="235.1" y="612.3" text-anchor="start" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">Milan</text>
 <circle cx="400.8" cy="473.7" r="3.2" fill="#1d2a33"/>
 <text x="406.8" y="488.7" text-anchor="start" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">Bergamo</text>
 <circle cx="189.7" cy="417.1" r="3.2" fill="#1d2a33"/>
@@ -52,12 +52,12 @@
 <text x="365.1" y="266.7" text-anchor="middle" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">Morbegno</text>
 <circle cx="472.4" cy="231.7" r="3.2" fill="#1d2a33"/>
 <text x="472.4" y="248.7" text-anchor="middle" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">Sondrio</text>
-<text x="185.9" y="14.3" text-anchor="start" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">Zürich ↑</text>
-<text x="25.1" y="628.2" text-anchor="start" fill="#8a6d3b" font-size="13" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="25.1" dy="0em" font-weight="600">PO-EBENE</tspan><tspan x="25.1" dy="1.25em" font-weight="400">heizt sich langsamer auf –</tspan><tspan x="25.1" dy="1.25em" font-weight="400">relativ höherer Druck (H)</tspan></text>
-<text x="483.2" y="149.3" text-anchor="start" fill="#b5541c" font-size="13" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="483.2" dy="0em" font-weight="600">HITZETIEF IN DEN TÄLERN (T)</tspan><tspan x="483.2" dy="1.25em" font-weight="400">Valchiavenna und Veltlin heizen</tspan><tspan x="483.2" dy="1.25em" font-weight="400">sich stärker auf als die Ebene</tspan></text>
-<text x="329.3" y="334.7" text-anchor="start" fill="#0b6e8a" font-size="13" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="329.3" dy="0em" font-weight="600">BREVA</tspan><tspan x="329.3" dy="1.25em" font-weight="400">Luft strömt von der Ebene</tspan><tspan x="329.3" dy="1.25em" font-weight="400">über den See in die Täler</tspan><tspan x="329.3" dy="1.25em" font-weight="400">≈ 12–20 Uhr, Spitze 15–17 Uhr</tspan></text>
-<text x="17.9" y="494.3" text-anchor="start" fill="#8a6d3b" font-size="12" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="17.9" dy="0em" font-weight="600">DRUCKGEFÄLLE Ebene → Tal</tspan><tspan x="17.9" dy="1.25em" font-weight="400">Mailand–Chiavenna an Breva-Tagen</tspan><tspan x="17.9" dy="1.25em" font-weight="400">≈ 0,7 hPa stärker, wächst</tspan><tspan x="17.9" dy="1.25em" font-weight="400">vom Morgen zum Nachmittag</tspan></text>
-<text x="225.5" y="113.3" text-anchor="start" fill="#6b7177" font-size="12" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="225.5" dy="0em" font-weight="600">NORDFÖHN stört:</tspan><tspan x="225.5" dy="1.25em" font-weight="400">Zürich–Mailand ≥ 4 hPa</tspan></text>
-<text x="357.9" y="20.6" text-anchor="start" fill="#5f6b64" font-size="11" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="357.9" dy="0em" font-weight="400">Alpenhauptkamm</tspan></text>
-<text x="429.5" y="509.8" text-anchor="start" fill="#8a7a55" font-size="11" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="429.5" dy="0em" font-weight="400">Rand der Voralpen</tspan></text>
+<text x="185.9" y="14.3" text-anchor="start" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">Zurich ↑</text>
+<text x="25.1" y="628.2" text-anchor="start" fill="#8a6d3b" font-size="13" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="25.1" dy="0em" font-weight="600">PO PLAIN</tspan><tspan x="25.1" dy="1.25em" font-weight="400">heats up more slowly –</tspan><tspan x="25.1" dy="1.25em" font-weight="400">relatively higher pressure (H)</tspan></text>
+<text x="447.4" y="133.9" text-anchor="start" fill="#b5541c" font-size="13" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="447.4" dy="0em" font-weight="600">HEAT LOW IN THE VALLEYS (L)</tspan><tspan x="447.4" dy="1.25em" font-weight="400">Valchiavenna and Valtellina heat</tspan><tspan x="447.4" dy="1.25em" font-weight="400">up more strongly than the plain</tspan></text>
+<text x="329.3" y="334.7" text-anchor="start" fill="#0b6e8a" font-size="13" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="329.3" dy="0em" font-weight="600">BREVA</tspan><tspan x="329.3" dy="1.25em" font-weight="400">air flows from the plain</tspan><tspan x="329.3" dy="1.25em" font-weight="400">over the lake into the valleys</tspan><tspan x="329.3" dy="1.25em" font-weight="400">≈ 12–20:00, peak 15–17:00</tspan></text>
+<text x="17.9" y="494.3" text-anchor="start" fill="#8a6d3b" font-size="12" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="17.9" dy="0em" font-weight="600">PRESSURE GRADIENT plain → valley</tspan><tspan x="17.9" dy="1.25em" font-weight="400">Milan–Chiavenna on Breva days</tspan><tspan x="17.9" dy="1.25em" font-weight="400">≈ 0.7 hPa stronger, grows</tspan><tspan x="17.9" dy="1.25em" font-weight="400">from morning to afternoon</tspan></text>
+<text x="225.5" y="113.3" text-anchor="start" fill="#6b7177" font-size="12" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="225.5" dy="0em" font-weight="600">NORTH FOEHN disrupts:</tspan><tspan x="225.5" dy="1.25em" font-weight="400">Zurich–Milan ≥ 4 hPa</tspan></text>
+<text x="357.9" y="20.6" text-anchor="start" fill="#5f6b64" font-size="11" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="357.9" dy="0em" font-weight="400">Main Alpine ridge</tspan></text>
+<text x="429.5" y="509.8" text-anchor="start" fill="#8a7a55" font-size="11" paint-order="stroke" stroke="#eef2ee" stroke-width="3.5"><tspan x="429.5" dy="0em" font-weight="400">Edge of the Prealps</tspan></text>
 </svg>

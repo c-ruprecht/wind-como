@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07222e">
-<title>Breva – Kitewind oberer Comer See</title>
+<title>Breva – kite wind on upper Lake Como</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-32.png" sizes="32x32">
 <link rel="icon" href="icons/icon-64.png" sizes="64x64">
@@ -17,64 +17,64 @@
 </head>
 <body>
 <header class="top">
-  <a class="logo" href="./" aria-label="Breva – Startseite"><img src="icons/icon-96.png" width="44" height="44" alt=""></a>
+  <a class="logo" href="./" aria-label="Breva – home"><img src="icons/icon-96.png" width="44" height="44" alt=""></a>
   <div class="brand">
     <h1>Breva</h1>
-    <span class="sub">Kitewind oberer Comer See · Colico · Gera · Domaso · Dervio</span>
+    <span class="sub">Kite wind on upper Lake Como · Colico · Gera · Domaso · Dervio</span>
   </div>
-  <nav class="nav" aria-label="Hauptmenü">
-    <a href="./" aria-current="page">Vorhersage</a>
-    <a href="analyse.html">Windanalyse &amp; Breva</a>
+  <nav class="nav" aria-label="Main menu">
+    <a href="./" aria-current="page">Forecast</a>
+    <a href="analyse.html">Wind analysis &amp; Breva</a>
   </nav>
   <div class="controls">
-    <label class="sel" for="modelSel">Modell
+    <label class="sel" for="modelSel">Model
       <select id="modelSel">
         <option value="icon">ICON</option>
         <option value="ecmwf">ECMWF</option>
       </select>
     </label>
-    <button type="button" id="refreshBtn" class="btn">Aktualisieren</button>
+    <button type="button" id="refreshBtn" class="btn">Refresh</button>
   </div>
 </header>
 
 <main>
-  <p class="status" id="status" role="status">Lade Daten …</p>
-  <p class="beta">Erste Version. Chancen aus dem Breva-Modell (trainiert 2014–2026, geeicht an ECMWF-Läufen 2024–2026); <a href="analyse.html">wie es entsteht</a>.</p>
+  <p class="status" id="status" role="status">Loading data …</p>
+  <p class="beta">Beta. Chances come from the Breva model (trained 2014–2026, calibrated on ECMWF runs 2024–2026); <a href="analyse.html">how it works</a>.</p>
 
-  <section class="mapbox" aria-label="Karte">
+  <section class="mapbox" aria-label="Map">
     <div id="map"></div>
-    <div class="layer-toggle" role="group" aria-label="Kartenansicht">
-      <button type="button" id="btnMap" class="seg on" aria-pressed="true">Karte</button>
-      <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellit</button>
-      <button type="button" id="btnBreva" class="seg" aria-pressed="false" title="Mittlerer Seewind an Breva-Abenden aus Sentinel-1-Radarbildern">Breva-Bild</button>
+    <div class="layer-toggle" role="group" aria-label="Map view">
+      <button type="button" id="btnMap" class="seg on" aria-pressed="true">Map</button>
+      <button type="button" id="btnSat" class="seg" aria-pressed="false">Satellite</button>
+      <button type="button" id="btnBreva" class="seg" aria-pressed="false" title="Mean lake wind on Breva evenings from Sentinel-1 radar images">Breva map</button>
     </div>
-    <div class="wind-legend" id="brevaLegend" hidden aria-label="Legende Seewind"></div>
+    <div class="wind-legend" id="brevaLegend" hidden aria-label="Lake wind legend"></div>
   </section>
 
   <section class="panel" id="now" aria-live="polite"></section>
 
   <section class="panel" aria-labelledby="weekH">
     <div class="panel-head">
-      <h2 id="weekH">Breva in den nächsten 7 Tagen</h2>
-      <div class="thr-toggle" role="group" aria-label="Schwelle">
+      <h2 id="weekH">Breva in the next 7 days</h2>
+      <div class="thr-toggle" role="group" aria-label="Threshold">
         <button type="button" class="seg on" data-thr="14" aria-pressed="true">14+ kn</button>
         <button type="button" class="seg" data-thr="18" aria-pressed="false">18+ kn</button>
       </div>
     </div>
     <div class="weekwrap"><table class="week sig" id="week"></table></div>
-    <p class="hint">Breva-Zeichen: Südwind über dem See im Modell, Druckgefälle von der Po-Ebene ins Tal, Sonne im Tal,
-      kein Nordföhn, trockene Luft; Regen dämpft. Die Gewichte und Schwellen stammen aus dem Vergleich mit 2014–2026
-      (ERA5 gegen Breva-Tage) und sind vorläufig. „Üblich“: Anteil der Tage im selben Monat mit mind. 2 h Breva
-      ab der Schwelle auf dem See (Samolaco mit Satellitenfaktor). Tag anklicken für die Stunden.</p>
+    <p class="hint">Model row: chance of a Breva day (at least 2 h in a row at or above the threshold on the lake),
+      from the Breva model fed with the ECMWF forecast. Breva signs: south wind over the lake in the model, pressure
+      gradient from the Po plain into the valleys, sun in the valleys, no north foehn, dry air; rain dampens.
+      “Usual”: share of days in the same month with at least 2 h of Breva at the threshold. Click a day for the hours.</p>
   </section>
 
   <section class="panel" id="detail" aria-live="polite"></section>
 
   <section class="notes">
-    <p>Modelle: Open-Meteo (ICON, ECMWF). Messungen: ARPA Lombardia (dati.lombardia.it), 10-Minuten-Werte.
-      Breva-Bild und Faktoren: Copernicus Sentinel-1, eigene Auswertung (100 m, CMOD5.N).</p>
-    <p>Karte © OpenStreetMap-Mitwirkende, OpenFreeMap. Satellit: Sentinel-2 cloudless, EOX (enthält modifizierte Copernicus-Sentinel-Daten 2020).</p>
-    <p>Ohne Gewähr. Wind und Wetter am See ändern sich schnell; vor Ort entscheiden. Schifffahrt und Badezonen beachten.</p>
+    <p>Weather models: Open-Meteo (ICON, ECMWF). Measurements: ARPA Lombardia (dati.lombardia.it), 10-minute values.
+      Breva map: Copernicus Sentinel-1, own processing (100 m, CMOD5.N).</p>
+    <p>Map © OpenStreetMap contributors, OpenFreeMap. Satellite: Sentinel-2 cloudless, EOX (contains modified Copernicus Sentinel data 2020).</p>
+    <p>No guarantee. Wind and weather on the lake change quickly – decide on site. Mind shipping lanes and swimming zones.</p>
   </section>
 </main>
 

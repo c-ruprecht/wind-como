@@ -1,11 +1,20 @@
-/* Windanalyse & Breva: Diagramme und Tabellen aus analyse.json (training/export_analyse.py). */
+/* Wind analysis & Breva: charts and tables from analyse.json (training/export_analyse.py). */
 "use strict";
 const $ = s => document.querySelector(s);
-const de = (x, n = 1) => x == null ? "–" : Number(x).toFixed(n).replace(".", ",");
+const de = (x, n = 1) => x == null ? "–" : Number(x).toFixed(n);
 const pct = p => p == null ? "–" : Math.round(p * 100) + " %";
-const MON = ["", "Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+const MON = ["", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const COL = { samolaco: "#0b6e8a", vercana: "#e08a1e", colico: "#6a2f8f", morbegno: "#2f9d5c", sansiro: "#8a6a00", como: "#b3261e" };
 const KCOL = { "Breva": "#1f8a4c", "Breva schwach": "#8fd48a", "ruhig": "#c7d2d8", "Nordföhn": "#4b7fbf", "Regen/Gewitter": "#7d6aa8", "synoptisch": "#e0a93b" };
+/* class and variable names in analyse.json are German keys – shown in English */
+const KNAME = { "Breva": "Breva", "Breva schwach": "weak Breva", "ruhig": "calm", "Nordföhn": "north foehn", "Regen/Gewitter": "rain/thunderstorm", "synoptisch": "synoptic" };
+const FNAME = { wind_see_15_sued: "South wind over the lake (model, 15:00)", wind_see_15: "Wind over the lake (model, 15:00)",
+  wind_milano_12: "Wind in the Po plain (Milan, 12:00)", dp_tag_minus_nacht: "Valley low forms during the day (gradient 15:00 minus 6:00)",
+  taupunktdiff_milano: "Dry air (dew-point spread, Milan)", bodenfeuchte_milano: "Soil moisture, Po plain", wolken_tief_see: "Low clouds over the lake",
+  dt_tal_po: "Temperature valley minus plain", geo_aus_sued: "Large-scale flow from the south", dp_po_tal_15: "Pressure gradient plain → valley (15:00)",
+  dp_bergamo_sondrio_15: "Pressure gradient Bergamo → Sondrio (15:00)", rad_chiavenna: "Sun in the valley (Chiavenna)", regen_see: "Rain on the lake",
+  dp_zurich_milano_12: "North-foehn index (Zurich − Milan)" };
+const fname = r => FNAME[r.merkmal] || r.name;
 
 function line(series, xs, { W = 360, H = 190, ymin = 0, ymax = null, ylab = "", fmt = v => v } = {}) {
   const L = 30, B = 22, T = 8, R = 8;
@@ -37,7 +46,7 @@ function stacked(rows, labels, order, { W = 360, H = 190 } = {}) {
     let acc = 0;
     for (const k of order) {
       const v = rows[k]?.[i] ?? 0; if (!v) continue;
-      s += `<rect x="${L + i * bw + bw * 0.15}" y="${y(acc + v)}" width="${bw * 0.7}" height="${y(acc) - y(acc + v)}" fill="${KCOL[k]}"><title>${l}: ${k} ${de(v)} Tage</title></rect>`;
+      s += `<rect x="${L + i * bw + bw * 0.15}" y="${y(acc + v)}" width="${bw * 0.7}" height="${y(acc) - y(acc + v)}" fill="${KCOL[k]}"><title>${l}: ${KNAME[k] || k} ${de(v)} days</title></rect>`;
       acc += v;
     }
     s += `<text x="${L + i * bw + bw / 2}" y="${H - 6}" class="ax" text-anchor="middle">${l}</text>`;
@@ -61,10 +70,10 @@ function kpis(A) {
   const k = A.klassen_saison || {}, v = A.vortag || {};
   const best = A.vorlauf?.["14"]?.find(r => r.vorlauf.startsWith("1 ")), d4 = A.vorlauf?.["14"]?.find(r => r.vorlauf.startsWith("4 "));
   const items = [
-    [de(k["Breva"], 0), "Breva-Tage ≥ 14 kn je Jahr (ganzes Jahr)"],
-    [de(A.klima?.["18"] ? Object.values(A.klima["18"]).reduce((a, m) => a + m.tage, 0) : null, 0), "davon ≥ 18 kn (Klima)"],
-    [pct(v.nach_breva), `Breva nach einem Breva-Tag (sonst ${pct(v.sonst)})`],
-    [best ? de(best.auc, 2) : "–", `Trefferquote morgen${d4 ? `, Tag 4: ${de(d4.auc, 2)}` : ""}`]
+    [de(k["Breva"], 0), "Breva days ≥ 14 kn per year (whole year)"],
+    [de(A.klima?.["18"] ? Object.values(A.klima["18"]).reduce((a, m) => a + m.tage, 0) : null, 0), "of which ≥ 18 kn (climate)"],
+    [pct(v.nach_breva), `Breva after a Breva day (otherwise ${pct(v.sonst)})`],
+    [best ? de(best.auc, 2) : "–", `Skill tomorrow (AUC)${d4 ? `, day 4: ${de(d4.auc, 2)}` : ""}`]
   ];
   $("#kpis").innerHTML = items.map(([a, b]) => `<div class="kpi"><b>${a}</b><span>${b}</span></div>`).join("");
 }
@@ -75,57 +84,57 @@ function diurnal(A) {
   const show = ["samolaco", "vercana", "colico"].filter(s => A.tagesgang[s]);
   const series = show.flatMap(s => [
     { n: A.tagesgang[s].name, c: COL[s], v: hrs.map(h => A.tagesgang[s].breva[h]), dots: true },
-    { n: A.tagesgang[s].name + " sonst", c: COL[s], v: hrs.map(h => A.tagesgang[s].sonst[h]), dash: true, w: 1.3 }]);
+    { n: A.tagesgang[s].name + " other days", c: COL[s], v: hrs.map(h => A.tagesgang[s].sonst[h]), dash: true, w: 1.3 }]);
   $("#diurnal").innerHTML = line(series, xs, { ylab: "kn", fmt: v => Math.round(v) });
-  $("#diurnalLeg").innerHTML = legend(show.map(s => [A.tagesgang[s].name, COL[s]]).concat([["übrige Tage", "#5a6e77", true]]));
+  $("#diurnalLeg").innerHTML = legend(show.map(s => [A.tagesgang[s].name, COL[s]]).concat([["other days", "#5a6e77", true]]));
 }
 function months(A) {
   const order = ["Breva", "Breva schwach", "ruhig", "Nordföhn", "Regen/Gewitter", "synoptisch"].filter(k => A.klassen.klassen[k]);
   $("#months").innerHTML = stacked(A.klassen.klassen, A.klassen.monate.map(m => MON[m]), order);
-  $("#monthsLeg").innerHTML = order.map(k => `<span><i class="sw" style="background:${KCOL[k]}"></i>${k}</span>`).join("");
+  $("#monthsLeg").innerHTML = order.map(k => `<span><i class="sw" style="background:${KCOL[k]}"></i>${KNAME[k] || k}</span>`).join("");
   const ys = Object.keys(A.je_jahr);
   $("#years").innerHTML = bars(ys.map(y => A.je_jahr[y]), ys.map(y => "'" + y.slice(2)), { fmt: v => v });
   const kl = A.klima?.["14"];
-  $("#seasonHint").innerHTML = kl ? `Üblich mit mind. 2 h ab 14 kn auf dem See: ${Object.entries(kl).map(([m, o]) => `${MON[m]} ${pct(o.p)}`).join(", ")} der Tage. `
-    + `Der Breva ist im Frühjahr am verlässlichsten, wenn die Täler sich schon kräftig erwärmen, die Ebene aber noch nicht schwül-heiß ist. Im Spätsommer nehmen ruhige Tage zu. `
-    + `„Regen/Gewitter“ heißt: Regen ohne thermischen Ablauf an den Stationen.` : "";
+  $("#seasonHint").innerHTML = kl ? `Usual, at least 2 h from 14 kn on the lake: ${Object.entries(kl).map(([m, o]) => `${MON[m]} ${pct(o.p)}`).join(", ")} of days. `
+    + `The Breva is most reliable in spring, when the valleys already warm strongly but the plain is not yet hot and humid. In late summer calm days increase. `
+    + `“Rain/thunderstorm” means rain without a thermal pattern at the stations.` : "";
 }
 function faktoren(A) {
   const F = A.faktoren || [];
-  $("#faktTab").innerHTML = `<thead><tr><th>Größe</th><th>Breva-Tag</th><th>kein Breva</th><th>Trennkraft</th><th>stabil</th><th>Satellit</th></tr></thead><tbody>`
-    + F.map(r => `<tr><th>${r.name}${r.wie ? ` <small>(misst fast dasselbe wie „${(F.find(x => x.merkmal === r.wie) || {}).name || r.wie}“)</small>` : ""}</th><td>${de(r.breva, 2)}</td><td>${de(r.kein, 2)}</td>
+  $("#faktTab").innerHTML = `<thead><tr><th>Variable</th><th>Breva day</th><th>no Breva</th><th>Separation</th><th>stable</th><th>Satellite</th></tr></thead><tbody>`
+    + F.map(r => `<tr><th>${fname(r)}${r.wie ? ` <small>(measures almost the same as “${fname(F.find(x => x.merkmal === r.wie) || { merkmal: r.wie, name: r.wie })}”)</small>` : ""}</th><td>${de(r.breva, 2)}</td><td>${de(r.kein, 2)}</td>
       <td><span class="bar"><i style="width:${Math.round(r.kraft * 100 / 0.4)}%"></i></span> ${de(r.kraft, 2)}</td><td>${pct(r.stabil)}</td><td>${de(r.sat, 2)}</td></tr>`).join("") + "</tbody>";
   $("#warumTips").innerHTML = [
-    "<b>Der Sog ins Tal</b>: Je kleiner das Druckgefälle von der Ebene zu den Tälern am Nachmittag (Bergamo → Sondrio, Mailand → Chiavenna), desto eher Breva – das Hitzetief über den Tälern ist dann ausgeprägt. Das Gefälle ins Veltlin trennt sogar besser als das nach Chiavenna.",
-    "<b>Trockene Luft</b>: großer Abstand zwischen Temperatur und Taupunkt in Mailand – die Sonne heizt die Luft statt Wasser zu verdunsten.",
-    "<b>Kein Föhn, kein Regen</b>: Der Nordföhn-Index (Zürich − Mailand) und Regen trennen Breva-Tage von Störtagen am stärksten.",
-    "<b>Nicht zu heiß</b>: An Breva-Tagen ist es in Ebene und Tälern im Mittel 2–3 °C kühler als an ruhigen Schönwettertagen desselben Monats – Hitze und Dunst schwächen den Unterschied zu den Bergen.",
-    "<b>Das Modell sieht den Breva nur ein wenig</b>: Der Südwind über dem See in ERA5 trennt am besten, ist aber nur 3 statt 2,5 kn – Gitter von 30 km lösen den See nicht auf."
+    "<b>The pull into the valley</b>: the stronger the afternoon pressure gradient from the plain towards the valleys (Bergamo → Sondrio, Milan → Chiavenna), the more likely a Breva – the heat low over the valleys is then well developed. The gradient into Valtellina separates even better than the one towards Chiavenna.",
+    "<b>Dry air</b>: a large gap between temperature and dew point in Milan – the sun heats the air instead of evaporating water.",
+    "<b>No foehn, no rain</b>: the north-foehn index (Zurich − Milan) and rain separate Breva days from disturbed days most strongly.",
+    "<b>Not too hot</b>: on Breva days the plain and valleys are on average 2–3 °C cooler than on calm fair-weather days of the same month – heat and haze weaken the contrast with the mountains.",
+    "<b>The weather model only barely sees the Breva</b>: the south wind over the lake in ERA5 separates best but is only 3 instead of 2.5 kn – a 30 km grid does not resolve the lake."
   ].map(t => `<li>${t}</li>`).join("");
 }
 function vorhersage(A) {
   const V = A.vorlauf || {};
-  const labs = ["perfekt", "1", "2", "3", "4", "5", "6", "7"];
+  const labs = ["perfect", "1", "2", "3", "4", "5", "6", "7"];
   const pick = thr => (V[thr] || []).map(r => r.auc);
   $("#lead").innerHTML = line([{ n: "≥ 14 kn", c: "#0b6e8a", v: pick("14"), dots: true }, { n: "≥ 18 kn", c: "#e08a1e", v: pick("18"), dots: true }],
     labs, { ymin: 0.5, ymax: 1, fmt: v => de(v, 2) });
-  $("#leadLeg").innerHTML = legend([["≥ 14 kn", "#0b6e8a"], ["≥ 18 kn", "#e08a1e"]]) + "<span>x: Tage vorher („perfekt“ = mit dem Wetter, wie es war)</span>";
+  $("#leadLeg").innerHTML = legend([["≥ 14 kn", "#0b6e8a"], ["≥ 18 kn", "#e08a1e"]]) + "<span>x: days ahead (“perfect” = with the weather as it was)</span>";
   const T = A.timing || {}, hrs = Object.keys(Object.values(T)[0] || {});
   const q = v => v == null ? "" : v >= 0.8 ? "q3" : v >= 0.7 ? "q2" : v >= 0.6 ? "q1" : "q0";
   const nm = { samolaco: "Samolaco*", vercana: "Vercana", colico: "Colico", morbegno: "Morbegno" };
-  $("#timing").innerHTML = `<thead><tr><th>Station</th>${hrs.map(h => `<th>${h} Uhr</th>`).join("")}</tr></thead><tbody>`
+  $("#timing").innerHTML = `<thead><tr><th>Station</th>${hrs.map(h => `<th>${h}:00</th>`).join("")}</tr></thead><tbody>`
     + Object.entries(T).map(([st, r]) => `<tr><th>${nm[st] || st}</th>${hrs.map(h => `<td class="${q(r[h])}">${de(r[h], 2)}</td>`).join("")}</tr>`).join("")
     + `</tbody>`;
   const H = A.heute;
-  $("#heuteTab").innerHTML = (H ? `<h3>Heute-Modell</h3><div class="tscroll"><table class="atab num"><thead><tr><th>Stand</th><th>Schwelle</th><th>AUC gesamt</th><th>nur Vorhersage</th><th>nur Messungen</th></tr></thead><tbody>`
-    + H.map(r => `<tr><th>${r.uhr} Uhr</th><td>≥ ${r.schwelle} kn</td><td>${de(r.auc, 2)}</td><td>${de(r.auc_nur_vorhersage, 2)}</td><td>${de(r.auc_nur_messungen, 2)}</td></tr>`).join("")
+  $("#heuteTab").innerHTML = (H ? `<h3>Today model</h3><div class="tscroll"><table class="atab num"><thead><tr><th>As of</th><th>Threshold</th><th>AUC overall</th><th>forecast only</th><th>measurements only</th></tr></thead><tbody>`
+    + H.map(r => `<tr><th>${r.uhr}:00</th><td>≥ ${r.schwelle} kn</td><td>${de(r.auc, 2)}</td><td>${de(r.auc_nur_vorhersage, 2)}</td><td>${de(r.auc_nur_messungen, 2)}</td></tr>`).join("")
     + `</tbody></table></div>` : "")
-    + `<p class="hint">* Samolaco bestimmt die Breva-Tage mit; gegen den Satelliten sind seine Mittagswerte aber kaum besser als die der anderen Stationen (siehe Modellprüfung). Vercana (980 m über Domaso) dreht als erste unabhängige Station auf Südwest – ab 11 Uhr ist sie ein klarer Hinweis. Für „heute losfahren?“ verbindet das Heute-Modell die Vorhersage mit diesen Messungen und dem Vortag.</p>`;
+    + `<p class="hint">* Samolaco helps define the Breva days; against the satellite its midday values are hardly better than those of the other stations (see model check). Vercana (980 m above Domaso) is the first independent station to turn south-west – from 11:00 it is a clear sign. For “go today?” the today model combines the forecast with these measurements and the previous day.</p>`;
 }
 function stationen(A) {
-  const nm = { samolaco: "Samolaco (Pian di Spagna, 206 m)", colico: "Colico (La Madoneta, 229 m)", morbegno: "Morbegno (Veltlin)", vercana: "Vercana (980 m)",
+  const nm = { samolaco: "Samolaco (Pian di Spagna, 206 m)", colico: "Colico (La Madoneta, 229 m)", morbegno: "Morbegno (Valtellina)", vercana: "Vercana (980 m)",
     sansiro: "San Siro (1285 m)", canzo: "Canzo (1233 m)", como: "Como", lecco: "Lecco", valmadrera: "Valmadrera" };
-  $("#stTab").innerHTML = `<thead><tr><th>Station</th><th>Abende</th><th>Zusammenhang r</th><th>Faktor See/Station</th><th>Trefferquote</th></tr></thead><tbody>`
+  $("#stTab").innerHTML = `<thead><tr><th>Station</th><th>Evenings</th><th>Correlation r</th><th>Factor lake/station</th><th>Skill (AUC)</th></tr></thead><tbody>`
     + (A.stationen || []).filter(r => !r.station.startsWith("Modell")).map(r => `<tr><th>${nm[r.station] || r.station}</th><td>${r.n}</td><td>${de(r.r, 2)}</td><td>× ${de(r.verhaeltnis_see_zu_station, 2)}</td><td>${de(r.auc_see_ab_12kn, 2)}</td></tr>`).join("")
     + "</tbody>";
   $("#sfak").textContent = de(A.satfaktor_samolaco, 2);
@@ -133,12 +142,12 @@ function stationen(A) {
 function spots(A) {
   const S = A.spot_zu_see || {};
   const ids = SPOTS.map(s => s.id).filter(i => S[i]);
-  $("#spotbars").innerHTML = `<figure><figcaption>Spot im Verhältnis zum Mittel des oberen Sees an Breva-Abenden</figcaption>${bars(ids.map(i => S[i]), ids.map(i => SPOTS.find(s => s.id === i).short), { fmt: v => de(v, 2), H: 140 })}</figure>`;
+  $("#spotbars").innerHTML = `<figure><figcaption>Spot relative to the upper-lake average on Breva evenings</figcaption>${bars(ids.map(i => S[i]), ids.map(i => SPOTS.find(s => s.id === i).short), { fmt: v => de(v, 2), H: 140 })}</figure>`;
 }
 function map(A) {
   const o = A.overlay;
   $("#anLegend").innerHTML = `<span class="grad"></span><small>0</small><small style="margin-left:auto">14</small><small style="margin-left:auto">28 kn</small>`;
-  if (!window.maplibregl || !o) { $("#anmap").innerHTML = '<p class="maperr">Karte nicht verfügbar.</p>'; return; }
+  if (!window.maplibregl || !o) { $("#anmap").innerHTML = '<p class="maperr">Map not available.</p>'; return; }
   const m = new maplibregl.Map({ container: "anmap", style: "https://tiles.openfreemap.org/styles/liberty", center: [9.33, 46.1], zoom: 10.4,
     attributionControl: { compact: true }, cooperativeGestures: true });
   m.on("load", () => {
@@ -155,5 +164,5 @@ function map(A) {
 
 fetch("analyse.json").then(r => r.json()).then(A => {
   kpis(A); map(A); spots(A); diurnal(A); months(A); faktoren(A); vorhersage(A); stationen(A);
-  $("#stand").textContent = `Stand der Auswertung: ${A.stand} · Daten ${A.jahre} · ${A.sat_abende ?? "–"} Breva-Abende im Satellitenbild.`;
-}).catch(e => { document.querySelector("main").insertAdjacentHTML("afterbegin", `<p class="status err">analyse.json nicht geladen (${e.message}).</p>`); });
+  $("#stand").textContent = `Analysis as of ${A.stand} · data ${A.jahre} · ${A.sat_abende ?? "–"} Breva evenings in satellite images.`;
+}).catch(e => { document.querySelector("main").insertAdjacentHTML("afterbegin", `<p class="status err">analyse.json not loaded (${e.message}).</p>`); });

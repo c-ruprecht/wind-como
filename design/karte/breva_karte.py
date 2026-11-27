@@ -1,4 +1,5 @@
-"""Erklärkarte „So entsteht der Breva“ -> app/img/breva_karte.svg
+"""Explanation map "How the Breva forms" -> app/img/breva_karte.svg (English labels)
+
 
 Schematisch, aber geografisch richtig platziert (Seen: Natural Earth 10 m, design/karte/seen.json).
 Zahlen in den Beschriftungen aus results/breva_faktoren_14.txt (ERA5, Schönwettertage) und results/breva_merkmale.txt.
@@ -52,10 +53,10 @@ FLOW_COMO = [(9.10, 45.84), (9.12, 45.90), (9.17, 45.95), (9.24, 45.98)]
 FLOW_SEE = [(9.38, 45.86), (9.33, 45.93), (9.27, 46.00), (9.27, 46.06), (9.31, 46.11), (9.355, 46.15)]
 FLOW_CH = [(9.37, 46.17), (9.40, 46.24), (9.41, 46.30), (9.39, 46.36)]
 FLOW_VE = [(9.40, 46.15), (9.52, 46.15), (9.66, 46.15), (9.82, 46.17)]
-ORTE = {"Mailand": (9.19, 45.46, "se"), "Bergamo": (9.67, 45.70, "se"), "Como": (9.08, 45.81, "w"),
+ORTE = {"Milan": (9.19, 45.46, "se"), "Bergamo": (9.67, 45.70, "se"), "Como": (9.08, 45.81, "w"),
         "Lecco": (9.39, 45.85, "e"), "Dervio": (9.30, 46.08, "w"), "Colico": (9.37, 46.135, "e"),
         "Chiavenna": (9.40, 46.32, "e"), "Morbegno": (9.57, 46.135, "s"), "Sondrio": (9.87, 46.17, "s"),
-        "Zürich ↑": (9.05, 46.60, "e")}
+        "Zurich ↑": (9.05, 46.60, "e")}
 
 o = []
 o.append(f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif" font-size="13">')
@@ -81,7 +82,7 @@ o.append(f'<ellipse cx="{tx:.0f}" cy="{ty:.0f}" rx="170" ry="95" fill="url(#tief
 hx, hy = xy(9.45, 45.43)
 o.append(f'<ellipse cx="{hx:.0f}" cy="{hy:.0f}" rx="230" ry="110" fill="url(#hoch)"/>')
 o.append(f'<text x="{hx:.0f}" y="{hy + 10:.0f}" text-anchor="middle" font-size="40" font-weight="800" fill="#b8913a" fill-opacity=".85">H</text>')
-o.append(f'<text x="{tx + 40:.0f}" y="{ty + 2:.0f}" text-anchor="middle" font-size="40" font-weight="800" fill="#c2551c" fill-opacity=".85">T</text>')
+o.append(f'<text x="{tx + 40:.0f}" y="{ty + 2:.0f}" text-anchor="middle" font-size="40" font-weight="800" fill="#c2551c" fill-opacity=".85">L</text>')
 # Isobaren (schematisch): Druck sinkt von der Ebene in die Täler
 for k, la in enumerate((45.70, 45.92, 46.10)):
     pts = [(LO0, la - 0.04), (9.0, la), (9.35, la + 0.02 + 0.03 * k), (9.8, la + 0.01), (LO1, la - 0.05)]
@@ -104,7 +105,7 @@ o.append(f'<path d="{smooth([(9.05, 46.62), (9.10, 46.50), (9.15, 46.38)])}" fil
 # Orte
 for n, (lo, la, pos) in ORTE.items():
     x, y = xy(lo, la)
-    if not n.startswith("Zürich"):
+    if not n.startswith("Zurich"):
         o.append(f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.2" fill="#1d2a33"/>')
     dx, dy, anc = {"e": (7, 4, "start"), "w": (-7, 4, "end"), "s": (0, 17, "middle"), "se": (6, 15, "start")}[pos]
     o.append(f'<text x="{x + dx:.1f}" y="{y + dy:.1f}" text-anchor="{anc}" fill="#1d2a33" paint-order="stroke" stroke="#eef2ee" stroke-width="3">{n}</text>')
@@ -118,13 +119,13 @@ def label(lo, la, lines, color="#1d2a33", weight="600", anchor="start", size=13)
     return t + "</text>"
 
 
-o.append(label(8.62, 45.40, ["PO-EBENE", "heizt sich langsamer auf –", "relativ höherer Druck (H)"], "#8a6d3b"))
-o.append(label(9.90, 46.33, ["HITZETIEF IN DEN TÄLERN (T)", "Valchiavenna und Veltlin heizen", "sich stärker auf als die Ebene"], "#b5541c"))
-o.append(label(9.47, 45.97, ["BREVA", "Luft strömt von der Ebene", "über den See in die Täler", "≈ 12–20 Uhr, Spitze 15–17 Uhr"], "#0b6e8a"))
-o.append(label(8.60, 45.66, ["DRUCKGEFÄLLE Ebene → Tal", "Mailand–Chiavenna an Breva-Tagen", "≈ 0,7 hPa stärker, wächst", "vom Morgen zum Nachmittag"], "#8a6d3b", size=12))
-o.append(label(9.18, 46.40, ["NORDFÖHN stört:", "Zürich–Mailand ≥ 4 hPa"], "#6b7177", size=12))
-o.append(label(9.55, 46.58, ["Alpenhauptkamm"], "#5f6b64", "400", size=11))
-o.append(label(9.75, 45.63, ["Rand der Voralpen"], "#8a7a55", "400", size=11))
+o.append(label(8.62, 45.40, ["PO PLAIN", "heats up more slowly –", "relatively higher pressure (H)"], "#8a6d3b"))
+o.append(label(9.80, 46.36, ["HEAT LOW IN THE VALLEYS (L)", "Valchiavenna and Valtellina heat", "up more strongly than the plain"], "#b5541c"))
+o.append(label(9.47, 45.97, ["BREVA", "air flows from the plain", "over the lake into the valleys", "≈ 12–20:00, peak 15–17:00"], "#0b6e8a"))
+o.append(label(8.60, 45.66, ["PRESSURE GRADIENT plain → valley", "Milan–Chiavenna on Breva days", "≈ 0.7 hPa stronger, grows", "from morning to afternoon"], "#8a6d3b", size=12))
+o.append(label(9.18, 46.40, ["NORTH FOEHN disrupts:", "Zurich–Milan ≥ 4 hPa"], "#6b7177", size=12))
+o.append(label(9.55, 46.58, ["Main Alpine ridge"], "#5f6b64", "400", size=11))
+o.append(label(9.75, 45.63, ["Edge of the Prealps"], "#8a7a55", "400", size=11))
 o.append("</svg>")
 open(OUT, "w").write("\n".join(o))
 print("geschrieben:", os.path.relpath(OUT), f"{W}×{H}")
