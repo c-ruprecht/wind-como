@@ -7,6 +7,8 @@ am oberen Ende 2–4 km breit, deshalb 100 m statt 300 m wie in wingst. Überfl�
 Windrichtung für CMOD5.N: Auf dem See weht der Wind fast immer entlang der Seeachse (oberer See ~20° / 200°). Welche
 der beiden Richtungen, sagt ICON am See (Open-Meteo, frühere Vorhersagen) zur Überflugstunde.
 
+Weitere Ausschnitte: --region lecco (Lecco-Arm, Ordner data/sar100_lecco); --nur morgen lädt nur die Morgenbilder.
+
 Schritte (Repo-Ordner, im conda-Env mit python):
   pip install sentinelhub rasterio
   export CDSE_CLIENT_ID=...  CDSE_CLIENT_SECRET=...      # wie in wingst (Copernicus Data Space, Sentinel Hub)
@@ -23,6 +25,7 @@ import pandas as pd
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "sar100")
+REGION = "oben"
 RES_DIR = os.path.join(ROOT, "results")
 BBOX = (9.20, 45.96, 9.46, 46.20)            # oberer See: Sorico/Pian di Spagna bis Bellagio/Varenna
 RES = 100                                    # m
@@ -30,6 +33,24 @@ AXIS = (20.0, 200.0)                         # Seeachse oberer See: Wind aus NNO
 LAKE_CENTER = (46.07, 9.29)                  # für die ICON-Richtung
 SPOTS = {"colico": (46.137, 9.372), "gera_lario": (46.168, 9.372), "sorico_punta": (46.162, 9.392),
          "domaso": (46.150, 9.335), "dervio": (46.077, 9.300), "cremia": (46.087, 9.276)}
+# Weitere Ausschnitte (eigener Datenordner, gleiche Verarbeitung): --region lecco
+REGIONS = {
+    "oben": dict(out="sar100", bbox=BBOX, axis=AXIS, center=LAKE_CENTER, spots=SPOTS),
+    # Lecco-Arm: Bellagio/Varenna bis Lecco/Valmadrera – die Tivano-Spots (Parè, Abbadia, Mandello, Lierna)
+    "lecco": dict(out="sar100_lecco", bbox=(9.24, 45.83, 9.43, 46.02), axis=(330.0, 150.0), center=(45.92, 9.33),
+                  spots={"valmadrera_pare": (45.852, 9.362), "abbadia": (45.898, 9.336), "mandello": (45.918, 9.318),
+                         "lierna": (45.957, 9.305)}),
+}
+
+
+def set_region(name):
+    """Ausschnitt wählen – setzt OUT, BBOX, AXIS, LAKE_CENTER, SPOTS (auch für Skripte, die sar_lake importieren)."""
+    global OUT, BBOX, AXIS, LAKE_CENTER, SPOTS, REGION
+    r = REGIONS[name]
+    OUT = os.path.join(ROOT, "data", r["out"]); BBOX = r["bbox"]; AXIS = r["axis"]; LAKE_CENTER = r["center"]
+    SPOTS = r["spots"]; REGION = name
+
+
 EVALSCRIPT = """
 //VERSION=3
 function setup() {
@@ -55,7 +76,8 @@ def sh_config():
     return cfg
 
 
-def download(start, end, workers=6):
+def download(start, end, workers=6, nur="alle"):
+    """nur = morgen | abend | alle: nur Überflüge vor bzw. nach 12 Uhr Ortszeit laden (Morgen ~6:35, Abend ~19:15)."""
     from sentinelhub import (BBox, CRS, DataCollection, MimeType, SentinelHubCatalog, SentinelHubRequest,
                              bbox_to_dimensions)
     import rasterio
@@ -74,7 +96,10 @@ def download(start, end, workers=6):
             keep.append(it)
         last = t
     items = keep
-    print(f"{len(items)} Überflüge, Bildgröße {size} Pixel à {RES} m", flush=True)
+    if nur != "alle":
+        hr = lambda it: pd.Timestamp(it["properties"]["datetime"]).tz_convert("Europe/Rome").hour  # noqa: E731
+        items = [it for it in items if (hr(it) < 12) == (nur == "morgen")]
+    print(f"[{REGION}] {len(items)} Überflüge ({nur}), Bildgröße {size} Pixel à {RES} m", flush=True)
     os.makedirs(f"{OUT}/raw", exist_ok=True)
     meta, todo = [], []
     for it in items:
@@ -123,7 +148,8 @@ def download(start, end, workers=6):
                 new += 1
                 if new % 50 == 0:
                     print(f"  {new}/{len(todo)} neue Bilder …", flush=True)
-    pd.DataFrame(meta).drop_duplicates("file").to_csv(f"{OUT}/scenes.csv", index=False)
+    old = pd.read_csv(f"{OUT}/scenes.csv") if os.path.exists(f"{OUT}/scenes.csv") else pd.DataFrame()
+    pd.concat([old, pd.DataFrame(meta)]).drop_duplicates("file").sort_values("file").to_csv(f"{OUT}/scenes.csv", index=False)
     print(f"fertig: {new} neue Bilder")
 
 
@@ -185,6 +211,13 @@ def station_direction():
             d.index = pd.DatetimeIndex(d.index).tz_convert("UTC")
             obs[st] = d.sort_index()
     rules = {"samolaco": (3.0, (112, 202), (300, 60)), "colico": (2.5, (200, 315), (330, 100))}
+    if REGION == "lecco":       # dazu die Stationen am Lecco-Arm (Valmadrera ab 2024; Tivano dort aus N–NO)
+        for st in ("valmadrera", "lecco"):
+            f = os.path.join(ROOT, "data", "arpa", f"{st}_wind.csv")
+            if os.path.exists(f):
+                d = pd.read_csv(f, parse_dates=["time"]).set_index("time")
+                d.index = pd.DatetimeIndex(d.index).tz_convert("UTC"); obs[st] = d.sort_index()
+        rules.update({"valmadrera": (3.0, (135, 225), (330, 90)), "lecco": (2.5, (135, 225), (330, 90))})
     inside = lambda d, a, b: (a <= d <= b) if a <= b else (d >= a or d <= b)
 
     def decide(te):
@@ -197,10 +230,10 @@ def station_direction():
             kn, di = d.kn.get(lab), d.dir.get(lab)
             if pd.isna(kn) or pd.isna(di) or kn < kmin:
                 continue
-            if inside(di, *sued):
-                votes.append((st, 200.0))
+            if inside(di, *sued):                       # Richtung auf die Achse des Ausschnitts (oben 20/200, Lecco 330/150)
+                votes.append((st, AXIS[1]))
             elif inside(di, *nord):
-                votes.append((st, 20.0))
+                votes.append((st, AXIS[0]))
         dirs = {v for _, v in votes}
         if len(dirs) == 1:
             return dirs.pop(), "station:" + "+".join(st for st, _ in votes)
@@ -463,9 +496,12 @@ if __name__ == "__main__":
     ap.add_argument("--end", default=pd.Timestamp.today().strftime("%Y-%m-%d"))
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--workers", type=int, default=6)
+    ap.add_argument("--region", choices=list(REGIONS), default="oben", help="oben (Standard) oder lecco (Lecco-Arm)")
+    ap.add_argument("--nur", choices=["alle", "morgen", "abend"], default="alle", help="nur Morgen- oder Abendüberflüge laden")
     a = ap.parse_args()
+    set_region(a.region)
     if a.step == "download":
-        download(a.start, a.end, a.workers)
+        download(a.start, a.end, a.workers, a.nur)
     elif a.step == "wind":
         wind(a.force)
     else:

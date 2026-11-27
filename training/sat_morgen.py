@@ -12,8 +12,9 @@ die Morgenbilder: Rauigkeit σ⁰ in dB über dem ruhigen Referenzbild derselben
 4. Vorhersagbar? Je ERA5-Größe Trennschärfe (AUC) und ein Modell je Jahr out-of-fold (ERA5 = Wetter wie es war,
    obere Grenze), dazu – falls vorhanden – mit den echten Läufen vom Vortag (2024–heute).
 
-  python training/sat_morgen.py
-  -> results/sat_morgen/: morgen.csv, profile.png, stationen.png, <klasse>.png (Bildtafeln), monate.png,
+  python training/sat_morgen.py                    # oberer See (data/sar100)
+  python training/sat_morgen.py --region lecco     # Lecco-Arm (data/sar100_lecco, vorher sar_lake.py download --region lecco)
+  -> results/sat_morgen[_lecco]/: morgen.csv, profile.png, stationen.png, <klasse>.png (Bildtafeln), monate.png,
      vorhersage.md, merkmale.csv
 """
 import os, sys
@@ -27,20 +28,43 @@ import sat_kategorien as SK  # noqa: E402
 
 OUT = os.path.join(B.RES, "sat_morgen")
 RUHIG, RAU, STARK = 2.0, 4.0, 6.0                       # dB über ruhig, vorläufig – an den Tafeln prüfen
-NORD_AX = {"samolaco": 337, "colico": 20, "vercana": 20, "morbegno": 65}
+# Je Ausschnitt: Abschnitte (Breite), Orte fürs Profil, Stationen; die erste Station ist das Stationsziel.
+# Nordwind an einer Station = Stärke, wenn die Richtung im Nordsektor liegt (sonst 0); Süd = negativ.
+REG = {
+    "oben": dict(seg={"sued": (45.96, 46.03), "mitte": (46.03, 46.10), "nord": (46.10, 46.18)},
+                 orte=(("Bellagio", 45.985), ("Menaggio", 46.02), ("Dervio", 46.077), ("Colico", 46.137), ("Domaso", 46.15)),
+                 stationen={"samolaco": ((290, 60), (112, 202)), "colico": ((330, 100), (200, 315)),
+                            "vercana": ((330, 90), (180, 270)), "morbegno": ((20, 110), (200, 290))}),
+    "lecco": dict(seg={"sued": (45.83, 45.89), "mitte": (45.89, 45.95), "nord": (45.95, 46.01)},
+                  orte=(("Valmadrera/Parè", 45.852), ("Abbadia", 45.898), ("Mandello", 45.918), ("Lierna", 45.957), ("Varenna", 46.01)),
+                  stationen={"valmadrera": ((330, 90), (135, 225)), "lecco": ((330, 90), (135, 225)),
+                             "samolaco": ((290, 60), (112, 202)), "colico": ((330, 100), (200, 315))}),
+}
+R_ = REG["oben"]
+
+
+def set_region(name):
+    global OUT, R_
+    SL.set_region(name)
+    R_ = REG[name]
+    SK.SEG = R_["seg"]
+    lo = min(a for a, _ in R_["seg"].values()); hi = max(b for _, b in R_["seg"].values())
+    SK.LAT_BINS = np.round(np.arange(lo, hi + 0.01, 0.01), 3)
+    OUT = os.path.join(B.RES, "sat_morgen" if name == "oben" else f"sat_morgen_{name}")
 
 
 def station_morning():
-    """Je Tag: Nordkomponente je Station 5–10 Uhr (Stundenmittel, Ortszeit) und zur Überflugstunde später."""
-    import train_heute as TH
-    O = TH.hourly_obs()
+    """Je Station Stundenwerte (Ortszeit, Stunde endet zur vollen Stunde): Nordwind > 0, Südwind < 0, sonst 0."""
+    ins = lambda d, a, b: ((d >= a) & (d <= b)) if a <= b else ((d >= a) | (d <= b))  # noqa: E731
     out = {}
-    for st, ax in NORD_AX.items():
-        if st not in O:
+    for st, (nord, sued) in R_["stationen"].items():
+        f = os.path.join(B.DATA, "arpa", f"{st}_wind.csv")
+        if not os.path.exists(f):
             continue
-        x = O[st]
-        c = (x.kn * np.cos(np.radians(x.dir - ax))).rename(st)
-        out[st] = c
+        x = pd.read_csv(f, parse_dates=["time"]).set_index("time")
+        x.index = pd.DatetimeIndex(x.index).tz_convert(B.TZ).tz_localize(None)
+        x = x[~x.index.duplicated(keep="first")]
+        out[st] = x.kn.where(ins(x.dir, *nord), 0).where(~ins(x.dir, *sued), -x.kn)
     return pd.DataFrame(out)
 
 
@@ -106,8 +130,9 @@ def main():
     A = A[keep]
     A["abfall"] = A[["sued", "mitte"]].mean(axis=1) - A.nord          # > 0: nach Süden rauer (Nordwind-Fetch)
     A["gesamt"] = A[["sued", "mitte", "nord"]].mean(axis=1)
-    nord_st = (A.samolaco_ueberflug > 1) | (A.colico_ueberflug > 1)
-    sued_st = (A.samolaco_ueberflug < -2)
+    st_cols = [f"{st}_ueberflug" for st in ST.columns]
+    nord_st = (A[st_cols] > 2).any(axis=1)
+    sued_st = (A[st_cols] < -3).any(axis=1) & ~nord_st
 
     def cat(r, n, so):
         if not np.isfinite(r.gesamt) or max(r.sued, r.mitte, r.nord) < RUHIG:
@@ -125,10 +150,10 @@ def main():
         if f.endswith(".png"):
             os.remove(os.path.join(OUT, f))
     A.round(3).to_csv(f"{OUT}/morgen.csv"); P.round(2).to_csv(f"{OUT}/profile.csv")
-    md = ["# Nordwind am Morgen im Satelliten\n", f"{len(A)} Morgenbilder ({A.index.min():%Y}–{A.index.max():%Y}), Klassen:\n", "```",
+    md = [f"# Nordwind am Morgen im Satelliten – {SL.REGION}\n", f"{len(A)} Morgenbilder ({A.index.min():%Y}–{A.index.max():%Y}), Klassen:\n", "```",
           A.klasse.value_counts().to_string(), "```", "\nMedian je Klasse (dB über ruhig; Stationen: Nordkomponente kn):\n", "```",
-          A.groupby("klasse")[["sued", "mitte", "nord", "abfall", "rau_ganz", "kn_richtwert", "samolaco_ueberflug", "colico_ueberflug",
-                               "samolaco_nord_max", "vercana_nord_max"]].median().round(2).to_string(), "```"]
+          A.groupby("klasse")[["sued", "mitte", "nord", "abfall", "rau_ganz", "kn_richtwert"] + st_cols
+                              + [f"{st}_nord_max" for st in ST.columns]].median().round(2).to_string(), "```"]
     # Je Monat
     nw = A.klasse.isin(["nordwind", "nordwind_stark"])
     mon = pd.DataFrame({"Bilder": A.groupby(A.index.month).size(), "Anteil Nordwind": nw.groupby(A.index.month).mean().round(2)})
@@ -136,19 +161,24 @@ def main():
 
     # Stationsziel: Schwelle T so, dass es am besten zum Satelliten passt
     from sklearn.metrics import cohen_kappa_score, roc_auc_score
-    sam = ST["samolaco"]; sw = sam[win]
     best = None; scan = []
-    for T in (2, 3, 4, 5, 6, 8):
-        h = (sw >= T).groupby(dd[win]).sum()
-        lab = (h >= 2).astype(int)
-        j = pd.concat([lab.rename("st"), nw.astype(int).rename("sat")], axis=1, join="inner").dropna()
-        k = cohen_kappa_score(j.st, j.sat) if j.st.nunique() == 2 and j.sat.nunique() == 2 else np.nan
-        scan.append((T, round(k, 3), round(lab.mean(), 3), len(j)))
-        if best is None or (np.isfinite(k) and k > best[1]):
-            best = (T, k, lab)
-    md += ["\nStationsziel „Nordwind am Morgen“ (Samolaco-Nordkomponente 6–10 Uhr mind. 2 h ≥ T kn) gegen den Satelliten:\n",
-           "```", pd.DataFrame(scan, columns=["T_kn", "kappa", "anteil_tage", "bilder"]).to_string(index=False), "```",
-           f"Gewählt: T = {best[0]} kn (Kappa {best[1]:.2f})."]
+    for stz in ST.columns:                               # jede Station als mögliches Stationsziel
+        sw = ST[stz][win].dropna()                       # nur Tage, an denen die Station misst
+        n_h = sw.groupby(sw.index.normalize()).size()
+        for T in (2, 3, 4, 5, 6, 8):
+            h = (sw >= T).groupby(sw.index.normalize()).sum()
+            lab = (h >= 2).astype(int)[n_h >= 3]
+            j = pd.concat([lab.rename("st"), nw.astype(int).rename("sat")], axis=1, join="inner").dropna()
+            k = cohen_kappa_score(j.st, j.sat) if j.st.nunique() == 2 and j.sat.nunique() == 2 else np.nan
+            scan.append((stz, T, round(k, 3), round(lab.mean(), 3), len(j), f"{lab.index.min():%Y}"))
+            if np.isfinite(k) and len(j) >= 40 and (best is None or k > best[2]):
+                best = (stz, T, k, lab)
+    md += ["\nStationsziel „Nordwind am Morgen“ (Nordwind an der Station 6–10 Uhr mind. 2 h ≥ T kn) gegen den Satelliten:\n",
+           "```", pd.DataFrame(scan, columns=["station", "T_kn", "kappa", "anteil_tage", "bilder", "ab"]).to_string(index=False), "```"]
+    if best is None:
+        open(f"{OUT}/vorhersage.md", "w").write("\n".join(md) + "\n"); print("\n".join(md)); return
+    md += [f"Gewählt: {best[0]}, T = {best[1]} kn (Kappa {best[2]:.2f})."]
+    best = (best[1], best[2], best[3])
     y_all = best[2]
     y_all.to_frame("nordwind_morgen").to_csv(f"{OUT}/ziel_stationen.csv")
 
@@ -197,18 +227,18 @@ def main():
     fig, ax = plt.subplots(figsize=(6.5, 4))
     for k, g in A.groupby("klasse"):
         ax.plot(SK.LAT_BINS[:-1] + 0.005, P.reindex(g.index).median().values, lw=2, label=f"{k} ({len(g)})")
-    for name, la in (("Bellagio", 45.985), ("Menaggio", 46.02), ("Dervio", 46.077), ("Colico", 46.137), ("Domaso", 46.15)):
+    for name, la in R_["orte"]:
         ax.axvline(la, color="grey", lw=0.5, ls=":"); ax.text(la, 0.02, name, rotation=90, fontsize=7, va="bottom", transform=ax.get_xaxis_transform())
     ax.axhline(0, color="black", lw=0.6); ax.legend(fontsize=8); ax.grid(alpha=0.3)
     ax.set_xlabel("Breite (Süd → Nord)"); ax.set_ylabel("Rauigkeit über ruhig (dB)")
     ax.set_title("Morgens: Rauigkeitsprofil je Klasse", fontsize=9)
     fig.tight_layout(); fig.savefig(f"{OUT}/profile.png", dpi=100); plt.close(fig)
     fig, axs = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
-    for ax, st in zip(axs, ("samolaco_ueberflug", "colico_ueberflug")):
+    for ax, st in zip(axs, st_cols[:2]):
         for k, g in A.groupby("klasse"):
             ax.scatter(g[st], g[["sued", "mitte"]].max(axis=1), s=10, alpha=0.6, label=k)
         ax.axvline(0, color="grey", lw=0.6); ax.grid(alpha=0.3)
-        ax.set_xlabel(f"{st.split('_')[0].title()}: Nordkomponente zur Überflugstunde (kn)")
+        ax.set_xlabel(f"{st.split('_')[0].title()}: Nordwind zur Überflugstunde (kn, Süd negativ)")
     axs[0].set_ylabel("Rauigkeit Mitte/Süd (dB über ruhig)"); axs[0].legend(fontsize=7)
     fig.tight_layout(); fig.savefig(f"{OUT}/stationen.png", dpi=100); plt.close(fig)
     fig, ax = plt.subplots(figsize=(6, 3.2))
@@ -226,11 +256,11 @@ def main():
             im = ax.imshow(np.where(water, R[d], np.nan), extent=(SL.BBOX[0], SL.BBOX[2], SL.BBOX[1], SL.BBOX[3]), cmap="magma", vmin=-2, vmax=12)
             ax.set_aspect(1 / np.cos(np.radians(46))); ax.set_xticks([]); ax.set_yticks([])
             ax.set_title(f"{d:%d.%m.%y} {r.zeit} N{r.nord:.1f}/M{r.mitte:.1f}/S{r.sued:.1f}\n"
-                         f"Sam {r.samolaco_ueberflug:+.0f} · Col {r.colico_ueberflug:+.0f} kn Nord", fontsize=7)
+                         + " · ".join(f"{c[:3].title()} {r[c + '_ueberflug']:+.0f}" for c in ST.columns[:2]) + " kn", fontsize=7)
         for ax in list(axs.flat)[len(X):]:
             ax.axis("off")
         fig.colorbar(im, ax=axs, shrink=0.5, label="dB über ruhig")
-        fig.suptitle(title + "  (N/M/S = Nordbecken/Mitte/Süd, dB; Sam/Col = Nordkomponente zur Überflugstunde)", fontsize=8)
+        fig.suptitle(title + "  (N/M/S = Nordbecken/Mitte/Süd, dB; erste zwei Stationen: Nordwind zur Überflugstunde, Süd negativ)", fontsize=8)
         fig.savefig(path, dpi=75, bbox_inches="tight"); plt.close(fig)
     for k, g in A.groupby("klasse"):
         sheet(f"{OUT}/{k}.png", g.sort_values("gesamt", ascending=False), f"{k}: {len(g)} Morgen")
@@ -240,4 +270,8 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--region", choices=list(REG), default="oben")
+    set_region(ap.parse_args().region)
     main()
