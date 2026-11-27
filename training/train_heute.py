@@ -36,6 +36,7 @@ def hourly_obs():
     for st in AXIS:
         x = pd.read_csv(os.path.join(B.DATA, "arpa", f"{st}_wind.csv"), parse_dates=["time"]).set_index("time")
         x.index = pd.DatetimeIndex(x.index).tz_convert(B.TZ).tz_localize(None)
+        x = x[~x.index.duplicated(keep="first")]      # Herbst-Zeitumstellung: doppelte Ortszeit-Stunde
         out[st] = x[["kn", "dir"]]
     return out
 

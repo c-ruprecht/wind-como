@@ -50,13 +50,18 @@ def arpa_hourly():
         return None
     M = pd.read_csv(f, parse_dates=["time"]).set_index("time")
     M.index = pd.DatetimeIndex(M.index).tz_convert(B.TZ).tz_localize(None)
+    M = M[~M.index.duplicated(keep="first")]          # Herbst-Zeitumstellung: zwei UTC-Stunden -> eine Ortszeit-Stunde
     return M
 
 
 def arpa_features(M, d, H):
     if M is None:
         return {}
-    g = lambda col, h: M[col].get(d + pd.Timedelta(hours=h), np.nan) if col in M else np.nan
+    def g(col, h):
+        if col not in M:
+            return np.nan
+        v = M[col].get(d + pd.Timedelta(hours=h), np.nan)
+        return float(v.iloc[0]) if isinstance(v, pd.Series) else float(v)
     mean = lambda cols, h: np.nanmean([g(f"{c}_temp", h) for c in cols]) if any(np.isfinite(g(f"{c}_temp", h)) for c in cols) else np.nan
     grad = lambda h: mean(VALLEY, h) - mean(PLAIN, h)
     r = {"dT_tal_ebene": grad(H), "dT_tal_ebene_seit8": grad(H) - grad(8),
