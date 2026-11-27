@@ -90,19 +90,9 @@ def laden(sens, first_year):
     for y in range(first_year, this + 1):
         for kind, sid in jobs:
             f = f"{OUT}/raw/{kind}_{sid}_{y}.csv"
-            if os.path.exists(f) and y < this:
-                continue
-            parts = []
-            for ds in (A.hist_dataset(kind, y), A.MAIN):
-                try:
-                    parts.append(A.load_sensor_year(ds, sid, y))
-                except A.NotFound as e:
-                    print("   ", e)
-            df = pd.concat([p for p in parts if len(p)]) if any(len(p) for p in parts) else pd.DataFrame()
-            if len(df):
-                df = df.drop_duplicates("data")
-            df.to_csv(f, index=False)
-            print(f"  {kind} {sid} {y}: {len(df)} Werte", flush=True)
+            n = A.fetch_year(f, kind, sid, y, this)    # laufendes Jahr nur ab dem letzten Wert nachladen
+            if n is not None:
+                print(f"  {kind} {sid} {y}: {n} neue Werte", flush=True)
 
 
 def stunden(sens, first_year):

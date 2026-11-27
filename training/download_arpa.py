@@ -131,11 +131,47 @@ def sensors():
 
 # ---------------------------------------------------------------- 2. Datensätze je Jahr
 
-def load_sensor_year(dataset, sensor, year):
-    w = f"idsensore='{sensor}' AND data >= '{year}-01-01T00:00:00' AND data < '{year + 1}-01-01T00:00:00'"
+def load_sensor_year(dataset, sensor, year, since=None):
+    lo = since or f"{year}-01-01T00:00:00"
+    w = f"idsensore='{sensor}' AND data >= '{lo}' AND data < '{year + 1}-01-01T00:00:00'"
     rows = soql(dataset, **{"$where": w})
     d = pd.DataFrame(rows)
     return d[[c for c in ("data", "valore", "stato", "idoperatore") if c in d]] if len(d) else d
+
+
+def fetch_year(f, kind, sid, y, this):
+    """Ein Sensor-Jahr laden. Vergangene Jahre: vorhanden = fertig. Laufendes Jahr: nur ab dem letzten Wert
+    nachladen (letzte 7 Monate aus dem Hauptdatensatz) und anhängen. Gibt die Zahl neuer Werte zurück (None = übersprungen)."""
+    old = None
+    if os.path.exists(f):
+        if y < this:
+            return None
+        old = pd.read_csv(f, dtype={"data": str}) if os.path.getsize(f) > 30 else None
+    since = None
+    if old is not None and len(old) and "data" in old:
+        since = str(old.data.max())[:19]
+    if since is not None:
+        if kind == "gust":                       # Böen gibt es nur im Archiv (bis 2/2026), nichts nachzuladen
+            return None
+        sets = [MAIN]
+    else:
+        sets = [hist_dataset(kind, y), MAIN if kind != "gust" else None]
+    parts = []
+    for ds in sets:
+        if not ds:
+            continue
+        try:
+            parts.append(load_sensor_year(ds, sid, y, since))
+        except NotFound as e:
+            print("   ", e)
+    new = pd.concat([p for p in parts if len(p)]) if any(len(p) for p in parts) else pd.DataFrame()
+    n = len(new)
+    if old is not None and len(old):
+        new = pd.concat([old, new]) if n else old
+    if len(new):
+        new = new.drop_duplicates("data", keep="last").sort_values("data")
+    new.to_csv(f, index=False)
+    return n
 
 
 def download(sens, first_year):
@@ -145,21 +181,9 @@ def download(sens, first_year):
     for y in range(first_year, this + 1):
         for key, kind, sid in jobs:
             f = f"{OUT}/raw/{kind}_{sid}_{y}.csv"
-            if os.path.exists(f) and y < this:
-                continue
-            parts = []
-            for ds in (hist_dataset(kind, y), MAIN if kind != "gust" else None):   # Historie, dazu die letzten 7 Monate
-                if not ds:
-                    continue
-                try:
-                    parts.append(load_sensor_year(ds, sid, y))
-                except NotFound as e:
-                    print("   ", e)
-            df = pd.concat([p for p in parts if len(p)]) if any(len(p) for p in parts) else pd.DataFrame()
-            if len(df):
-                df = df.drop_duplicates("data")
-            df.to_csv(f, index=False)
-            print(f"  {key} {kind} {y}: {len(df)} Werte", flush=True)
+            n = fetch_year(f, kind, sid, y, this)      # Historie + letzte 7 Monate; laufendes Jahr nur nachladen
+            if n is not None:
+                print(f"  {key} {kind} {y}: {n} neue Werte", flush=True)
 
 
 # ---------------------------------------------------------------- 3. Stundenwerte
