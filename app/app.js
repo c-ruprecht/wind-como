@@ -280,7 +280,8 @@ function clearSkyMean(date, h1) {
 function liveSigns(today) {
   const hourly = hourlyAll(), H = state.M?.heute;
   const has = h => ["samolaco", "colico", "vercana"].some(st => hourly[st]?.[`${today}T${String(h).padStart(2, "0")}`]);
-  let hour = null; for (let h = 23; h >= 6; h--) if (has(h)) { hour = h; break; }
+  const nowH = Number(localKey(new Date()).slice(11, 13));
+  let hour = null; for (let h = nowH; h >= 6; h--) if (has(h)) { hour = h; break; }
   if (hour == null) return null;
   const fs = H?.faktor ?? 1.37, fc = H?.faktor_col ?? 2.5, ax = H?.arpa_extra;
   const o = { ...BrevaModel.obsFeatures(hourly, today, hour, fs, fc),
@@ -307,7 +308,8 @@ function heute() {
   if (!H || !F || !ds.length) return null;
   const today = ds[0], hourly = hourlyAll();
   const have = h => ["vercana", "samolaco", "colico"].some(st => hourly[st]?.[`${today}T${String(h).padStart(2, "0")}`]);
-  const hour = [...H.hours].reverse().find(h => have(h)) ?? null;
+  const nowH = Number(localKey(new Date()).slice(11, 13));           // nur abgeschlossene Stunden (wie im Training)
+  const hour = [...H.hours].reverse().find(h => h <= nowH && have(h)) ?? null;
   const g = BrevaModel.brevaDay(hourly, shiftDate(today, -1), H.faktor, H.faktor_col, H.lang_h);
   const res = { hour, gestern: g, today, p: {}, pForecast: weekProb(today, 0, 14), obs: null };
   if (hour == null) { res.p = { "14": res.pForecast, lang: null }; return res; }

@@ -238,7 +238,8 @@ async function main() {
   let obs = {}, obsErr = "";
   try { obs = await observations(); } catch (e) { obsErr = String(e.message || e); }
   const hourKey = h => `${today}T${String(h).padStart(2, "0")}`;
-  const hour = [...heuteMan.hours].reverse().find(h => ["vercana", "samolaco", "colico"].some(st => obs[st]?.[hourKey(h)])) ?? null;
+  const nowH = Number(localKey(new Date()).slice(11, 13));           // nur abgeschlossene Stunden (wie im Training)
+  const hour = [...heuteMan.hours].reverse().find(h => h <= nowH && ["vercana", "samolaco", "colico"].some(st => obs[st]?.[hourKey(h)])) ?? null;
   const g = BrevaModel.brevaDay(obs, shiftDate(today, -1), heuteMan.faktor, heuteMan.faktor_col, heuteMan.lang_h);
   const ax = heuteMan.arpa_extra;
   let extra = {};
