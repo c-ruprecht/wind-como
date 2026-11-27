@@ -1,15 +1,15 @@
-"""Precision-Recall-Kurven: 7-Tage-Modell (Vorlauf 1–7) und Jetzt-Modell (9, 11, 13, 15 Uhr).
+"""Precision-Recall-Kurven: 7-Tage-Modell (Vorlauf 1–7) und Heute-Modell (7–15 Uhr, Breva-Tag und langer Breva).
 
 Grundlage sind die out-of-fold-Vorhersagen der Prüfung 2024–heute (echte Läufe, Modell ohne das jeweilige Jahr):
   results/oof_7tage.csv                 aus train_breva.py
-  results/oof_jetzt_<lauf>.csv          aus train_jetzt.py (Stufe „A + ARPA-Treiber“, wenn vorhanden)
+  results/oof_heute.csv                 aus train_heute.py
 
 Präzision: Anteil der Tage mit „Breva vorhergesagt“, an denen wirklich Breva kam.
 Recall (Trefferquote): Anteil aller Breva-Tage, die vorhergesagt wurden.
 Waagerechte Linie: Anteil der Breva-Tage (so gut ist Raten). Punkte: Breva-Call (≥ 80 % Präzision).
 
   python training/pr_kurven.py [--lauf ecmwf_ifs00z] [--saison]
--> results/pr_7tage.png, results/pr_jetzt.png, results/pr_kurven.md
+-> results/pr_7tage.png, results/pr_heute.png, results/pr_kurven.md
 """
 import argparse, os, sys
 import numpy as np
@@ -38,12 +38,17 @@ def at_precision(prec, rec, thr, target=TARGET, min_calls=8, n=None, y=None, p=N
     return best
 
 
+TITEL = {14: "Breva-Tag (≥ 14 kn, ≥ 2 h)", "14": "Breva-Tag (≥ 14 kn, ≥ 2 h)", 18: "≥ 18 kn", "lang": "langer Breva (≥ 5 h)"}
+
+
 def plot(groups, title, path, label):
     import matplotlib; matplotlib.use("Agg"); import matplotlib.pyplot as plt
     from matplotlib import cm
-    fig, axs = plt.subplots(1, 2, figsize=(11, 4.6), sharey=True)
+    keys = [k for k in groups if groups[k]]
+    fig, axs = plt.subplots(1, len(keys), figsize=(5.6 * len(keys), 4.6), sharey=True, squeeze=False)
+    axs = axs[0]
     rows = []
-    for ax, thr in zip(axs, (14, 18)):
+    for ax, thr in zip(axs, keys):
         G = groups[thr]
         cols = cm.viridis(np.linspace(0.05, 0.9, len(G)))
         for c, (k, (y, p)) in zip(cols, G.items()):
@@ -62,7 +67,7 @@ def plot(groups, title, path, label):
         base = np.mean(np.concatenate([np.asarray(v[0]) for v in G.values()]))
         ax.axhline(base, color="grey", ls=":", lw=1)
         ax.axhline(TARGET, color="#d1495b", ls="--", lw=0.8)
-        ax.set_title(f"≥ {thr} kn", fontsize=11); ax.set_xlabel("Recall (Anteil erwischter Breva-Tage)")
+        ax.set_title(TITEL.get(thr, str(thr)), fontsize=11); ax.set_xlabel("Recall (Anteil erwischter Breva-Tage)")
         ax.set_xlim(0, 1); ax.set_ylim(0, 1.02); ax.grid(alpha=0.25); ax.legend(fontsize=8, loc="lower left", framealpha=0.9)
     axs[0].set_ylabel("Präzision (Anteil richtiger Calls)")
     fig.suptitle(title, fontsize=11)
@@ -81,33 +86,31 @@ def main(lauf, saison):
         O = pd.read_csv(f7, parse_dates=["tag"])
         if saison:
             O = O[O.tag.dt.month.between(3, 10)]
-        g = {thr: {L: (x.y.values, x.p.values) for L, x in O[O.schwelle == thr].groupby("vorlauf")} for thr in (14, 18)}
+        g = {thr: {L: (x.y.values, x.p.values) for L, x in O[O.schwelle == thr].groupby("vorlauf")} for thr in sorted(O.schwelle.unique())}
         R = plot(g, "7-Tage-Modell: Precision-Recall je Vorlauf", f"{B.RES}/pr_7tage.png", lambda L: f"Tag {L}")
         R.assign(modell="7tage").to_csv(f"{B.RES}/pr_kurven.csv", index=False)
         md += ["## 7-Tage-Modell\n", "![](pr_7tage.png)\n", "```", R.pivot_table(index=["schwelle", "wann", "ap", "anteil"],
                columns="praezision_ziel", values="recall").to_string(), "```\n"]
     else:
         print("fehlt:", f7, "– erst train_breva.py")
-    fj = f"{B.RES}/oof_jetzt_{lauf}.csv"
-    if os.path.exists(fj):
-        J = pd.read_csv(fj, parse_dates=["tag"])
-        stufe = "A + ARPA-Treiber" if (J.stufe == "A + ARPA-Treiber").any() else "W + Wind"
-        J = J[(J.stufe == stufe) & J.stunde.isin([9, 11, 13, 15])]
+    fh = f"{B.RES}/oof_heute.csv"
+    if os.path.exists(fh):
+        J = pd.read_csv(fh, parse_dates=["tag"])
+        J["ziel"] = J.ziel.astype(str)
         if saison:
             J = J[J.tag.dt.month.between(3, 10)]
-        g = {thr: {h: (x.y.values, x.p.values) for h, x in J[J.schwelle == thr].groupby("stunde")} for thr in (14, 18)}
-        R = plot(g, f"Jetzt-Modell ({stufe}, {lauf}): kommt nach dieser Stunde noch ≥ 2 h Breva?",
-                 f"{B.RES}/pr_jetzt.png", lambda h: f"{int(h):02d} Uhr")
-        R.assign(modell=f"jetzt {lauf}").to_csv(f"{B.RES}/pr_kurven.csv", index=False, mode="a",
-                                                 header=not os.path.exists(f"{B.RES}/pr_kurven.csv"))
-        md += [f"## Jetzt-Modell ({stufe}, Lauf {lauf})\n", "![](pr_jetzt.png)\n", "Ungeeichte Modellausgabe; "
-               "„ab_chance“ in pr_kurven.csv ist daher die Rohschwelle.\n", "```",
+        g = {z: {h: (x.y.values, x.p.values) for h, x in J[J.ziel == z].groupby("stunde")} for z in ("14", "lang") if (J.ziel == z).any()}
+        R = plot(g, "Heute-Modell: Precision-Recall je Uhrzeit (Vorhersage = ECMWF-Lauf vom Vortag)",
+                 f"{B.RES}/pr_heute.png", lambda h: f"{int(h):02d} Uhr")
+        R.assign(modell="heute").to_csv(f"{B.RES}/pr_kurven.csv", index=False, mode="a",
+                                        header=not os.path.exists(f"{B.RES}/pr_kurven.csv"))
+        md += ["## Heute-Modell\n", "![](pr_heute.png)\n", "```",
                R.pivot_table(index=["schwelle", "wann", "ap", "anteil"], columns="praezision_ziel", values="recall").to_string(), "```\n"]
     else:
-        print("fehlt:", fj, "– erst train_jetzt.py" + (f" --lauf {lauf}" if lauf != "ecmwf_ifs025" else ""))
+        print("fehlt:", fh, "– erst train_heute.py")
     open(f"{B.RES}/pr_kurven.md", "w").write("\n".join(md) + "\n")
     print("\n".join(md))
-    print("geschrieben: results/pr_7tage.png, results/pr_jetzt.png, results/pr_kurven.md")
+    print("geschrieben: results/pr_7tage.png, results/pr_heute.png, results/pr_kurven.md")
 
 
 if __name__ == "__main__":

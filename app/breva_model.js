@@ -149,9 +149,39 @@ const BrevaModel = (() => {
   /* ---------- Heute: Messungen bis zur Entscheidungsstunde (wie train_heute.py obs_features) ----------
      hourly: { station: { "YYYY-MM-DDTHH": {kn, dir} } } – Stundenmittel, Stunde endet zur vollen Stunde (Ortszeit) */
   const AXIS = { samolaco: 157, colico: 270, vercana: 225, morbegno: 245 };
-  function obsFeatures(hourly, date, hour) {
+  const SEKTOR = { samolaco: [112, 202], colico: [200, 315] };
+  const key = (d, h) => `${d}T${String(h).padStart(2, "0")}`;
+  const inSek = (o, st) => o && fin(o.dir) && o.dir >= SEKTOR[st][0] && o.dir <= SEKTOR[st][1];
+  /* Seewind-Schätzung einer Stunde wie das Ziel (breva_daten.see_hourly): max(Samolaco × fs, Colico × fc), nur Breva-Sektor */
+  function seeAt(hourly, d, h, fs, fc) {
+    const s = hourly.samolaco?.[key(d, h)], c = hourly.colico?.[key(d, h)];
+    if (!s && !c) return null;
+    const vs = s && fin(s.kn) ? (inSek(s, "samolaco") ? s.kn * fs : 0) : null;
+    const vc = c && fin(c.kn) ? (inSek(c, "colico") ? c.kn * fc : 0) : null;
+    return vs == null ? vc : vc == null ? vs : Math.max(vs, vc);
+  }
+  /* Morgenwind aus Nicht-Breva-Richtung (Samolaco 6–10 Uhr bis h1, Breva-Richtung zählt 0) */
+  function morning(hourly, d, h1) {
+    const v = []; for (let h = 6; h <= Math.min(10, h1); h++) { const o = hourly.samolaco?.[key(d, h)];
+      if (o && fin(o.kn)) v.push(inSek(o, "samolaco") ? 0 : o.kn); }
+    return v.length ? v.reduce((a, b) => a + b, 0) / v.length : NaN;
+  }
+  /* Stunden ≥ 14 kn und laufende Folge von 11 Uhr bis h1 (Lücke unterbricht) */
+  function seeRun(hourly, d, h1, fs, fc) {
+    let n = 0, run = 0, best = 0, max = -Infinity, have = 0;
+    for (let h = 11; h <= h1; h++) {
+      const v = seeAt(hourly, d, h, fs, fc);
+      if (v != null) { have++; max = Math.max(max, v); }
+      const ok = v != null && v >= 14; n += ok; run = ok ? run + 1 : 0; best = Math.max(best, run);
+    }
+    return { n, run, best, max: have ? max : NaN, have };
+  }
+
+  /* ---------- Heute: Messungen bis zur Entscheidungsstunde (wie train_heute.py obs_features) ----------
+     hourly: { station: { "YYYY-MM-DDTHH": {kn, dir} } } – Stundenmittel, Stunde endet zur vollen Stunde (Ortszeit) */
+  function obsFeatures(hourly, date, hour, fs = 1.41, fc = 2.66) {
     const F = {};
-    const val = (st, h, d = date) => hourly[st]?.[`${d}T${String(h).padStart(2, "0")}`] ?? null;
+    const val = (st, h, d = date) => hourly[st]?.[key(d, h)] ?? null;
     const comp = (o, ax) => o && fin(o.kn) && fin(o.dir) ? o.kn * Math.cos((o.dir - ax) * Math.PI / 180) : null;
     for (const [st, ax] of Object.entries(AXIS)) {
       const last = comp(val(st, hour), ax), prev = comp(val(st, hour - 1), ax);
@@ -160,28 +190,25 @@ const BrevaModel = (() => {
       F[`${st}_mittel2h`] = last != null && prev != null ? (last + prev) / 2 : (last ?? NaN);
       F[`${st}_max_ab10`] = seq.length ? Math.max(...seq) : NaN;
     }
-    // Tivano am Morgen: Samolaco Nordkomponente 5–9 Uhr (max), Vercana Wind 7–9 Uhr (Mittel)
-    const tiv = []; for (let h = 5; h <= 9; h++) { const c = comp(val("samolaco", h), 337); if (c != null) tiv.push(c); }
+    // Tivano am Morgen: Samolaco Nordkomponente 5–9 Uhr (max, nur bis zur Stunde)
+    const tiv = []; for (let h = 5; h <= Math.min(9, hour); h++) { const c = comp(val("samolaco", h), 337); if (c != null) tiv.push(c); }
     F.tivano_samolaco = tiv.length ? Math.max(...tiv) : NaN;
+    F.see_jetzt = seeAt(hourly, date, hour, fs, fc) ?? NaN;
+    const r = seeRun(hourly, date, hour, fs, fc);
+    F.see_stunden = hour >= 11 ? r.n : NaN;
+    F.see_lauf = hour >= 11 ? r.run : NaN;
+    F.morgen_nicht_breva = morning(hourly, date, hour);
     return F;
   }
-  /* Breva gestern aus den Messungen (wie tage(): Samolaco × Faktor ≥ 14 kn, ≥ 2 h aus SSO–S, 11–20 Uhr, morgens ruhig) */
-  function brevaDay(hourly, date, factor) {
-    const s = hourly.samolaco; if (!s) return null;
-    let run = 0, best = 0, n = 0, morning = [], max = 0;
-    for (let h = 0; h <= 23; h++) {
-      const o = s[`${date}T${String(h).padStart(2, "0")}`];
-      if (!o) { if (h >= 11 && h <= 20) run = 0; continue; }
-      if (h >= 6 && h <= 10) morning.push(o.kn);
-      if (h >= 11 && h <= 20) {
-        n++; max = Math.max(max, o.kn);
-        const ok = o.kn * factor >= 14 && o.dir >= 112 && o.dir <= 202;
-        run = ok ? run + 1 : 0; best = Math.max(best, run);
-      }
-    }
-    if (n < 8) return null;
-    const m = morning.length ? morning.reduce((a, b) => a + b, 0) / morning.length : 0;
-    return { breva: best >= 2 && m < 6 ? 1 : 0, max: max * factor, stunden: best };
+  /* Breva an einem ganzen Tag aus den Messungen (wie breva_daten.tage, Spalten breva / breva_lang) */
+  function brevaDay(hourly, date, fs = 1.41, fc = 2.66, langH = 5) {
+    const r = seeRun(hourly, date, 20, fs, fc);
+    if (r.have < 8) return null;
+    let nord = 0; for (let h = 11; h <= 20; h++) { const o = hourly.samolaco?.[key(date, h)];
+      if (o && fin(o.dir) && (o.dir >= 315 || o.dir <= 45) && o.kn >= 8) nord++; }
+    const m = morning(hourly, date, 10);
+    const breva = r.best >= 2 && !(m >= 6) && nord < 2 ? 1 : 0;
+    return { breva, lang: breva && r.n >= langH ? 1 : 0, max: r.max, stunden: r.n };
   }
 
   return { predictMargin, predictProba, calibrate, features, vec, obsFeatures, brevaDay, AXIS };

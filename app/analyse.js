@@ -71,7 +71,8 @@ function kpis(A) {
   const best = A.vorlauf?.["14"]?.find(r => r.vorlauf.startsWith("1 ")), d4 = A.vorlauf?.["14"]?.find(r => r.vorlauf.startsWith("4 "));
   const items = [
     [de(k["Breva"], 0), "Breva days ≥ 14 kn per year (whole year)"],
-    [de(A.klima?.["18"] ? Object.values(A.klima["18"]).reduce((a, m) => a + m.tage, 0) : null, 0), "of which ≥ 18 kn (climate)"],
+    A.klima?.lang ? [de(Object.values(A.klima.lang).reduce((a, m) => a + m.tage, 0), 0), "of which long (≥ 5 h at 14+ kn)"]
+      : [de(A.klima?.["18"] ? Object.values(A.klima["18"]).reduce((a, m) => a + m.tage, 0) : null, 0), "of which ≥ 18 kn (climate)"],
     [pct(v.nach_breva), `Breva after a Breva day (otherwise ${pct(v.sonst)})`],
     [best ? de(best.auc, 2) : "–", `Skill tomorrow (AUC)${d4 ? `, day 4: ${de(d4.auc, 2)}` : ""}`]
   ];
@@ -126,8 +127,8 @@ function vorhersage(A) {
     + Object.entries(T).map(([st, r]) => `<tr><th>${nm[st] || st}</th>${hrs.map(h => `<td class="${q(r[h])}">${de(r[h], 2)}</td>`).join("")}</tr>`).join("")
     + `</tbody>`;
   const H = A.heute;
-  $("#heuteTab").innerHTML = (H ? `<h3>Today model</h3><div class="tscroll"><table class="atab num"><thead><tr><th>As of</th><th>Threshold</th><th>AUC overall</th><th>forecast only</th><th>measurements only</th></tr></thead><tbody>`
-    + H.map(r => `<tr><th>${r.uhr}:00</th><td>≥ ${r.schwelle} kn</td><td>${de(r.auc, 2)}</td><td>${de(r.auc_nur_vorhersage, 2)}</td><td>${de(r.auc_nur_messungen, 2)}</td></tr>`).join("")
+  $("#heuteTab").innerHTML = (H ? `<h3>Today model</h3><div class="tscroll"><table class="atab num"><thead><tr><th>As of</th><th>Target</th><th>AUC overall</th><th>forecast only</th><th>measurements only</th></tr></thead><tbody>`
+    + H.map(r => `<tr><th>${r.uhr}:00</th><td>${r.ziel === "lang" ? "long Breva (≥ 5 h)" : r.ziel != null ? "Breva day" : `≥ ${r.schwelle} kn`}</td><td>${de(r.auc, 2)}</td><td>${de(r.auc_saison_nur_vorhersage ?? r.auc_nur_vorhersage, 2)}</td><td>${de(r.auc_saison_nur_messungen ?? r.auc_nur_messungen, 2)}</td></tr>`).join("")
     + `</tbody></table></div>` : "")
     + `<p class="hint">* Samolaco helps define the Breva days; against the satellite its midday values are hardly better than those of the other stations (see model check). Vercana (980 m above Domaso) is the first independent station to turn south-west – from 11:00 it is a clear sign. For “go today?” the today model combines the forecast with these measurements and the previous day.</p>`;
 }

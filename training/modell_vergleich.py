@@ -209,7 +209,8 @@ def block_boot(y, pa, pb, days, n=1000, seed=0):
     return np.percentile(d, [5, 95])
 
 
-def vergleich(thr_list=(14, 18), train_until=2023, jobs=-1):
+def vergleich(thr_list=None, train_until=2023, jobs=-1):
+    thr_list = thr_list or T.ZIELE()
     D = pd.read_csv(f"{RES}/breva_tage.csv", index_col=0, parse_dates=True)
     F = T.FEATS
     E = B.features(B.load("era5")).reindex(D.index).reindex(columns=F)

@@ -93,8 +93,8 @@ def climate():
         D = pd.read_csv(f"{RES}/breva_samolaco_tage.csv", index_col=0, parse_dates=True)
         src = "breva_samolaco_tage.csv"
     out = {}
-    for thr in (14, 18):
-        c = f"breva{thr}"
+    cols = {"14": "breva", "lang": "breva_lang"} if "breva" in D else {"14": "breva14", "18": "breva18"}
+    for thr, c in cols.items():
         if c not in D:
             continue
         g = D.groupby(D.index.month)[c]

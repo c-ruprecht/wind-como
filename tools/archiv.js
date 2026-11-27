@@ -147,16 +147,16 @@ async function main() {
   try { obs = await observations(); } catch (e) { obsErr = String(e.message || e); }
   const hourKey = h => `${today}T${String(h).padStart(2, "0")}`;
   const hour = [...heuteMan.hours].reverse().find(h => ["vercana", "samolaco", "colico"].some(st => obs[st]?.[hourKey(h)])) ?? null;
-  const g = BrevaModel.brevaDay(obs, shiftDate(today, -1), heuteMan.faktor);
-  const hx = hour == null ? null : { ...F[today], ...BrevaModel.obsFeatures(obs, today, hour),
+  const g = BrevaModel.brevaDay(obs, shiftDate(today, -1), heuteMan.faktor, heuteMan.faktor_col, heuteMan.lang_h);
+  const hx = hour == null ? null : { ...F[today], ...BrevaModel.obsFeatures(obs, today, hour, heuteMan.faktor, heuteMan.faktor_col),
     gestern_breva: g ? g.breva : NaN, gestern_max: g ? g.max : NaN };
-  for (const thr of S.THRESHOLDS) {
-    const key = `${hour}_${thr}`, m = hour == null ? null : readJSON(heuteMan.files[key]);
+  for (const ziel of Object.keys(heuteMan.ziele || { 14: 1 })) {
+    const key = `${hour}_${ziel}`, m = hour == null ? null : readJSON(heuteMan.files[key]);
     const hid = `heute-${heuteMan.ziel || "A"}-${key}-` + (m ? sha(JSON.stringify(m) + JSON.stringify(heuteMan.calib[key])) : "nurvorhersage");
     const raw = m ? BrevaModel.predictProba(m, BrevaModel.vec(hx, heuteMan.features)) : null;
-    const p = m ? BrevaModel.calibrate(heuteMan.calib[key], raw) : p7[`${today}_${thr}`];
-    const k = m ? (heuteMan.call || {})[key] : (((man.call || {})[String(thr)] || {})["0"]);
-    rows.push({ ...base, art: "heute", modell_id: hid, zieldatum: today, vorlauf: 0, schwelle: thr, stunde: hour ?? "", p, p_roh: raw,
+    const p = m ? BrevaModel.calibrate(heuteMan.calib[key], raw) : (ziel === "14" ? p7[`${today}_14`] : null);
+    const k = m ? (heuteMan.call || {})[key] : (ziel === "14" ? (((man.call || {})["14"] || {})["0"]) : null);
+    rows.push({ ...base, art: "heute", modell_id: hid, zieldatum: today, vorlauf: 0, schwelle: ziel, stunde: hour ?? "", p, p_roh: raw,
       call_ab: k ? k.schwelle : "", call: k && p != null ? Number(p >= k.schwelle) : "" });
   }
   // schreiben

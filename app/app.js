@@ -13,7 +13,7 @@ const CACHE_KEY = "breva-cache-v1";
 
 const state = {
   fc: null, obs: {}, info: null,
-  model: load("model", "icon"), thr: Number(load("thr", 14)) === 18 ? 18 : 14,
+  model: load("model", "icon"), thr: 14,
   spot: load("spot", "gera_lario"), day: 0, map: null, markers: [], layer: load("layer", "map"),
   mfc: null,        // Modellpunkte (ECMWF, mit 31 Tagen Vergangenheit)
   M: null,          // { man, m14, m18, heute, h: {"9_14": Modell, …} }
@@ -228,10 +228,10 @@ function weekCall(i, thr, p) {
   const c = state.M?.man?.call?.[String(thr)]; const k = c && (c[String(i)] ?? c["7"]);
   return k && p != null && p >= k.schwelle ? k : null;
 }
-function heuteCall(H, thr) {
-  if (!H || H.hour == null) return weekCall(0, thr, H?.p[thr]);
-  const k = state.M?.heute?.call?.[`${H.hour}_${thr}`];
-  return k && H.p[thr] != null && H.p[thr] >= k.schwelle ? k : null;
+function heuteCall(H, key) {
+  if (!H || H.hour == null) return key === "14" ? weekCall(0, 14, H?.p[key]) : null;
+  const k = state.M?.heute?.call?.[`${H.hour}_${key}`];
+  return k && H.p[key] != null && H.p[key] >= k.schwelle ? k : null;
 }
 const callTip = c => `Breva call: at values this high, the 2024–today test had a real Breva in ${Math.round(c.praezision * 100)} % of cases; it catches ${Math.round(c.trefferquote * 100)} % of all Breva days.`;
 const callTag = c => c ? `<span class="call" title="${callTip(c)}">Call</span>` : "";
@@ -239,22 +239,22 @@ function hourlyAll() {
   const h = {}; for (const st of STATIONS) if (state.obs[st.id]?.hourly) h[st.id] = state.obs[st.id].hourly; return h;
 }
 function shiftDate(d, n) { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+const HEUTE_ZIELE = ["14", "lang"];
 function heute() {
   const M = state.M, H = M?.heute, F = features7(); const ds = days();
   if (!H || !F || !ds.length) return null;
   const today = ds[0], hourly = hourlyAll();
   const have = h => ["vercana", "samolaco", "colico"].some(st => hourly[st]?.[`${today}T${String(h).padStart(2, "0")}`]);
   const hour = [...H.hours].reverse().find(h => have(h)) ?? null;
-  const g = BrevaModel.brevaDay(hourly, shiftDate(today, -1), H.faktor);
-  const res = { hour, gestern: g, today, p: {}, pForecast: {}, obs: null };
-  for (const thr of THRESHOLDS) res.pForecast[thr] = weekProb(today, 0, thr);
-  if (hour == null) { res.p = { ...res.pForecast }; return res; }
-  const obs = BrevaModel.obsFeatures(hourly, today, hour);
+  const g = BrevaModel.brevaDay(hourly, shiftDate(today, -1), H.faktor, H.faktor_col, H.lang_h);
+  const res = { hour, gestern: g, today, p: {}, pForecast: weekProb(today, 0, 14), obs: null };
+  if (hour == null) { res.p = { "14": res.pForecast, lang: null }; return res; }
+  const obs = BrevaModel.obsFeatures(hourly, today, hour, H.faktor, H.faktor_col);
   res.obs = obs;
   const x = { ...F[today], ...obs, gestern_breva: g ? g.breva : NaN, gestern_max: g ? g.max : NaN };
-  for (const thr of THRESHOLDS) {
-    const m = M.h[`${hour}_${thr}`]; if (!m) continue;
-    res.p[thr] = BrevaModel.calibrate(H.calib[`${hour}_${thr}`], BrevaModel.predictProba(m, BrevaModel.vec(x, H.features)));
+  for (const k of HEUTE_ZIELE) {
+    const m = M.h[`${hour}_${k}`]; if (!m) continue;
+    res.p[k] = BrevaModel.calibrate(H.calib[`${hour}_${k}`], BrevaModel.predictProba(m, BrevaModel.vec(x, H.features)));
   }
   return res;
 }
@@ -342,18 +342,19 @@ function drawNow() {
   const cl = ds.length ? climateP(ds[0], state.thr) : null;
   const fmtObs = v => v == null || !Number.isFinite(v) ? "–" : `${v >= 0 ? "" : "−"}${de(Math.abs(v))} kn`;
   const heuteHtml = H ? `<div class="heute">
-      <div class="hcards">${THRESHOLDS.map(t => `<div class="hcard ${pClass(H.p[t])}"><span class="hp">${H.p[t] == null ? "–" : Math.round(H.p[t] * 100) + "\u00a0%"}${callTag(heuteCall(H, t))}</span>
-        <span class="hl">Breva ≥ ${t} kn today<br><small>at least 2 h in a row</small></span></div>`).join("")}</div>
-      <p class="hint">${H.hour == null ? "Forecast only – measurements are added from 9:00 (model at 9, 11 and 13:00)."
-        : `As of ${H.hour}:00: forecast for today + measurements until ${H.hour}:00 + yesterday. ${state.M.heute.hours.some(h => h > H.hour) ? `Next update at ${state.M.heute.hours.filter(h => h > H.hour).map(h => h + ":00").join(" and ")}.` : "Last update of the day – from now on the stations show how it develops."}`}</p>
+      <div class="hcards">${[["14", "Breva today", "≥ 14 kn for at least 2 h"], ["lang", "Long Breva", `≥ 14 kn for at least ${state.M.heute.lang_h ?? 5} h`]].map(([k, t, sub]) => `<div class="hcard ${pClass(H.p[k])}"><span class="hp">${H.p[k] == null ? "–" : Math.round(H.p[k] * 100) + "\u00a0%"}${callTag(heuteCall(H, k))}</span>
+        <span class="hl">${t}<br><small>${sub}</small></span></div>`).join("")}</div>
+      <p class="hint">${H.hour == null ? `Forecast only – measurements are added from ${state.M.heute.hours[0]}:00 (model at ${state.M.heute.hours.map(h => h + ":00").join(", ")}).`
+        : `As of ${H.hour}:00: forecast for today + measurements until ${H.hour}:00 + yesterday. ${state.M.heute.hours.some(h => h > H.hour) ? `Next update at ${state.M.heute.hours.filter(h => h > H.hour).map(h => h + ":00").join(", ")}.` : "Last update of the day – from now on the stations show how it develops."}`}</p>
       <ul class="hfak">
-        <li><b>Forecast alone</b> (ECMWF, 7-day model): ${THRESHOLDS.map(t => `≥${t}: ${pct(H.pForecast[t])}`).join(" · ")}</li>
-        <li><b>Breva yesterday</b>: ${H.gestern == null ? "unknown" : H.gestern.breva ? `yes (up to ~${Math.round(H.gestern.max)} kn on the lake)` : `no (max ~${Math.round(H.gestern.max)} kn)`}
+        <li><b>Forecast alone</b> (ECMWF, 7-day model): ${pct(H.pForecast)}</li>
+        <li><b>Breva yesterday</b>: ${H.gestern == null ? "unknown" : H.gestern.breva ? `yes, ${H.gestern.stunden} h at 14+ kn (up to ~${Math.round(H.gestern.max)} kn on the lake)` : `no (max ~${Math.round(H.gestern.max)} kn)`}
           <small>– after a Breva day another one follows in ${pct(state.M.heute.vortag_stat?.["1"])} of cases, otherwise in ${pct(state.M.heute.vortag_stat?.["0"])}</small></li>
+        ${H.obs && Number.isFinite(H.obs.see_stunden) ? `<li><b>Breva so far today</b>: ${H.obs.see_stunden} h at 14+ kn on the lake (estimate from Samolaco/Colico), now ~${Math.round(H.obs.see_jetzt)} kn</li>` : ""}
         ${H.obs ? `<li><b>Breva direction now</b>: Vercana ${fmtObs(H.obs.vercana_jetzt)}, Samolaco ${fmtObs(H.obs.samolaco_jetzt)}, Colico ${fmtObs(H.obs.colico_jetzt)}, Morbegno ${fmtObs(H.obs.morbegno_jetzt)}
           <small>– wind component in Breva direction, negative = opposite. Vercana turns south-west first.</small></li>
         <li><b>Tivano this morning</b> (Samolaco from north, 5–9:00): ${fmtObs(H.obs.tivano_samolaco)}</li>` : ""}
-        ${cl ? `<li><b>Usual</b> in ${new Date(ds[0] + "T12:00:00").toLocaleDateString("en-GB", { month: "long" })}: ${pct(cl.p)} of days ≥ ${state.thr} kn</li>` : ""}
+        ${cl ? `<li><b>Usual</b> in ${new Date(ds[0] + "T12:00:00").toLocaleDateString("en-GB", { month: "long" })}: ${pct(cl.p)} of days are Breva days</li>` : ""}
       </ul></div>` : "";
   box.innerHTML = `<div class="panel-head"><h2>Today</h2><span class="meta">Is it worth going?</span></div>
     ${heuteHtml}
@@ -379,13 +380,13 @@ function drawWeek() {
       return `<td data-day="${i}" title="${p?.txt ?? ""}"><span class="bar"><i style="width:${p?.s == null ? 0 : Math.round(p.s * 100)}%"></i></span></td>`; }).join("")}</tr>`;
   }).join("");
   const rainRow = S.map(({ sig }, i) => `<td data-day="${i}" class="rain">${sig == null ? "" : sig.rain >= 2 ? "🌧" : sig.rain >= 0.5 ? "🌦" : ""}</td>`).join("");
-  const modelRow = state.M && features7() ? `<tr><th scope="row">Chance ≥ ${state.thr} kn<br><small>Breva model, at least 2 h</small></th>${S.map(({ d, season }, i) => {
+  const modelRow = state.M && features7() ? `<tr><th scope="row">Breva chance<br><small>14+ kn for at least 2 h</small></th>${S.map(({ d, season }, i) => {
       const p = weekProb(d, i, state.thr);
       return `<td class="cell ${season ? pClass(p) : "r0 offs"}${isWeekend(d) ? " we" : ""}${i === state.day ? " sel" : ""}" data-day="${i}"><span class="v">${p == null ? "–" : Math.round(p * 100) + "%"}</span>${season ? callTag(weekCall(i, state.thr, p)) : ""}</td>`; }).join("")}</tr>` : "";
   t.innerHTML = `<thead><tr><th scope="col" class="spotcol"></th>${head}</tr></thead><tbody>
     ${modelRow}
     <tr class="${modelRow ? "zeichen" : ""}"><th scope="row">Breva signs<br><small>0–100, ${MODEL_LABEL[state.model]}</small></th>${sigRow}</tr>
-    <tr><th scope="row">Usual ${state.thr}+ kn<br><small>share of days in month</small></th>${clRow}</tr>
+    <tr><th scope="row">Usual<br><small>share of Breva days in month</small></th>${clRow}</tr>
     ${partRows}
     <tr class="part"><th scope="row">Rain 11–19:00</th>${rainRow}</tr></tbody>`;
   t.querySelectorAll("[data-day]").forEach(e => e.addEventListener("click", () => { state.day = Number(e.dataset.day); drawWeek(); drawDetail(); }));
@@ -409,11 +410,11 @@ function drawDetail() {
       <span class="meta">${sp.shore}${ratio ? ` · in Breva ${ratio >= 1 ? "+" : ""}${Math.round((ratio - 1) * 100)} % vs. the upper-lake average` : ""}</span></div>
     <div class="spotpick" role="group" aria-label="Spot">${SPOTS.map(s => `<button type="button" class="seg${s.id === sp.id ? " on" : ""}" data-spot="${s.id}">${s.short}</button>`).join("")}</div>
     ${state.M && features7() ? `<p class="sigline"><b>Breva model:</b> ${THRESHOLDS.map(t => { const p = weekProb(date, ds.indexOf(date), t);
-      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> ≥ ${t} kn${callTag(weekCall(ds.indexOf(date), t, p))}`; }).join(" · ")}${
+      return `<span class="badge ${pClass(p)}">${p == null ? "–" : Math.round(p * 100) + "%"}</span> chance of a Breva day${callTag(weekCall(ds.indexOf(date), t, p))}`; }).join(" · ")}${
       sig && sig.rain >= 3 && (weekProb(date, ds.indexOf(date), 14) ?? 0) >= 0.3
         ? `<br><small>🌧 South wind with rain: more likely pre-frontal wind than a thermal Breva – usually steady but wet; watch for thunderstorms.</small>` : ""}</p>` : ""}
     ${sig ? `<p class="sigline"><span class="badge ${signalClass(sig.score)}">${Math.round(sig.score * 100)}</span> <b>${signalWord(sig.score)}</b>
-      ${cl ? ` · usual on ${pct(cl.p)} of days in the month: at least 2 h from ${state.thr} kn` : ""}${sig.rainF < 1 ? ` · rain ${de(sig.rain)} mm dampens` : ""}</p>
+      ${cl ? ` · usual: Breva on ${pct(cl.p)} of days in the month` : ""}${sig.rainF < 1 ? ` · rain ${de(sig.rain)} mm dampens` : ""}</p>
       <ul class="parts">${sig.parts.map(p => `<li><span class="bar"><i style="width:${p.s == null ? 0 : Math.round(p.s * 100)}%"></i></span> ${p.label}: ${p.txt}</li>`).join("")}</ul>` : ""}
     <div class="ftable-wrap"><table class="ftable"><tbody>
       ${row("Hour", i => `<td>${o.time[i].slice(11, 13)}</td>`, "hrow")}
@@ -469,15 +470,6 @@ async function refresh() {
 function init() {
   $("#modelSel").value = state.model;
   $("#modelSel").addEventListener("change", e => { state.model = e.target.value; save("model", state.model); renderAll(); });
-  document.querySelectorAll(".thr-toggle .seg").forEach(b => {
-    const on = Number(b.dataset.thr) === state.thr;
-    b.classList.toggle("on", on); b.setAttribute("aria-pressed", on);
-    b.addEventListener("click", () => {
-      state.thr = Number(b.dataset.thr); save("thr", state.thr);
-      document.querySelectorAll(".thr-toggle .seg").forEach(x => { const o = x === b; x.classList.toggle("on", o); x.setAttribute("aria-pressed", o); });
-      renderAll();
-    });
-  });
   $("#refreshBtn").addEventListener("click", refresh);
   $("#btnMap").addEventListener("click", () => setLayer("map"));
   $("#btnSat").addEventListener("click", () => setLayer("sat"));

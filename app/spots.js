@@ -27,7 +27,7 @@ const POINTS = [
   { id: "zurich",    lat: 47.38, lon: 8.54 }    // Alpennordseite (Föhn)
 ];
 
-const THRESHOLDS = [14, 18];
+const THRESHOLDS = [14];          // Breva-Tag: ≥ 14 kn für mind. 2 h (Samolaco oder Colico, Satellitenfaktor)
 const SEASON = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];   // ganzes Jahr
 
 /* Punkte des Breva-Modells (wie training/breva_daten.py POINTS) – Vorhersage ECMWF, 31 Tage zurück für Vortag/30-Tage-Mittel */

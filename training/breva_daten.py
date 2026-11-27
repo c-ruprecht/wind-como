@@ -399,6 +399,36 @@ def run2(mask, day):
     return m.groupby([day, g]).sum().groupby(level=0).max()
 
 
+SEKTOR = {"samolaco": (112, 202), "colico": (200, 315)}       # Breva-Richtung je Station (wie sat_analyse)
+LANG_H = 5                                                     # langer Breva: mindestens 5 Stunden ≥ 14 kn
+
+
+def see_hourly(sam, col, fs, fc, thr=14):
+    """Je Tag aus Stundenmitteln: Seewind-Schätzung = max(Samolaco × fs, Colico × fc), nur aus Breva-Sektor, 11–20 Uhr.
+    breva_lauf: längste Folge ≥ thr; breva_h: Stunden ≥ thr; breva_start/_ende: erste/letzte solche Stunde;
+    morgen_nicht_breva: Samolaco 6–10 Uhr, Wind aus Breva-Richtung zählt als 0 (wie app/breva_model.js seeDay)."""
+    ins = lambda x, st: (x.dir >= SEKTOR[st][0]) & (x.dir <= SEKTOR[st][1])  # noqa: E731
+    s = sam[~sam.index.duplicated()]; c = col[~col.index.duplicated()]
+    ls = (s.kn * fs).where(ins(s, "samolaco"), 0)
+    lc = (c.kn * fc).where(ins(c, "colico"), 0)
+    see = pd.concat([ls.rename("s"), lc.rename("c")], axis=1, sort=True).max(axis=1)
+    h = see.index.hour
+    nm = see[(h >= 11) & (h <= 20)]
+    P = nm.to_frame("v").assign(d=nm.index.normalize(), h=nm.index.hour).pivot_table(index="d", columns="h", values="v")
+    P = P.reindex(columns=range(11, 21))
+    on = (P >= thr)
+    cur = pd.Series(0, index=P.index); lauf = cur.copy()
+    for hh in P.columns:                                          # Lücken (NaN) unterbrechen die Folge
+        cur = (cur + 1) * on[hh].astype(int); lauf = np.maximum(lauf, cur)
+    hrs = on.sum(axis=1)
+    out = pd.DataFrame({"breva_lauf": lauf, "breva_h": hrs,
+                        "breva_start": on.idxmax(axis=1).where(hrs > 0), "breva_ende": on.iloc[:, ::-1].idxmax(axis=1).where(hrs > 0),
+                        "see_max_stunde": P.max(axis=1)})
+    mh = s.index.hour; ms = s[(mh >= 6) & (mh <= 10)]
+    out["morgen_nicht_breva"] = ms.kn.where(~ins(ms, "samolaco"), 0).groupby(ms.index.normalize()).mean()
+    return out
+
+
 def sat_evenings():
     f = os.path.join(RES, "sar_spots.csv")
     if not os.path.exists(f):
@@ -448,6 +478,16 @@ def tage():
     for thr in (10, 12, 14, 18):
         D[f"breva{thr}"] = (run2((sx.kn * f >= thr) & ss, sd).reindex(D.index) >= 2).astype(int)
     D["see_max_est"] = D.sam_max * f
+    # Neues Ziel (sat_analyse „B_eine“, am besten mit dem Satelliten): Samolaco ODER Colico, je mit eigenem
+    # Satellitenfaktor, nur Wind aus Breva-Sektor; morgens zählt nur Wind, der NICHT aus Breva-Richtung kommt.
+    fc_ok = clean_eve & (D.col_max >= 3)
+    fc = float((D.sat_see / D.col_max)[fc_ok].median()) if fc_ok.sum() >= 15 else 2.6
+    print(f"Satellitenfaktor See/Colico-Max (n={int(fc_ok.sum())}): {fc:.2f}")
+    E = see_hourly(sam, col, f, fc)
+    D = D.join(E, how="left")
+    D["breva"] = ((D.breva_lauf >= 2) & (D.morgen_nicht_breva.fillna(0) < 6) & (D.sam_nord_std < 2)).astype(int)
+    D["breva_lang"] = (D.breva.astype(bool) & (D.breva_h >= LANG_H)).astype(int)
+    D["faktor_sam"] = round(f, 3); D["faktor_col"] = round(fc, 3)
     D["regen"] = regen
     D["cape"] = W["cape_max"] if "cape_max" in W else np.nan
     # Klassen

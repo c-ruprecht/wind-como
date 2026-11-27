@@ -1,15 +1,16 @@
-"""Breva-Modell für die App: Chance auf mind. 2 h am Stück ≥ 14 / ≥ 18 kn auf dem oberen See, 7 Tage voraus.
+"""Breva-Modell für die App: Chance auf einen Breva-Tag (mind. 2 h am Stück ≥ 14 kn auf dem oberen See), 7 Tage voraus.
 
   python training/train_breva.py
 
 Voraussetzung: breva_daten.py wetter, laeufe, tage.
 
-- Ziel: Tagesklassen (results/breva_tage.csv) – Breva ≥ 14 / ≥ 18 kn; Störungstage (Regen, Föhn, …) zählen als 0.
+- Ziel C (Standard): Spalte breva aus breva_daten.tage – Samolaco ODER Colico × Satellitenfaktor ≥ 14 kn, ≥ 2 h,
+  morgens kein Nicht-Breva-Wind, kein Nordwind. Ältere Ziele A/B (14 und 18 kn) über BREVA_ZIEL=A/B.
 - Merkmale: nur Größen, die die ECMWF-Vorhersage für 7 Tage liefert (FEATS), berechnet wie in breva_daten.features().
 - Modell: XGBoost auf ERA5 2014–heute (Wetter, wie es war).
 - Eichung je Vorlauftag: ein zweites Modell nur bis 2023 sagt die Tage ab 2024 aus den echten ECMWF-Läufen
   (1–7 Tage vorher) voraus; daraus eine isotone Kurve je Vorlauf (Vorhersagefehler der Läufe eingerechnet).
-- Export nach app/model/: breva_14.json, breva_18.json (Bäume), manifest.json (Merkmale, Eichung, Prüfwerte).
+- Export nach app/model/: breva_14.json (Bäume), manifest.json (Merkmale, Eichung, Prüfwerte).
 """
 import json, os, sys
 import numpy as np
@@ -38,15 +39,24 @@ MONO = {"wind_see_15_sued": 1, "taupunktdiff_milano": 1, "dp_po_tal_15": 1, "dp_
         "dp_bergamo_sondrio_15": 1, "dp_tag_minus_nacht": 1, "dp_zurich_milano_12": -1, "regen_see": -1,
         "regen_chiavenna": -1, "regen_vortag": -1, "rad_chiavenna": 1, "rad_spaet_chiavenna": 1, "rad_see": 1,
         "wolken_see": -1, "wolken_chiavenna": -1, "wolken_morgen_see": -1}
-OPT = {"ziel": os.environ.get("BREVA_ZIEL", "B"), "monoton": os.environ.get("BREVA_MONOTON", "0") == "1"}
+OPT = {"ziel": os.environ.get("BREVA_ZIEL", "C"), "monoton": os.environ.get("BREVA_MONOTON", "0") == "1"}
 
 
 def target(D, thr):
     """Ziel B (Standard): nur aus Stationen – Breva auf dem See, morgens ruhig, kein Nordwind; Regen zählt nicht.
     Trifft den Satelliten besser (0,81 statt 0,72, model_analyse Teil 5). Ziel A: Störtage inkl. ERA5-Regen = 0."""
+    if OPT["ziel"] == "C":
+        # Standard: Breva ≥ 14 kn ≥ 2 h an Samolaco ODER Colico (je × Satellitenfaktor, nur aus Breva-Sektor),
+        # morgens kein Nicht-Breva-Wind, kein Nordwind (breva_daten.tage, Spalte breva). thr wird ignoriert.
+        return D["breva"].fillna(0).astype(int)
     if OPT["ziel"] == "B":
         return ((D[f"breva{thr}"] == 1) & (D.sam_morgen < 6) & (D.sam_nord_std < 2)).astype(int)
     return D[f"breva{thr}"].where(D.klasse.isin(["Breva", "Breva schwach", "ruhig"]), 0).astype(int)
+
+
+def ZIELE():
+    """Ziel C: nur ein Ziel (Breva ja/nein, intern Schlüssel 14); alte Ziele A/B: 14 und 18 kn."""
+    return (14,) if OPT["ziel"] == "C" else (14, 18)
 
 
 def xgb_model(feats=None):
@@ -116,7 +126,7 @@ def main():
     test_rows = X.dropna(thresh=len(FEATS) - 5).sample(150, random_state=1)
     man["test"] = {"rows": test_rows.astype(float).where(test_rows.notna(), None).values.tolist(), "p": {}}
     OOF = []
-    for thr in (14, 18):
+    for thr in ZIELE():
         y = target(D, thr)
         ok = X.notna().mean(axis=1) > 0.7
         final = xgb_model(FEATS).fit(X[ok], y[ok])
@@ -180,7 +190,10 @@ def main():
     if OOF:
         pd.concat(OOF).round(4).to_csv(f"{B.RES}/oof_7tage.csv", index=False)
         print("geschrieben: results/oof_7tage.csv (out-of-fold je Tag, Vorlauf, Schwelle)")
-    print(f"\ngeschrieben: app/model/manifest.json, breva_14.json, breva_18.json ({len(FEATS)} Merkmale)")
+    for thr in (14, 18):                                   # Modelldateien von Schwellen, die es nicht mehr gibt
+        if thr not in ZIELE() and os.path.exists(f"{OUT}/breva_{thr}.json"):
+            os.remove(f"{OUT}/breva_{thr}.json")
+    print(f"\ngeschrieben: app/model/manifest.json, " + ", ".join(f"breva_{t}.json" for t in ZIELE()) + f" ({len(FEATS)} Merkmale)")
 
 
 if __name__ == "__main__":

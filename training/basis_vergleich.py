@@ -25,7 +25,8 @@ SOURCES = {"ecmwf_ifs025": range(1, 8), "ecmwf_ifs00z": range(0, 8)}
 FIRST_TEST = 2024
 
 
-def main(thr_list=(14, 18)):
+def main(thr_list=None):
+    thr_list = thr_list or T.ZIELE()
     D = pd.read_csv(f"{B.RES}/breva_tage.csv", index_col=0, parse_dates=True)
     F = T.FEATS
     E5 = B.features(B.load("era5")).reindex(D.index).reindex(columns=F)
