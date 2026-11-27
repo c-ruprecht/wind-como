@@ -1,6 +1,6 @@
 /* Breva – Kitewind oberer Comer See. Holt alles direkt im Browser (Open-Meteo, ARPA Lombardia), kein Server.
    Erste Version: Breva-Zeichen aus den Wettermodellen (vorläufig, noch ohne trainiertes Modell),
-   Messungen jetzt mit Satellitenfaktor auf die Spots umgerechnet, Breva-Bild aus Sentinel-1. */
+   Breva-Vorhersage (7 Tage + heute), Stationsmessungen, Breva-Bild aus Sentinel-1. */
 "use strict";
 
 const DEMO = new URLSearchParams(location.search).has("demo");
@@ -167,23 +167,6 @@ function hourlyMeans(sp, dmap) {
   return out;
 }
 
-/* ---------- Jetzt-korr.: Station × Satellitenfaktor, gewichtet nach Zusammenhang (r²) ---------- */
-function nowEstimate(spotId) {
-  const F = state.info?.faktoren?.[spotId];
-  if (!F) return null;
-  let s = 0, w = 0; const used = [];
-  for (const st of STATIONS) {
-    const o = state.obs[st.id], f = F[st.id];
-    if (!o || !f || o.dir == null || Date.now() - o.time > 90 * 60e3) continue;
-    if (!inSec(o.dir, st.sektor) || o.kn < 2) continue;                    // Station sieht gerade keinen Breva
-    const wt = f.r * f.r;
-    s += wt * o.kn * f.median; w += wt; used.push({ wt, txt: `${st.name} ${de(o.kn)} kn × ${de(f.median, 2)}` });
-  }
-  used.sort((a, b) => b.wt - a.wt);
-  if (!w) return { kn: null, used: [] };
-  return { kn: s / w, used: used.map(u => u.txt) };
-}
-
 /* ---------- Breva-Zeichen je Tag (vorläufig, Schwellen aus ERA5 2014–2026, breva_events.py analyse) ---------- */
 function dayIdx(o, date, h0, h1) { return o.time.map((t, i) => [t, i]).filter(([t]) => t.slice(0, 10) === date && +t.slice(11, 13) >= h0 && +t.slice(11, 13) <= h1).map(([, i]) => i); }
 function atHour(o, m, v, date, h) { const i = o.time.indexOf(`${date}T${String(h).padStart(2, "0")}:00`); return i < 0 ? null : o[m][v][i] ?? null; }
@@ -318,14 +301,12 @@ function drawMarkers() {
   const today = state.fc ? Object.keys(state.fc.points.see.sunrise)[0] : null;
   const sig = today ? brevaSigns(today, state.model) : null;
   for (const sp of SPOTS) {
-    const est = nowEstimate(sp.id);
     const el = document.createElement("button");
     el.type = "button";
     const pt = state.M && features7() && today ? weekProb(today, 0, state.thr) : null;
     el.className = `spot-mk mk-${pt != null ? pClass(pt) : signalClass(sig?.score)}${sp.id === state.spot ? " cur" : ""}`;
-    const nowTxt = est && est.kn != null ? `jetzt ~${Math.round(est.kn)} kn` : (state.info?.spot_zu_see?.[sp.id] ? `Breva ×${de(state.info.spot_zu_see[sp.id], 2)}` : "");
-    el.innerHTML = `<span class="dot"></span><span class="lab"><b>${sp.short}</b><span>${nowTxt}</span></span>`;
-    el.setAttribute("aria-label", `${sp.name}${nowTxt ? ": " + nowTxt : ""}`);
+    el.innerHTML = `<span class="dot"></span><span class="lab"><b>${sp.short}</b></span>`;
+    el.setAttribute("aria-label", sp.name);
     el.addEventListener("click", ev => { ev.stopPropagation(); selectSpot(sp.id); });
     state.markers.push(new maplibregl.Marker({ element: el, anchor: "left", offset: [-8, 0] }).setLngLat([sp.lon, sp.lat]).addTo(state.map));
   }
@@ -349,13 +330,6 @@ function spark(series) {
 }
 function drawNow() {
   const box = $("#now");
-  const rows = SPOTS.map(sp => {
-    const e = nowEstimate(sp.id);
-    const kn = e?.kn;
-    return `<tr class="${sp.id === state.spot ? "cur" : ""}"><th scope="row"><button type="button" class="linkbtn" data-spot="${sp.id}">${sp.name}</button></th>
-      <td class="cell ${kn == null ? "r0" : kn >= 18 ? "r4" : kn >= 14 ? "r2" : kn >= 10 ? "r1" : "r0"}">${kn == null ? "–" : Math.round(kn) + " kn"}</td>
-      <td class="why" title="${e && e.used.length ? e.used.join(" · ") : ""}">${e == null ? "keine Faktoren" : e.used.length ? e.used.slice(0, 2).join(" · ") + (e.used.length > 2 ? ` · +${e.used.length - 2}` : "") : "keine Station misst gerade Breva"}</td></tr>`;
-  }).join("");
   const stn = STATIONS.map(st => {
     const o = state.obs[st.id];
     const breva = o && inSec(o.dir, st.sektor) && o.kn >= 2;
@@ -372,7 +346,7 @@ function drawNow() {
       <div class="hcards">${THRESHOLDS.map(t => `<div class="hcard ${pClass(H.p[t])}"><span class="hp">${H.p[t] == null ? "–" : Math.round(H.p[t] * 100) + "\u00a0%"}${callTag(heuteCall(H, t))}</span>
         <span class="hl">Breva ≥ ${t} kn heute<br><small>mind. 2 h am Stück</small></span></div>`).join("")}</div>
       <p class="hint">${H.hour == null ? "Nur Vorhersage – Messungen fließen ab 9 Uhr ein (Modell 9, 11 und 13 Uhr)."
-        : `Stand ${H.hour} Uhr: Vorhersage für heute + Messungen bis ${H.hour} Uhr + gestern. ${state.M.heute.hours.some(h => h > H.hour) ? `Neu um ${state.M.heute.hours.filter(h => h > H.hour).join(" und ")} Uhr.` : "Letzter Stand des Tages – ab jetzt zählt „Jetzt am Spot“."}`}</p>
+        : `Stand ${H.hour} Uhr: Vorhersage für heute + Messungen bis ${H.hour} Uhr + gestern. ${state.M.heute.hours.some(h => h > H.hour) ? `Neu um ${state.M.heute.hours.filter(h => h > H.hour).join(" und ")} Uhr.` : "Letzter Stand des Tages – ab jetzt zeigen die Stationen, wie es weitergeht."}`}</p>
       <ul class="hfak">
         <li><b>Vorhersage allein</b> (ECMWF, 7-Tage-Modell): ${THRESHOLDS.map(t => `≥${t}: ${pct(H.pForecast[t])}`).join(" · ")}</li>
         <li><b>Gestern Breva</b>: ${H.gestern == null ? "unbekannt" : H.gestern.breva ? `ja (bis ~${Math.round(H.gestern.max)} kn auf dem See)` : `nein (max ~${Math.round(H.gestern.max)} kn)`}
@@ -384,11 +358,6 @@ function drawNow() {
       </ul></div>` : "";
   box.innerHTML = `<div class="panel-head"><h2>Heute</h2><span class="meta">Lohnt es sich loszufahren?</span></div>
     ${heuteHtml}
-    <h3>Jetzt am Spot <small class="meta">Messung × Satellitenfaktor, auf dem Wasser</small></h3>
-    <div class="weekwrap"><table class="nowtab"><tbody>${rows}</tbody></table></div>
-    <p class="hint">Die ARPA-Stationen stehen im Tal oder am Hang und messen den Breva nur zum Teil. Der Wert am Spot ist die Messung
-      mal dem Verhältnis Spot/Station, das die Sentinel-1-Bilder an ${state.info?.sat_abende ?? "…"} Breva-Abenden zeigen. Gilt nur, wenn
-      die Station gerade Wind aus ihrer Breva-Richtung misst; mehrere Stationen werden nach Zusammenhang gewichtet.</p>
     <h3>Stationen (ARPA Lombardia, letzte 6 h)</h3><ul class="stnlist">${stn}</ul>`;
   box.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot)));
 }
