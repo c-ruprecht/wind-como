@@ -51,7 +51,7 @@ async function fetchJSON(url, timeoutMs = 25000) {
   } finally { clearTimeout(t); }
 }
 
-/* ---------- Vorhersage (Open-Meteo, ICON + ECMWF) ---------- */
+/* ---------- Vorhersage (Open-Meteo, ECMWF) ---------- */
 async function fetchForecast() {
   const places = [...SPOTS, ...POINTS];
   const p = new URLSearchParams({
@@ -488,13 +488,13 @@ function drawDetail() {
       ${row("Hour", i => `<td>${o.time[i].slice(11, 13)}</td>`, "hrow")}
       ${Object.keys(MODELS).map(m => row("Direction " + MODEL_LABEL[m], i => `<td title="${compass(o[m].wind_direction_10m[i])}">${o[m].wind_direction_10m[i] != null ? arrow(o[m].wind_direction_10m[i]) : ""}</td>`, "drow")
         + row(MODEL_LABEL[m] + " kn", i => { const k = o[m].wind_speed_10m[i]; return `<td class="${knCls(k)}">${k == null ? "–" : Math.round(k)}</td>`; }, "mrow")).join("")}
-      ${row("Gusts ICON", i => `<td>${o.icon.wind_gusts_10m[i] == null ? "" : Math.round(o.icon.wind_gusts_10m[i])}</td>`, "grow2")}
-      ${row("Clouds %", i => `<td>${o.icon.cloud_cover[i] == null ? "" : Math.round(o.icon.cloud_cover[i])}</td>`, "wrow")}
-      ${row("Rain mm", i => `<td>${o.icon.precipitation[i] > 0.05 ? de(o.icon.precipitation[i]) : ""}</td>`, "wrow")}
-      ${row("°C", i => `<td>${o.icon.temperature_2m[i] == null ? "" : Math.round(o.icon.temperature_2m[i])}</td>`, "trow")}
+      ${row("Gusts", i => `<td>${o.ecmwf.wind_gusts_10m[i] == null ? "" : Math.round(o.ecmwf.wind_gusts_10m[i])}</td>`, "grow2")}
+      ${row("Clouds %", i => `<td>${o.ecmwf.cloud_cover[i] == null ? "" : Math.round(o.ecmwf.cloud_cover[i])}</td>`, "wrow")}
+      ${row("Rain mm", i => `<td>${o.ecmwf.precipitation[i] > 0.05 ? de(o.ecmwf.precipitation[i]) : ""}</td>`, "wrow")}
+      ${row("°C", i => `<td>${o.ecmwf.temperature_2m[i] == null ? "" : Math.round(o.ecmwf.temperature_2m[i])}</td>`, "trow")}
     </tbody></table></div>
-    <p class="hint">Raw model values at the spot. The models barely see the Breva (grid 2–9 km, the lake is 2–4 km wide):
-      on Breva afternoons they mostly show 4–8 kn while 12–20 kn blow on the water. That is why the Breva model and signs above matter more than the knots here.</p>
+    <p class="hint">Raw model values at the spot. The models barely see the Breva (ECMWF grid ~25 km, the lake is 2–4 km wide):
+      on Breva afternoons they mostly show 4–8 kn while 12–20 kn blow on the water. That is why the Breva model above matters more than the knots here.</p>
     <div class="legend"><span>Model (kn):</span>${KN_SCALE.map(([v, k], j) => `<span><i class="sw ${k}"></i>${v}${KN_SCALE[j + 1] ? "–" + KN_SCALE[j + 1][0] : "+"}</span>`).join("")}</div>`;
   box.querySelectorAll("[data-spot]").forEach(e => e.addEventListener("click", () => selectSpot(e.dataset.spot, false)));
 }
