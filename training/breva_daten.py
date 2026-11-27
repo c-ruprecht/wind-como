@@ -483,7 +483,7 @@ def tage():
     fc_ok = clean_eve & (D.col_max >= 3)
     fc = float((D.sat_see / D.col_max)[fc_ok].median()) if fc_ok.sum() >= 15 else 2.6
     print(f"Satellitenfaktor See/Colico-Max (n={int(fc_ok.sum())}): {fc:.2f}")
-    E = see_hourly(sam, col, f, fc)
+    E = see_hourly(sam, station("colico"), f, fc)              # col ist oben als Hilfsfunktion überschrieben
     D = D.join(E, how="left")
     D["breva"] = ((D.breva_lauf >= 2) & (D.morgen_nicht_breva.fillna(0) < 6) & (D.sam_nord_std < 2)).astype(int)
     D["breva_lang"] = (D.breva.astype(bool) & (D.breva_h >= LANG_H)).astype(int)
