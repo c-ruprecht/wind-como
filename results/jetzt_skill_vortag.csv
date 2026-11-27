@@ -1,0 +1,79 @@
+art,stufe,schwelle,stunde,faelle,ja,auc,auc_saison,stunden_voraus,mae,mae_persistenz,mae_bei_wind
+kommt_noch,V Vorhersage,14.0,8.0,961,218.0,0.88,0.838,,,,
+kommt_noch,V Vorhersage,14.0,9.0,961,218.0,0.88,0.838,,,,
+kommt_noch,V Vorhersage,14.0,10.0,961,216.0,0.879,0.836,,,,
+kommt_noch,V Vorhersage,14.0,11.0,961,215.0,0.88,0.838,,,,
+kommt_noch,V Vorhersage,14.0,12.0,961,212.0,0.885,0.842,,,,
+kommt_noch,V Vorhersage,14.0,13.0,961,208.0,0.888,0.847,,,,
+kommt_noch,V Vorhersage,14.0,14.0,961,187.0,0.888,0.851,,,,
+kommt_noch,V Vorhersage,14.0,15.0,961,162.0,0.889,0.854,,,,
+kommt_noch,V Vorhersage,14.0,16.0,961,115.0,0.891,0.861,,,,
+kommt_noch,V Vorhersage,14.0,17.0,961,77.0,0.874,0.85,,,,
+kommt_noch,V Vorhersage,18.0,8.0,961,64.0,0.732,0.686,,,,
+kommt_noch,V Vorhersage,18.0,9.0,961,64.0,0.732,0.686,,,,
+kommt_noch,V Vorhersage,18.0,10.0,961,64.0,0.732,0.686,,,,
+kommt_noch,V Vorhersage,18.0,11.0,961,64.0,0.732,0.686,,,,
+kommt_noch,V Vorhersage,18.0,12.0,961,62.0,0.735,0.691,,,,
+kommt_noch,V Vorhersage,18.0,13.0,961,60.0,0.73,0.686,,,,
+kommt_noch,V Vorhersage,18.0,14.0,961,54.0,0.737,0.694,,,,
+kommt_noch,V Vorhersage,18.0,15.0,961,42.0,0.729,0.691,,,,
+kommt_noch,V Vorhersage,18.0,16.0,961,28.0,0.779,0.761,,,,
+kommt_noch,V Vorhersage,18.0,17.0,961,17.0,0.746,0.74,,,,
+kurve,V Vorhersage,,,5424,,,,1.0,3.72,2.38,6.0
+kurve,V Vorhersage,,,5424,,,,2.0,4.04,3.91,6.04
+kurve,V Vorhersage,,,5424,,,,3.0,4.2,4.99,6.01
+kurve,V Vorhersage,,,5424,,,,4.0,4.18,5.73,6.04
+kurve,V Vorhersage,,,5423,,,,5.0,4.01,6.17,6.4
+kurve,V Vorhersage,,,5423,,,,6.0,3.67,6.29,6.68
+kommt_noch,W + Wind,14.0,8.0,961,218.0,0.881,0.839,,,,
+kommt_noch,W + Wind,14.0,9.0,961,218.0,0.886,0.845,,,,
+kommt_noch,W + Wind,14.0,10.0,961,216.0,0.885,0.844,,,,
+kommt_noch,W + Wind,14.0,11.0,961,215.0,0.895,0.858,,,,
+kommt_noch,W + Wind,14.0,12.0,961,212.0,0.91,0.878,,,,
+kommt_noch,W + Wind,14.0,13.0,961,208.0,0.924,0.897,,,,
+kommt_noch,W + Wind,14.0,14.0,961,187.0,0.925,0.907,,,,
+kommt_noch,W + Wind,14.0,15.0,961,162.0,0.932,0.915,,,,
+kommt_noch,W + Wind,14.0,16.0,961,115.0,0.938,0.928,,,,
+kommt_noch,W + Wind,14.0,17.0,961,77.0,0.932,0.931,,,,
+kommt_noch,W + Wind,18.0,8.0,961,64.0,0.736,0.701,,,,
+kommt_noch,W + Wind,18.0,9.0,961,64.0,0.739,0.702,,,,
+kommt_noch,W + Wind,18.0,10.0,961,64.0,0.751,0.714,,,,
+kommt_noch,W + Wind,18.0,11.0,961,64.0,0.765,0.73,,,,
+kommt_noch,W + Wind,18.0,12.0,961,62.0,0.782,0.752,,,,
+kommt_noch,W + Wind,18.0,13.0,961,60.0,0.805,0.78,,,,
+kommt_noch,W + Wind,18.0,14.0,961,54.0,0.832,0.811,,,,
+kommt_noch,W + Wind,18.0,15.0,961,42.0,0.834,0.82,,,,
+kommt_noch,W + Wind,18.0,16.0,961,28.0,0.884,0.899,,,,
+kommt_noch,W + Wind,18.0,17.0,961,17.0,0.851,0.884,,,,
+kurve,W + Wind,,,5424,,,,1.0,2.26,2.38,3.16
+kurve,W + Wind,,,5424,,,,2.0,3.34,3.91,4.94
+kurve,W + Wind,,,5424,,,,3.0,3.79,4.99,5.51
+kurve,W + Wind,,,5424,,,,4.0,3.92,5.73,5.77
+kurve,W + Wind,,,5423,,,,5.0,3.86,6.17,6.17
+kurve,W + Wind,,,5423,,,,6.0,3.59,6.29,6.59
+kommt_noch,A + ARPA-Treiber,14.0,8.0,961,218.0,0.884,0.843,,,,
+kommt_noch,A + ARPA-Treiber,14.0,9.0,961,218.0,0.892,0.853,,,,
+kommt_noch,A + ARPA-Treiber,14.0,10.0,961,216.0,0.896,0.859,,,,
+kommt_noch,A + ARPA-Treiber,14.0,11.0,961,215.0,0.905,0.871,,,,
+kommt_noch,A + ARPA-Treiber,14.0,12.0,961,212.0,0.917,0.887,,,,
+kommt_noch,A + ARPA-Treiber,14.0,13.0,961,208.0,0.926,0.901,,,,
+kommt_noch,A + ARPA-Treiber,14.0,14.0,961,187.0,0.932,0.913,,,,
+kommt_noch,A + ARPA-Treiber,14.0,15.0,961,162.0,0.94,0.92,,,,
+kommt_noch,A + ARPA-Treiber,14.0,16.0,961,115.0,0.95,0.937,,,,
+kommt_noch,A + ARPA-Treiber,14.0,17.0,961,77.0,0.949,0.941,,,,
+kommt_noch,A + ARPA-Treiber,18.0,8.0,961,64.0,0.762,0.729,,,,
+kommt_noch,A + ARPA-Treiber,18.0,9.0,961,64.0,0.776,0.74,,,,
+kommt_noch,A + ARPA-Treiber,18.0,10.0,961,64.0,0.784,0.744,,,,
+kommt_noch,A + ARPA-Treiber,18.0,11.0,961,64.0,0.794,0.756,,,,
+kommt_noch,A + ARPA-Treiber,18.0,12.0,961,62.0,0.803,0.772,,,,
+kommt_noch,A + ARPA-Treiber,18.0,13.0,961,60.0,0.817,0.794,,,,
+kommt_noch,A + ARPA-Treiber,18.0,14.0,961,54.0,0.856,0.827,,,,
+kommt_noch,A + ARPA-Treiber,18.0,15.0,961,42.0,0.862,0.831,,,,
+kommt_noch,A + ARPA-Treiber,18.0,16.0,961,28.0,0.918,0.905,,,,
+kommt_noch,A + ARPA-Treiber,18.0,17.0,961,17.0,0.905,0.897,,,,
+kurve,A + ARPA-Treiber,,,5424,,,,1.0,2.19,2.38,3.08
+kurve,A + ARPA-Treiber,,,5424,,,,2.0,3.18,3.91,4.7
+kurve,A + ARPA-Treiber,,,5424,,,,3.0,3.62,4.99,5.29
+kurve,A + ARPA-Treiber,,,5424,,,,4.0,3.79,5.73,5.52
+kurve,A + ARPA-Treiber,,,5423,,,,5.0,3.76,6.17,5.96
+kurve,A + ARPA-Treiber,,,5423,,,,6.0,3.52,6.29,6.33

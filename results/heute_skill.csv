@@ -1,7 +1,7 @@
 uhr,schwelle,tage,breva,auc,auc_nur_vorhersage,auc_nur_messungen,brier,auc_saison,auc_saison_nur_vorhersage,auc_saison_nur_messungen,wichtig
-9,14,961,198,0.903,0.885,0.799,0.095,0.855,0.832,0.752,"wind_see_15_sued, rad_chiavenna, gestern_breva, rad_spaet_chiavenna, gestern_max"
-9,18,961,57,0.77,0.733,0.781,0.049,0.721,0.682,0.733,"wind_see_15_sued, rad_chiavenna, doy_sin, gestern_breva, doy_cos"
-11,14,961,198,0.909,0.885,0.838,0.091,0.865,0.832,0.783,"rad_chiavenna, wind_see_15_sued, doy_sin, rad_spaet_chiavenna, vercana_jetzt"
-11,18,961,57,0.813,0.733,0.827,0.048,0.766,0.682,0.78,"vercana_mittel2h, wind_see_15_sued, colico_max_ab10, gestern_breva, vercana_max_ab10"
-13,14,961,198,0.931,0.885,0.91,0.078,0.903,0.832,0.879,"samolaco_jetzt, vercana_mittel2h, samolaco_mittel2h, vercana_max_ab10, rad_chiavenna"
-13,18,961,57,0.895,0.733,0.92,0.041,0.864,0.682,0.889,"samolaco_jetzt, samolaco_mittel2h, vercana_mittel2h, samolaco_max_ab10, doy_cos"
+9,14,961,198,0.901,0.886,0.782,0.096,0.853,0.834,0.733,"wind_see_15_sued, rad_chiavenna, gestern_breva, rad_spaet_chiavenna, gestern_max"
+9,18,961,57,0.79,0.745,0.737,0.051,0.736,0.682,0.686,"wind_see_15_sued, rad_chiavenna, doy_sin, gestern_breva, doy_cos"
+11,14,961,198,0.904,0.886,0.842,0.093,0.859,0.834,0.789,"rad_chiavenna, wind_see_15_sued, doy_sin, rad_spaet_chiavenna, vercana_jetzt"
+11,18,961,57,0.841,0.745,0.834,0.048,0.794,0.682,0.788,"vercana_mittel2h, wind_see_15_sued, colico_max_ab10, gestern_breva, vercana_max_ab10"
+13,14,961,198,0.932,0.886,0.911,0.077,0.903,0.834,0.881,"samolaco_jetzt, vercana_mittel2h, samolaco_mittel2h, vercana_max_ab10, rad_chiavenna"
+13,18,961,57,0.905,0.745,0.922,0.041,0.874,0.682,0.892,"samolaco_jetzt, samolaco_mittel2h, vercana_mittel2h, samolaco_max_ab10, doy_cos"
