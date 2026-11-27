@@ -6,7 +6,7 @@ Grundlage sind die out-of-fold-Vorhersagen der Prüfung 2024–heute (echte Läu
 
 Präzision: Anteil der Tage mit „Breva vorhergesagt“, an denen wirklich Breva kam.
 Recall (Trefferquote): Anteil aller Breva-Tage, die vorhergesagt wurden.
-Waagerechte Linie: Anteil der Breva-Tage (so gut ist Raten). Punkte: Breva-Call (≥ 80 % Präzision).
+Waagerechte Linie: Anteil der Breva-Tage (so gut ist Raten). Punkte: Breva-Call (≥ 70 % Präzision).
 
   python training/pr_kurven.py [--lauf ecmwf_ifs00z] [--saison]
 -> results/pr_7tage.png, results/pr_heute.png, results/pr_kurven.md
@@ -18,7 +18,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import breva_daten as B  # noqa: E402
 
-TARGET = 0.8
+TARGET = 0.7
 
 
 def pr(y, p):

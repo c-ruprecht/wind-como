@@ -223,7 +223,7 @@ function weekProb(date, i, thr) {
   return BrevaModel.calibrate(cal[String(i)] ?? cal["7"], raw);
 }
 const pClass = p => p == null ? "r0" : p >= 0.6 ? "r4" : p >= 0.4 ? "r2" : p >= 0.2 ? "r1" : "r0";
-/* Breva-Call: Chance über der Schwelle, ab der das Modell in der Prüfung 2024–heute ≥ 80 % Präzision hatte */
+/* Breva-Call: Chance über der Schwelle, ab der das Modell in der Prüfung 2024–heute ≥ 70 % Präzision hatte */
 function weekCall(i, thr, p) {
   const c = state.M?.man?.call?.[String(thr)]; const k = c && (c[String(i)] ?? c["7"]);
   return k && p != null && p >= k.schwelle ? k : null;

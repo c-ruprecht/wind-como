@@ -150,7 +150,7 @@ def main():
             out["call"][f"{hour}_{key}"] = cut
             print(f"   Call {hour} Uhr, {name}: " +
                   (f"ab {100 * cut['schwelle']:.0f} % – Präzision {100 * cut['praezision']:.0f} %, "
-                   f"erwischt {100 * cut['trefferquote']:.0f} % ({cut['calls']} Calls)" if cut else "80 % Präzision nie erreicht"), flush=True)
+                   f"erwischt {100 * cut['trefferquote']:.0f} % ({cut['calls']} Calls)" if cut else f"{100 * T.CALL_PRAEZISION:.0f} % Präzision nie erreicht"), flush=True)
             OOF.append(pd.DataFrame({"tag": D.index[good], "ziel": key, "stunde": hour, "p_roh": p, "p": pc, "y": yy}))
             gs = good & saison
             ys = y[gs].values

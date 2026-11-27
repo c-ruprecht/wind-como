@@ -83,12 +83,18 @@ def compact(m):
     return {"base": float(np.log(base / (1 - base))), "trees": trees}
 
 
-def precision_cut(pc, y, target=0.8, min_calls=8):
+CALL_GEMEINSAM = (5, 6, 7)
+CALL_PRAEZISION = 0.7                                          # Breva-Call: mindestens 7 von 10 Calls richtig
+
+
+def precision_cut(pc, y, target=CALL_PRAEZISION, min_calls=8, min_chance=0.5):
     """Kleinste Schwelle auf der geeichten Chance, ab der die Calls (pc ≥ Schwelle) mindestens `target` Präzision haben.
     Gibt Schwelle, Präzision, Trefferquote (Anteil aller Breva-Tage, die gecallt wurden) und Zahl der Calls zurück."""
     pc = np.asarray(pc, float); y = np.asarray(y, int)
     best = None
     for c in sorted(set(np.round(pc, 4)), reverse=True):
+        if c < min_chance:                     # kein „Call“ bei einer angezeigten Chance unter 50 %
+            break
         sel = pc >= c
         if sel.sum() < min_calls:
             continue
@@ -167,7 +173,7 @@ def main():
                 calls[str(L)] = cut
             print(f"   Breva-Call ≥ {thr} kn, Vorlauf {'+'.join(map(str, grp))}: " +
                   (f"ab {100 * cut['schwelle']:.0f} % – Präzision {100 * cut['praezision']:.0f} %, "
-                   f"erwischt {100 * cut['trefferquote']:.0f} % der Breva-Tage ({cut['calls']} Calls)" if cut else "80 % Präzision nie erreicht"))
+                   f"erwischt {100 * cut['trefferquote']:.0f} % der Breva-Tage ({cut['calls']} Calls)" if cut else f"{100 * CALL_PRAEZISION:.0f} % Präzision nie erreicht"))
             mon = np.concatenate([pd.concat(oof[L]).index.month for L in grp if L in oof])
             sa = (mon >= 3) & (mon <= 10)
             skill.append(dict(vorlauf="+".join(map(str, grp)), tage=len(yy), breva=int(yy.sum()),
@@ -175,6 +181,16 @@ def main():
                               auc_saison=round(roc_auc_score(yy[sa], p[sa]), 3), brier_roh=round(brier_score_loss(yy, p), 3),
                               brier_geeicht=round(brier_score_loss(yy, pc), 3), mittel_roh=round(float(p.mean()), 3),
                               mittel_geeicht=round(float(pc.mean()), 3), anteil_echt=round(float(yy.mean()), 3)))
+        # Tag 5–7: wenige hohe Chancen je Vorlauf -> Call-Schwelle gemeinsam bestimmen (stabiler als je Tag)
+        far = [L for L in CALL_GEMEINSAM if L in oof and str(L) in cal]
+        if far:
+            pf = np.concatenate([np.interp(pd.concat(oof[L]).values, *cal[str(L)]) for L in far])
+            yf = np.concatenate([y[pd.concat(oof[L]).index].values for L in far])
+            cut = precision_cut(pf, yf)
+            for L in far:
+                calls[str(L)] = cut
+            print(f"   Breva-Call Vorlauf {'+'.join(map(str, far))} gemeinsam: " + (f"ab {100 * cut['schwelle']:.0f} %, "
+                  f"Präzision {100 * cut['praezision']:.0f} %, erwischt {100 * cut['trefferquote']:.0f} %" if cut else "nie erreicht"))
         cal["0"] = cal.get("1"); calls["0"] = calls.get("1")
         for L, parts in oof.items():                       # out-of-fold-Vorhersagen für PR-Kurven (pr_kurven.py)
             pr = pd.concat(parts)

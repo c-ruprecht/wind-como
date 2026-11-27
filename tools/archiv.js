@@ -175,7 +175,7 @@ Jeder Lauf rechnet genau, was die App in dem Moment anzeigt.
 - \`app_commit\`: Git-Commit des App-Codes
 - \`zieldatum\`, \`vorlauf\` (Tage), \`schwelle\` (kn), \`stunde\` (Entscheidungsstunde des Heute-Modells, leer = nur Vorhersage)
 - \`p\`: geeichte Chance (wie in der App), \`p_roh\`: Modellausgabe vor der Eichung
-- \`call_ab\`: Schwelle für einen Breva-Call (≥ 80 % Präzision in der Prüfung; leer = nie erreicht), \`call\`: 1 = Call
+- \`call_ab\`: Schwelle für einen Breva-Call (≥ 70 % Präzision in der Prüfung; leer = nie erreicht), \`call\`: 1 = Call
 
 **merkmale/JJJJ-MM.jsonl** – je Lauf die Eingangsgrößen (zum Nachrechnen und für Modellvergleiche)
 `);

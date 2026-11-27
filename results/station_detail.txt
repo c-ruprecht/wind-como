@@ -1,0 +1,100 @@
+Abdeckung Sommerstunden je Jahr (%):
+time        2014  2015  2016  2017  2018  2019  2020  2021  2022  2023  2024  2025  2026
+colico        76    84    88    92    96    98    97    99   100    92    99    97   100
+como          96   100   100   100    99   100   100   100   100   100    90   100    48
+lecco         95    98    98    97    97    95   100   100    99    98    97    97    98
+valmadrera     0     0     0     0     0     0     0     0     0     0    99   100    99
+samolaco      99    99   100   100   100   100   100   100   100    99   100   100   100
+morbegno       0     0     5    96    99   100    99   100   100   100   100    82   100
+vercana      100   100   100   100   100   100   100   100   100   100   100   100    98
+sansiro        0    99   100   100   100    99   100   100   100   100   100   100   100
+canzo         95    99   100   100   100    99    98    97    98   100    92   100   100
+
+Tagesgang Sommer, Mittel kn (Ortszeit):
+time         6    9    11   13   15   17   19   21
+colico      1.3  1.8  2.1  3.2  3.8  4.2  3.8  2.4
+como        3.0  4.5  4.8  3.9  3.4  3.1  2.9  2.6
+lecco       1.4  1.3  1.7  1.9  2.2  2.2  2.1  2.2
+valmadrera  1.7  2.5  2.8  3.3  3.5  3.2  3.2  2.5
+samolaco    2.5  2.3  3.5  6.5  8.1  7.8  6.4  4.5
+morbegno    3.5  4.6  3.7  4.8  6.2  6.4  5.3  3.3
+vercana     2.4  2.4  3.1  4.9  5.9  5.9  5.0  4.3
+sansiro     5.1  3.9  3.9  5.2  6.0  6.1  5.9  5.3
+canzo       7.2  6.0  4.8  4.5  4.8  5.7  6.6  7.2
+
+Südanteil % (135–225°):
+time          6     9     11    13    15    17    19    21
+colico      15.0   3.0   5.0   8.0   8.0   8.0   8.0  18.0
+como         9.0   4.0   4.0   6.0  15.0  25.0  27.0  26.0
+lecco        1.0   8.0  31.0  51.0  64.0  62.0  39.0   6.0
+valmadrera  12.0  11.0  21.0  56.0  73.0  69.0  19.0  10.0
+samolaco    13.0  18.0  45.0  74.0  68.0  53.0  39.0  20.0
+morbegno     3.0   2.0   6.0  24.0  27.0  33.0  40.0  36.0
+vercana     25.0  31.0  46.0  62.0  58.0  49.0  41.0  44.0
+sansiro      1.0  12.0  46.0  51.0  42.0  27.0   5.0   2.0
+canzo       14.0  11.0  11.0  17.0  27.0  29.0  32.0  33.0
+
+Richtung nachmittags 12–19 Uhr, Sommer, nur ≥ 6 kn (% je Sektor):
+             N  NO   O  SO   S  SW   W  NW
+colico       4   4   6   2   1   4  65  14
+como        13  81   2   1   0   0   1   3
+lecco        2  10   0   1  14  12  57   3
+valmadrera  12  12   5  18  24   7   6  17
+samolaco     7   0   0  45  35   0   0  13
+morbegno     0   2   4   2  12  38  41   0
+vercana     22   2   0   0  10  63   1   2
+sansiro      6   3   0   0   1  73  16   1
+canzo       11   5  20   6   6  13  17  22
+
+Tage mit ≥2 h am Stück Süd ≥ X kn (11–20 Uhr), Mittel je Sommer:
+              ≥8   ≥10   ≥12  ≥14  ≥18
+colico       0.9   0.6   0.2  0.1  0.0
+como         0.1   0.0   0.0  0.0  0.0
+lecco        0.2   0.0   0.0  0.0  0.0
+valmadrera   3.3   0.3   0.0  0.0  0.0
+samolaco    73.5  48.3  22.8  5.5  0.3
+morbegno    16.9   4.7   1.0  0.0  0.0
+vercana     10.8   1.2   0.1  0.1  0.0
+sansiro      7.9   0.6   0.1  0.1  0.0
+canzo        3.5   1.5   0.9  0.5  0.2
+
+Stunden mit Samolaco ≥ 12 kn aus Süd (n=1247): gleichzeitig an den anderen Stationen
+              kn  verh   sued   boe
+colico       5.7  0.43   12.0  2.38
+como         2.5  0.16   29.0  4.06
+lecco        2.1  0.15   82.0  4.15
+valmadrera   3.6  0.25   86.0  2.93
+samolaco    13.4  1.00  100.0  1.53
+morbegno     8.0  0.61   36.0  2.04
+vercana      6.8  0.51   65.0  1.93
+sansiro      7.7  0.58   29.0  1.73
+canzo        4.9  0.33   44.0  2.32
+
+Einsetzen (erste Stunde ≥ 8 kn Süd, 9–20 Uhr) an 508 Samolaco-Breva-Tagen, Median Ortszeit:
+            beginn  ende   tage
+colico        15.5  18.0   16.0
+valmadrera    14.0  15.5   14.0
+samolaco      13.0  19.0  508.0
+morbegno      15.0  19.0  125.0
+vercana       16.0  18.0  187.0
+sansiro       14.0  16.0  103.0
+canzo         17.0  19.0   68.0
+
+Breva-Tage (≥2 h Süd ≥ 12 kn, 11–20 Uhr) je Monat, Mittel über Jahre:
+           1    2    3    4    5    6    7    8    9    10   11   12
+samolaco  0.8  1.8  3.2  7.7  8.7  7.2  3.8  1.8  1.4  0.8  0.2  0.4
+vercana   0.0  0.0  0.0  0.1  0.1  0.0  0.0  0.0  0.0  0.2  0.0  0.0
+colico    0.0  0.0  0.0  0.1  0.0  0.0  0.1  0.1  0.1  0.0  0.0  0.0
+morbegno  0.1  0.3  0.2  0.1  0.4  0.5  0.2  0.0  0.0  0.1  0.0  0.0
+
+Sommer-Nachmittag 13–18 Uhr, Mittel kn je Jahr:
+time        2014  2015  2016  2017  2018  2019  2020  2021  2022  2023  2024  2025  2026
+colico       3.0   3.6   3.4   3.3   4.1   3.8   4.3   4.1   4.7   4.0   3.4   3.6   3.8
+como         3.1   3.0   3.5   3.3   3.3   3.6   3.1   3.4   3.9   3.2   3.6   3.3   4.2
+lecco        2.1   2.1   2.3   2.2   2.1   2.1   2.1   2.1   2.0   1.8   1.8   1.9   2.8
+valmadrera   NaN   NaN   NaN   NaN   NaN   NaN   NaN   NaN   NaN   NaN   2.8   3.1   4.1
+samolaco     7.6   7.4   7.6   7.3   7.5   7.4   8.1   7.5   7.9   7.6   7.1   6.7   8.5
+morbegno     NaN   NaN   4.5   5.5   6.1   5.8   6.2   5.8   6.9   5.7   4.9   5.6   6.7
+vercana      5.4   5.5   5.9   5.5   5.5   5.9   5.9   5.5   5.9   5.6   5.2   5.2   5.8
+sansiro      NaN   6.3   5.8   6.0   6.1   6.0   6.0   5.8   5.9   5.6   5.3   5.6   6.1
+canzo        5.4   5.3   5.6   5.4   4.4   5.0   5.0   5.3   4.9   4.9   5.4   5.0   5.9
