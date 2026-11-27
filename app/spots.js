@@ -38,3 +38,10 @@ const MODEL_POINTS = {
 };
 const MODEL_VARS = ["temperature_2m", "dew_point_2m", "pressure_msl", "shortwave_radiation", "cloud_cover", "precipitation",
   "wind_speed_10m", "wind_direction_10m"];
+
+/* Fremde Stationen am See (Weather Underground). Ihre Werte holt die GitHub Action tools/messungen.js alle 15 min mit
+   einem API-Schlüssel (Secret WU_API_KEY) und legt sie im Branch „archiv“ ab; die App liest nur stationen/live.json. */
+const EXTERN = [
+  { id: "IGERAL122", quelle: "wu", name: "Gera Lario", note: "windsurf centre, lakefront (Weather Underground)",
+    lat: 46.169, lon: 9.360, sektor: [100, 200] }
+];

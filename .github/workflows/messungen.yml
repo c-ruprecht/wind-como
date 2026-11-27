@@ -1,0 +1,41 @@
+# Fremde Stationen (Weather Underground) alle 15 min tagsüber archivieren und für die App bereitstellen (Branch „archiv“).
+# Braucht das Secret WU_API_KEY (Settings → Secrets and variables → Actions). Ohne Schlüssel endet der Lauf ohne Änderung.
+name: Messungen archivieren
+on:
+  schedule:
+    - cron: "*/15 4-20 * * *"
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: archiv
+  cancel-in-progress: false
+jobs:
+  messungen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Archiv-Branch holen
+        run: |
+          git config user.name "breva-archiv"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin archiv; then
+            git fetch origin archiv:archiv
+            git worktree add archiv-wt archiv
+          else
+            git worktree add --orphan -b archiv archiv-wt
+          fi
+      - name: Messungen holen
+        env:
+          WU_API_KEY: ${{ secrets.WU_API_KEY }}
+        run: node tools/messungen.js archiv-wt
+      - name: Speichern
+        run: |
+          cd archiv-wt
+          git add -A
+          git commit -q -m "Messungen $(date -u +%Y-%m-%dT%H:%MZ)" || exit 0
+          git pull -q --rebase origin archiv || true
+          git push origin archiv

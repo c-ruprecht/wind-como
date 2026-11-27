@@ -18,6 +18,7 @@ const state = {
   mfc: null,        // Modellpunkte (ECMWF, mit 31 Tagen Vergangenheit)
   M: null,          // { man, m14, m18, heute, h: {"9_14": Modell, …} }
   extra: {},        // gemessene Sonne/Temperatur (ARPA) für das Heute-Modell
+  extern: {},       // fremde Stationen (Weather Underground) aus dem Archiv-Branch
   hourly: null      // Stundenmittel der Stationen { station: { "YYYY-MM-DDTHH": {kn, dir} } }
 };
 
@@ -162,6 +163,21 @@ async function fetchExtra() {
     }
     out[k] = {};
     for (const [kk, xs] of g) if (xs.length >= 3) out[k][kk] = xs.reduce((a, b) => a + b, 0) / xs.length;
+  }
+  return out;
+}
+/* Fremde Stationen: die GitHub Action legt alle 15 min stationen/live.json in den Branch „archiv“ (Schlüssel bleibt dort) */
+const LIVE_URL = "https://raw.githubusercontent.com/c-ruprecht/wind-como/archiv/stationen/live.json";
+async function fetchExtern() {
+  if (DEMO || typeof EXTERN === "undefined") return {};
+  const j = await fetchJSON(LIVE_URL + "?t=" + Math.floor(Date.now() / 300e3));
+  const out = {};
+  for (const st of EXTERN) {
+    const x = j?.stationen?.[st.id]; if (!x?.letzte) continue;
+    const t = new Date(x.letzte.t);
+    if (Date.now() - t > 3 * 3600e3) continue;                     // älter als 3 h: nicht als live zeigen
+    out[st.id] = { time: t, kn: x.letzte.kn, gust: x.letzte.boe, dir: x.letzte.dir,
+      series: x.serie.filter(p => Date.now() - Date.parse(p.t) <= 6 * 3600e3).map(p => ({ t: Date.parse(p.t), kn: p.kn })) };
   }
   return out;
 }
@@ -371,6 +387,14 @@ function drawMarkers() {
     el.innerHTML = `${o && o.dir != null ? arrow(o.dir, "arrow big") : '<span class="sq"></span>'}<span class="lab"><b>${o ? Math.round(o.kn) + " kn " + compass(o.dir) : "–"}</b><small>${st.name}</small></span>`;
     state.markers.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([st.lon, st.lat]).addTo(state.map));
   }
+  for (const st of (typeof EXTERN === "undefined" ? [] : EXTERN)) {
+    const o = state.extern[st.id]; if (!o) continue;
+    const el = document.createElement("div");
+    el.className = "stn-mk ext";
+    el.title = `${st.name} (${st.note}), ${fmtTime(o.time)}`;
+    el.innerHTML = `${o.dir != null ? arrow(o.dir, "arrow big") : '<span class="sq"></span>'}<span class="lab"><b>${Math.round(o.kn)} kn${o.gust != null ? ` (${Math.round(o.gust)})` : ""} ${compass(o.dir)}</b><small>${st.name}</small></span>`;
+    state.markers.push(new maplibregl.Marker({ element: el, anchor: "center" }).setLngLat([st.lon, st.lat]).addTo(state.map));
+  }
 }
 
 /* ---------- Jetzt ---------- */
@@ -390,6 +414,12 @@ function drawNow() {
     return `<li>${o && o.dir != null ? arrow(o.dir) : '<span class="arrow"></span>'}<span><b>${st.name}</b> <small>${st.note}</small></span>
       <span>${o ? `<b>${Math.round(o.kn)} kn</b> ${compass(o.dir)} ${trend} <small>${fmtTime(o.time)}${breva ? " · Breva direction" : ""}</small>` : "no data"}</span>
       ${o ? spark(o.series) : "<span></span>"}</li>`;
+  }).join("");
+  const ext = (typeof EXTERN === "undefined" ? [] : EXTERN).filter(st => state.extern[st.id]).map(st => {
+    const o = state.extern[st.id], breva = o.dir != null && inSec(o.dir, st.sektor) && o.kn >= 2;
+    return `<li>${o.dir != null ? arrow(o.dir) : '<span class="arrow"></span>'}<span><b>${st.name}</b> <small>${st.note}</small></span>
+      <span><b>${Math.round(o.kn)} kn</b>${o.gust != null ? ` gusts ${Math.round(o.gust)}` : ""} ${compass(o.dir)} <small>${fmtTime(o.time)}${breva ? " · Breva direction" : ""}</small></span>
+      ${spark(o.series)}</li>`;
   }).join("");
   const H = heute();
   const ds = days();
@@ -414,7 +444,9 @@ function drawNow() {
       </ul></div>` : "";
   box.innerHTML = `<div class="panel-head"><h2>Today</h2><span class="meta">Is it worth going?</span></div>
     ${heuteHtml}
-    <h3>Stations (ARPA Lombardia, last 6 h)</h3><ul class="stnlist">${stn}</ul>`;
+    <h3>Stations (ARPA Lombardia, last 6 h)</h3><ul class="stnlist">${stn}</ul>
+    ${ext ? `<h3>Lakefront stations (Weather Underground, last 6 h)</h3><ul class="stnlist">${ext}</ul>
+      <p class="hint">Private stations on the shore, not yet calibrated against the lake – they help see when and where the Breva arrives.</p>` : ""}`;
 }
 
 /* ---------- Woche ---------- */
@@ -498,6 +530,7 @@ async function refresh() {
   const st = $("#status");
   st.textContent = "Loading forecast and measurements …"; st.className = "status";
   $("#refreshBtn").disabled = true;
+  fetchExtern().then(x => { state.extern = x; renderAll(); }).catch(e => console.warn("Weather Underground", e));
   const [fc, obs, mfc] = await Promise.allSettled([fetchForecast(), fetchObs(), fetchModelPoints()]);
   if (fc.status === "fulfilled") state.fc = fc.value;
   if (mfc.status === "fulfilled") { state.mfc = mfc.value; F7cache = null; } else console.warn("Modellpunkte", mfc.reason);
@@ -530,7 +563,8 @@ function init() {
     $("#status").textContent = $("#status").textContent.replace("Breva model loading …", state.mfc ? "Breva model active" : "Breva model loading …"); })
     .catch(e => console.warn("Breva model not loaded (run training/train_breva.py first)", e));
   refresh();
-  setInterval(() => { fetchObs().then(o => { state.obs = o; renderAll(); }).catch(() => {}); loadExtra(); }, 10 * 60e3);
+  setInterval(() => { fetchObs().then(o => { state.obs = o; renderAll(); }).catch(() => {}); loadExtra();
+    fetchExtern().then(x => { state.extern = x; renderAll(); }).catch(() => {}); }, 10 * 60e3);
   if ("serviceWorker" in navigator && !DEMO) navigator.serviceWorker.register("sw.js").catch(() => {});
 }
 document.addEventListener("DOMContentLoaded", init);

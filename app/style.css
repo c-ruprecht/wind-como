@@ -475,3 +475,5 @@ tr.langrow th small { opacity: 0.8; }
 
 .week tr.parthead th { text-align: left; font-size: 12px; font-weight: 600; padding-top: 10px; color: var(--muted); }
 .week tr.parthead th small { font-weight: 400; }
+
+.stn-mk.ext .lab b { font-style: italic; }
