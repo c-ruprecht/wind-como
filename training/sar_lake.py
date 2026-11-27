@@ -7,7 +7,8 @@ am oberen Ende 2–4 km breit, deshalb 100 m statt 300 m wie in wingst. Überfl�
 Windrichtung für CMOD5.N: Auf dem See weht der Wind fast immer entlang der Seeachse (oberer See ~20° / 200°). Welche
 der beiden Richtungen, sagt ICON am See (Open-Meteo, frühere Vorhersagen) zur Überflugstunde.
 
-Weitere Ausschnitte: --region lecco (Lecco-Arm, Ordner data/sar100_lecco); --nur morgen lädt nur die Morgenbilder.
+Weitere Ausschnitte: --region lecco (Lecco-Arm, data/sar100_lecco) oder --region ganz (ganzer See, data/sar100_ganz);
+--nur morgen lädt nur die Morgenbilder.
 
 Schritte (Repo-Ordner, im conda-Env mit python):
   pip install sentinelhub rasterio
@@ -40,6 +41,10 @@ REGIONS = {
     "lecco": dict(out="sar100_lecco", bbox=(9.24, 45.83, 9.43, 46.02), axis=(330.0, 150.0), center=(45.92, 9.33),
                   spots={"valmadrera_pare": (45.852, 9.362), "abbadia": (45.898, 9.336), "mandello": (45.918, 9.318),
                          "lierna": (45.957, 9.305)}),
+    # ganzer See (drei Arme, Abschnitte über see_achse.py) – Achse für CMOD nur grob (oberer See)
+    "ganz": dict(out="sar100_ganz", bbox=(9.05, 45.80, 9.48, 46.21), axis=(20.0, 200.0), center=(46.0, 9.26),
+                 spots={**SPOTS, "valmadrera_pare": (45.852, 9.362), "abbadia": (45.898, 9.336), "mandello": (45.918, 9.318),
+                        "lierna": (45.957, 9.305), "como": (45.812, 9.080)}),
 }
 
 
@@ -211,7 +216,7 @@ def station_direction():
             d.index = pd.DatetimeIndex(d.index).tz_convert("UTC")
             obs[st] = d.sort_index()
     rules = {"samolaco": (3.0, (112, 202), (300, 60)), "colico": (2.5, (200, 315), (330, 100))}
-    if REGION == "lecco":       # dazu die Stationen am Lecco-Arm (Valmadrera ab 2024; Tivano dort aus N–NO)
+    if REGION in ("lecco", "ganz"):       # dazu die Stationen am Lecco-Arm (Valmadrera ab 2024; Tivano dort aus N–NO)
         for st in ("valmadrera", "lecco"):
             f = os.path.join(ROOT, "data", "arpa", f"{st}_wind.csv")
             if os.path.exists(f):

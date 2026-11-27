@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import breva_daten as B  # noqa: E402
 import sar_lake as SL  # noqa: E402
 import sat_kategorien as SK  # noqa: E402
+import see_achse as SA  # noqa: E402
 
 OUT = os.path.join(B.RES, "sat_morgen")
 RUHIG, RAU, STARK = 2.0, 4.0, 6.0                       # dB über ruhig, vorläufig – an den Tafeln prüfen
@@ -39,6 +40,11 @@ REG = {
                   orte=(("Valmadrera/Parè", 45.852), ("Abbadia", 45.898), ("Mandello", 45.918), ("Lierna", 45.957), ("Varenna", 46.01)),
                   stationen={"valmadrera": ((330, 90), (135, 225)), "lecco": ((330, 90), (135, 225)),
                              "samolaco": ((290, 60), (112, 202)), "colico": ((330, 100), (200, 315))}),
+    # ganzer See: Abschnitte je Arm (see_achse.py), Drittel nord/mitte/sued
+    "ganz": dict(achsen=True, seg={"_": (45.80, 46.21)}, orte=(),
+                 stationen={"colico": ((330, 100), (200, 315)), "samolaco": ((290, 60), (112, 202)),
+                            "vercana": ((330, 90), (180, 270)), "valmadrera": ((330, 90), (135, 225)),
+                            "lecco": ((330, 90), (135, 225)), "como": ((330, 90), (150, 240))}),
 }
 R_ = REG["oben"]
 
@@ -73,6 +79,16 @@ def main():
     water = SL.clean_mask(np.load(f"{SL.OUT}/water_mask.npy"))
     H, W = water.shape
     lat = (SL.BBOX[3] - (np.arange(H) + 0.5) * (SL.BBOX[3] - SL.BBOX[1]) / H)[:, None] * np.ones((1, W))
+    if R_.get("achsen"):
+        arm, km, arms, lens = SA.zonen(H, W, SL.BBOX, water)
+        ZONES = {f"{a}_{zn}": (arm == i) & (km >= lo * lens[a]) & (km < hi * lens[a])
+                 for i, a in enumerate(arms) for zn, (lo, hi) in (("nord", (0, 1 / 3)), ("mitte", (1 / 3, 2 / 3)), ("sued", (2 / 3, 1.01)))}
+        PBINS = [(f"{a}:{k}", (arm == i) & (km >= k) & (km < k + 1)) for i, a in enumerate(arms) for k in range(int(lens[a]) + 1)]
+        print("Wasserpixel je Arm:", {a: int((arm == i).sum()) for i, a in enumerate(arms)})
+    else:
+        ZONES = {k: water & (lat >= a) & (lat < b) for k, (a, b) in SK.SEG.items()}
+        PBINS = [(f"{a:.2f}", water & (lat >= a) & (lat < a + 0.01)) for a in SK.LAT_BINS[:-1]]
+    ZK = list(ZONES)
     S = SK.scenes()
     S = S[S.te.dt.tz_convert("Europe/Rome").dt.hour < 12].reset_index(drop=True)
     print(f"{len(S)} Morgen-Überflüge mit Rohbild; lese σ⁰ …", flush=True)
@@ -107,11 +123,10 @@ def main():
             continue
         lt = s.te.tz_convert("Europe/Rome")
         r = DB[i] - ref[s.spur]
-        rec = {k: float(np.nanmedian(r[water & (lat >= a) & (lat < b)])) for k, (a, b) in SK.SEG.items()}
+        rec = {k: float(np.nanmedian(r[m])) if m.sum() >= 10 else np.nan for k, m in ZONES.items()}
         v = r[water]; v = v[np.isfinite(v)]
         rec["rau_ganz"] = float((v >= RAU).mean()) if v.size else np.nan
-        prof = [float(np.nanmedian(r[water & (lat >= a) & (lat < a + 0.01)])) if (water & (lat >= a) & (lat < a + 0.01)).sum() >= 10 else np.nan
-                for a in SK.LAT_BINS[:-1]]
+        prof = [float(np.nanmedian(r[m])) if m.sum() >= 10 else np.nan for _, m in PBINS]
         d = lt.normalize().tz_localize(None)
         hour_end = lt.hour + 1                           # Stundenmittel endet zur vollen Stunde
         for st in ST.columns:
@@ -119,29 +134,35 @@ def main():
             rec[f"{st}_nord_max"] = morgen[f"{st}_nord_max"].get(d, np.nan)
         try:
             z = np.load(s.wind)
-            rec["kn_richtwert"] = float(np.nanmedian((z["v"] * SL.KN)[water & (lat < SK.SEG["mitte"][1])]))
+            rec["kn_richtwert"] = float(np.nanmedian((z["v"] * SL.KN)[water]))
         except Exception:
             rec["kn_richtwert"] = np.nan
         rec.update(tag=d, zeit=lt.strftime("%H:%M"), spur=s.spur)
         rows.append(rec); profs.append(prof); R[d] = r
     A = pd.DataFrame(rows).set_index("tag")
     keep = ~A.index.duplicated(keep="last")
-    P = pd.DataFrame(profs, index=A.index, columns=[f"{a:.2f}" for a in SK.LAT_BINS[:-1]])[keep]
+    P = pd.DataFrame(profs, index=A.index, columns=[k for k, _ in PBINS])[keep]
     A = A[keep]
-    A["abfall"] = A[["sued", "mitte"]].mean(axis=1) - A.nord          # > 0: nach Süden rauer (Nordwind-Fetch)
-    A["gesamt"] = A[["sued", "mitte", "nord"]].mean(axis=1)
+    if R_.get("achsen"):                                  # je Arm: Süddrittel − Norddrittel (> 0: nach Süden rauer)
+        for a in arms:
+            A[f"abfall_{a}"] = A[f"{a}_sued"] - A[f"{a}_nord"]
+            A[f"arm_{a}"] = A[[f"{a}_nord", f"{a}_mitte", f"{a}_sued"]].mean(axis=1)
+    else:
+        A["abfall"] = A[["sued", "mitte"]].mean(axis=1) - A.nord      # > 0: nach Süden rauer (Nordwind-Fetch)
+    A["gesamt"] = A[ZK].mean(axis=1)
+    A["zmax"] = A[ZK].max(axis=1)
     st_cols = [f"{st}_ueberflug" for st in ST.columns]
     nord_st = (A[st_cols] > 2).any(axis=1)
     sued_st = (A[st_cols] < -3).any(axis=1) & ~nord_st
 
     def cat(r, n, so):
-        if not np.isfinite(r.gesamt) or max(r.sued, r.mitte, r.nord) < RUHIG:
+        if not np.isfinite(r.gesamt) or r.zmax < RUHIG:
             return "ruhig"
         if so:
             return "sued"
-        if n and min(r.sued, r.mitte) >= STARK:
+        if n and np.nanmedian([r[k] for k in ZK]) >= STARK:
             return "nordwind_stark"
-        if n and max(r.sued, r.mitte) >= RAU:
+        if n and r.zmax >= RAU:
             return "nordwind"
         return "sonst"
     A["klasse"] = [cat(r, n, so) for (_, r), n, so in zip(A.iterrows(), nord_st, sued_st)]
@@ -152,7 +173,7 @@ def main():
     A.round(3).to_csv(f"{OUT}/morgen.csv"); P.round(2).to_csv(f"{OUT}/profile.csv")
     md = [f"# Nordwind am Morgen im Satelliten – {SL.REGION}\n", f"{len(A)} Morgenbilder ({A.index.min():%Y}–{A.index.max():%Y}), Klassen:\n", "```",
           A.klasse.value_counts().to_string(), "```", "\nMedian je Klasse (dB über ruhig; Stationen: Nordkomponente kn):\n", "```",
-          A.groupby("klasse")[["sued", "mitte", "nord", "abfall", "rau_ganz", "kn_richtwert"] + st_cols
+          A.groupby("klasse")[ZK + [c for c in A.columns if c.startswith("abfall")] + ["rau_ganz", "kn_richtwert"] + st_cols
                               + [f"{st}_nord_max" for st in ST.columns]].median().round(2).to_string(), "```"]
     # Je Monat
     nw = A.klasse.isin(["nordwind", "nordwind_stark"])
@@ -224,22 +245,37 @@ def main():
         md += [f"\n(Vorhersage-Prüfung übersprungen: {e})"]
 
     # Bilder
-    fig, ax = plt.subplots(figsize=(6.5, 4))
-    for k, g in A.groupby("klasse"):
-        ax.plot(SK.LAT_BINS[:-1] + 0.005, P.reindex(g.index).median().values, lw=2, label=f"{k} ({len(g)})")
-    for name, la in R_["orte"]:
-        ax.axvline(la, color="grey", lw=0.5, ls=":"); ax.text(la, 0.02, name, rotation=90, fontsize=7, va="bottom", transform=ax.get_xaxis_transform())
-    ax.axhline(0, color="black", lw=0.6); ax.legend(fontsize=8); ax.grid(alpha=0.3)
-    ax.set_xlabel("Breite (Süd → Nord)"); ax.set_ylabel("Rauigkeit über ruhig (dB)")
-    ax.set_title("Morgens: Rauigkeitsprofil je Klasse", fontsize=9)
+    if R_.get("achsen"):
+        fig, axs = plt.subplots(1, len(arms), figsize=(5 * len(arms), 4), sharey=True)
+        for ax, a in zip(axs, arms):
+            cols = [c for c in P.columns if c.startswith(a + ":")]
+            x = [int(c.split(":")[1]) + 0.5 for c in cols]
+            for k, g in A.groupby("klasse"):
+                ax.plot(x, P.reindex(g.index)[cols].median().values, lw=2, label=f"{k} ({len(g)})")
+            for name, la, lo in SA.ORTE[a]:
+                kk = SA.ort_km(a, la, lo)
+                ax.axvline(kk, color="grey", lw=0.5, ls=":"); ax.text(kk, 0.02, name, rotation=90, fontsize=7, va="bottom", transform=ax.get_xaxis_transform())
+            ax.axhline(0, color="black", lw=0.6); ax.grid(alpha=0.3); ax.set_title(SA.NAMEN[a], fontsize=9)
+            ax.set_xlabel("km from the northern end of the branch")
+        axs[0].set_ylabel("Rauigkeit über ruhig (dB)"); axs[0].legend(fontsize=7)
+        fig.suptitle("Morgens: Rauigkeitsprofil je Arm und Klasse (Nord → Süd)", fontsize=10)
+    else:
+        fig, ax = plt.subplots(figsize=(6.5, 4))
+        for k, g in A.groupby("klasse"):
+            ax.plot([float(c) + 0.005 for c in P.columns], P.reindex(g.index).median().values, lw=2, label=f"{k} ({len(g)})")
+        for name, la in R_["orte"]:
+            ax.axvline(la, color="grey", lw=0.5, ls=":"); ax.text(la, 0.02, name, rotation=90, fontsize=7, va="bottom", transform=ax.get_xaxis_transform())
+        ax.axhline(0, color="black", lw=0.6); ax.legend(fontsize=8); ax.grid(alpha=0.3)
+        ax.set_xlabel("Breite (Süd → Nord)"); ax.set_ylabel("Rauigkeit über ruhig (dB)")
+        ax.set_title("Morgens: Rauigkeitsprofil je Klasse", fontsize=9)
     fig.tight_layout(); fig.savefig(f"{OUT}/profile.png", dpi=100); plt.close(fig)
     fig, axs = plt.subplots(1, 2, figsize=(10, 4.2), sharey=True)
     for ax, st in zip(axs, st_cols[:2]):
         for k, g in A.groupby("klasse"):
-            ax.scatter(g[st], g[["sued", "mitte"]].max(axis=1), s=10, alpha=0.6, label=k)
+            ax.scatter(g[st], g.zmax, s=10, alpha=0.6, label=k)
         ax.axvline(0, color="grey", lw=0.6); ax.grid(alpha=0.3)
         ax.set_xlabel(f"{st.split('_')[0].title()}: Nordwind zur Überflugstunde (kn, Süd negativ)")
-    axs[0].set_ylabel("Rauigkeit Mitte/Süd (dB über ruhig)"); axs[0].legend(fontsize=7)
+    axs[0].set_ylabel("Rauigkeit, rauester Abschnitt (dB über ruhig)"); axs[0].legend(fontsize=7)
     fig.tight_layout(); fig.savefig(f"{OUT}/stationen.png", dpi=100); plt.close(fig)
     fig, ax = plt.subplots(figsize=(6, 3.2))
     ax.bar(mon.index, mon["Anteil Nordwind"], color="#00829b"); ax.set_xticks(range(1, 13))
@@ -255,12 +291,14 @@ def main():
         for ax, (d, r) in zip(axs.flat, X.iterrows()):
             im = ax.imshow(np.where(water, R[d], np.nan), extent=(SL.BBOX[0], SL.BBOX[2], SL.BBOX[1], SL.BBOX[3]), cmap="magma", vmin=-2, vmax=12)
             ax.set_aspect(1 / np.cos(np.radians(46))); ax.set_xticks([]); ax.set_yticks([])
-            ax.set_title(f"{d:%d.%m.%y} {r.zeit} N{r.nord:.1f}/M{r.mitte:.1f}/S{r.sued:.1f}\n"
+            zt = (" ".join(f"{a[0].upper()}{r['arm_' + a]:.1f}" for a in arms) if R_.get("achsen")
+                  else f"N{r.nord:.1f}/M{r.mitte:.1f}/S{r.sued:.1f}")
+            ax.set_title(f"{d:%d.%m.%y} {r.zeit} {zt}\n"
                          + " · ".join(f"{c[:3].title()} {r[c + '_ueberflug']:+.0f}" for c in ST.columns[:2]) + " kn", fontsize=7)
         for ax in list(axs.flat)[len(X):]:
             ax.axis("off")
         fig.colorbar(im, ax=axs, shrink=0.5, label="dB über ruhig")
-        fig.suptitle(title + "  (N/M/S = Nordbecken/Mitte/Süd, dB; erste zwei Stationen: Nordwind zur Überflugstunde, Süd negativ)", fontsize=8)
+        fig.suptitle(title + "  (N/M/S = Nordbecken/Mitte/Süd bzw. O/L/C = Arm oben/Lecco/Como, dB; erste zwei Stationen: Nordwind zur Überflugstunde, Süd negativ)", fontsize=8)
         fig.savefig(path, dpi=75, bbox_inches="tight"); plt.close(fig)
     for k, g in A.groupby("klasse"):
         sheet(f"{OUT}/{k}.png", g.sort_values("gesamt", ascending=False), f"{k}: {len(g)} Morgen")
